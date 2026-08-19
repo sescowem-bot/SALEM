@@ -17,6 +17,19 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Build-fix: this page reads the live test catalog from Supabase and has no
+ * other dynamic API (no cookies/searchParams), so Next.js would otherwise
+ * try to statically pre-render it at BUILD time — meaning every deploy
+ * would fail outright if Supabase is briefly unreachable, its schema cache
+ * hasn't refreshed yet after a migration, or the migrations simply haven't
+ * been applied yet. `force-dynamic` makes this page render per-request
+ * (like /book already does implicitly via searchParams) instead of at
+ * build time, so a catalog/database hiccup surfaces as a normal runtime
+ * error on this one page rather than blocking the whole production build.
+ */
+export const dynamic = "force-dynamic";
+
 export default async function ServicesPage() {
   const [categories, tests] = await Promise.all([listTestCategories(), listActiveTests()]);
 
