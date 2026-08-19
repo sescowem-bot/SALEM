@@ -50,10 +50,54 @@ export const reportTransitionSchema = z.object({
 });
 
 /**
- * Public verification form. Deliberately requires BOTH the opaque Result
- * Reference and the Access Code — neither alone is sufficient (Phase 2A/2B
- * three-tier identifier separation).
+ * Public appointment booking (Phase 5 §2). Test/service requested is a
+ * free-text field (or a catalogue test id from the booking UI's
+ * "Book this test" links) — never a fixed clinical enum, since exact
+ * phrasing varies by what the patient brings.
  */
+export const bookAppointmentSchema = z.object({
+  fullName: z.string().trim().min(2, "Full name is required").max(200),
+  phone: z.string().trim().min(7, "A valid phone number is required").max(30),
+  email: z.string().trim().email().optional().or(z.literal("")),
+  testOrPackage: z.string().trim().max(300).optional().or(z.literal("")),
+  preferredDate: z.string().date("Choose a valid date"),
+  preferredTime: z.string().trim().min(1, "Choose a time slot").max(50),
+  locationType: z.enum(["lab", "home"]),
+  notes: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export const homeCollectionRequestSchema = z.object({
+  fullName: z.string().trim().min(2, "Full name is required").max(200),
+  phone: z.string().trim().min(7, "A valid phone number is required").max(30),
+  email: z.string().trim().email().optional().or(z.literal("")),
+  address: z.string().trim().min(5, "Address is required so we can send a phlebotomist").max(500),
+  testOrPackage: z.string().trim().max(300).optional().or(z.literal("")),
+  preferredDate: z.string().date("Choose a valid date"),
+  preferredTime: z.string().trim().min(1, "Choose a time slot").max(50),
+  notes: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export const contactMessageSchema = z.object({
+  fullName: z.string().trim().min(2, "Full name is required").max(200),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+  email: z.string().trim().email().optional().or(z.literal("")),
+  message: z.string().trim().min(5, "Message is required").max(2000),
+});
+
+export const homeCollectionStatusSchema = z.object({
+  requestId: z.string().uuid(),
+  status: z.enum(["pending", "confirmed", "assigned", "in_progress", "completed", "cancelled"]),
+});
+
+export const assignPhlebotomistSchema = z.object({
+  requestId: z.string().uuid(),
+  phlebotomistId: z.string().uuid(),
+});
+
+export const appointmentStatusSchema = z.object({
+  requestId: z.string().uuid(),
+  status: z.enum(["new", "contacted", "scheduled", "completed", "cancelled"]),
+});
 export const verifyResultSchema = z.object({
   resultReference: z
     .string()

@@ -1,9 +1,12 @@
 "use client";
 
-import { MapPin, Phone, Mail, Clock3, AlertCircle, Send } from "lucide-react";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { MapPin, Phone, Mail, Clock3, AlertCircle, Send, Check } from "lucide-react";
 import { InstagramIcon } from "@/components/salem/icons";
 import { WhatsAppIcon } from "@/components/salem/WhatsAppButton";
 import { siteConfig } from "@/data/siteContent";
+import { submitContactAction, type ContactState } from "./actions";
 
 const cards = [
   { icon: MapPin, title: "Visit the laboratory", lines: [siteConfig.address.line1, siteConfig.address.line2] },
@@ -16,7 +19,23 @@ const cards = [
 const fieldClass =
   "mt-2 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-navy-deep outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan focus:bg-card";
 
+const initialState: ContactState = {};
+
+function SendButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="sm:col-span-2 mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-navy px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.03] disabled:opacity-60 disabled:hover:scale-100"
+    >
+      <Send className="h-4 w-4 shrink-0" /> {pending ? "Sending\u2026" : "Send message"}
+    </button>
+  );
+}
+
 export function ContactPageClient() {
+  const [state, formAction] = useActionState(submitContactAction, initialState);
   return (
     <section className="bg-background py-14 lg:py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
@@ -42,7 +61,15 @@ export function ContactPageClient() {
             <p className="mt-1.5 text-sm text-muted-foreground">
               Our front desk aims to reply to every enquiry within one working day.
             </p>
-            <form className="mt-6 grid gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
+            {state.ok ? (
+              <div className="mt-6 flex items-start gap-3 rounded-xl border border-cyan/40 bg-accent p-5">
+                <Check className="mt-0.5 h-5 w-5 shrink-0 text-navy" />
+                <p className="text-sm text-navy-deep">
+                  {"Message sent \u2014 our front desk will get back to you within one working day."}
+                </p>
+              </div>
+            ) : (
+            <form action={formAction} className="mt-6 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-medium text-navy-deep">
                 Full name
                 <input className={fieldClass} placeholder="Your name" name="name" />
@@ -59,13 +86,12 @@ export function ContactPageClient() {
                 How can we help?
                 <textarea rows={5} className={fieldClass} placeholder="Tell us what you need…" name="message" />
               </label>
-              <button
-                type="submit"
-                className="sm:col-span-2 mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-navy px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.03]"
-              >
-                <Send className="h-4 w-4 shrink-0" /> Send message
-              </button>
+              {state.error ? (
+                <p className="sm:col-span-2 text-sm font-medium text-destructive">{state.error}</p>
+              ) : null}
+              <SendButton />
             </form>
+            )}
           </div>
 
           <div className="space-y-6">

@@ -37,7 +37,13 @@ export type AuditAction =
   | "RESULT_RETURNED"
   | "RESULT_APPROVED"
   | "RESULT_PUBLISHED"
-  | "RESULT_VERIFIED_ACCESS";
+  | "RESULT_VERIFIED_ACCESS"
+  | "BOOKING_CREATED"
+  | "BOOKING_STATUS_UPDATED"
+  | "HOME_COLLECTION_CREATED"
+  | "HOME_COLLECTION_STATUS_UPDATED"
+  | "HOME_COLLECTION_ASSIGNED";
+export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 
 export interface Database {
   public: {
@@ -134,6 +140,10 @@ export interface Database {
           sort_order: number;
           created_at: string;
           updated_at: string;
+          public_description: string | null;
+          preparation_info: string | null;
+          price_ngn: number | null;
+          show_price: boolean;
         };
         Insert: Partial<Database["public"]["Tables"]["tests"]["Row"]> & {
           category_id: string;
@@ -311,6 +321,7 @@ export interface Database {
           notes: string | null;
           status: IntakeStatus;
           created_at: string;
+          booking_reference: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["appointment_requests"]["Row"]> & {
           full_name: string;
@@ -328,8 +339,10 @@ export interface Database {
           preferred_date: string | null;
           preferred_time: string | null;
           notes: string | null;
-          status: IntakeStatus;
+          status: HomeCollectionStatus;
           created_at: string;
+          assigned_phlebotomist_id: string | null;
+          booking_reference: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["home_collection_requests"]["Row"]> & {
           full_name: string;
@@ -402,6 +415,21 @@ export interface Database {
           succeeded: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["result_access_attempts"]["Row"]>;
+      };
+      public_form_attempts: {
+        Row: {
+          id: string;
+          form_type: string;
+          ip_hash: string;
+          succeeded: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["public_form_attempts"]["Row"]> & {
+          form_type: string;
+          ip_hash: string;
+          succeeded: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["public_form_attempts"]["Row"]>;
       };
     };
   };

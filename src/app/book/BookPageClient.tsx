@@ -1,28 +1,95 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import { CalendarCheck, MapPin, Home, ShieldCheck, Check } from "lucide-react";
 import { siteConfig } from "@/data/siteContent";
+import { APPOINTMENT_TIME_SLOTS } from "@/lib/bookingConstants";
+import { bookAppointmentAction, getSlotAvailabilityAction, type BookState } from "./actions";
+import type { Database } from "@/lib/supabase/database.types";
 
-const steps = ["Test", "Date", "Location", "Details", "Review", "Confirm"];
-const times = ["7:30 am", "9:00 am", "10:30 am", "12:00 pm", "2:00 pm", "4:30 pm"];
-const days = [
-  { d: "Mon", n: "11" },
-  { d: "Tue", n: "12" },
-  { d: "Wed", n: "13" },
-  { d: "Thu", n: "14" },
-  { d: "Fri", n: "15" },
-  { d: "Sat", n: "16" },
-];
+type Test = Database["public"]["Tables"]["tests"]["Row"];
+
+const steps = ["Test", "Date", "Location", "Details", "Confirm"];
+
+function nextDays(count: number) {
+  const out: { label: string; dayNum: string; iso: string }[] = [];
+  const today = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    out.push({
+      label: d.toLocaleDateString("en-US", { weekday: "short" }),
+      dayNum: String(d.getDate()),
+      iso: d.toISOString().slice(0, 10),
+    });
+  }
+  return out;
+}
 
 const fieldClass =
   "mt-2 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-navy-deep outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan focus:bg-card";
 
-export function BookPageClient() {
-  const [selectedDay, setSelectedDay] = useState(2);
-  const [selectedTime, setSelectedTime] = useState(1);
+const initialState: BookState = {};
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
+    >
+      <CalendarCheck className="h-4 w-4 shrink-0" /> {pending ? "Submitting\u2026" : "Confirm booking"}
+    </button>
+  );
+}
+
+export function BookPageClient({ tests, preselectedTestName }: { tests: Test[]; preselectedTestName?: string }) {
+  const days = nextDays(6);
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [selectedTime, setSelectedTime] = useState(0);
   const [location, setLocation] = useState<"lab" | "home">("lab");
+  const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
+  const [, startTransition] = useTransition();
+
+  const [state, formAction] = useActionState(bookAppointmentAction, initialState);
+
+  useEffect(() => {
+    startTransition(async () => {
+      const availability = await getSlotAvailabilityAction(days[selectedDay].iso);
+      const counts: Record<string, number> = {};
+      for (const { slot, bookedCount } of availability) counts[slot] = bookedCount;
+      setSlotCounts(counts);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDay]);
+
+  if (state.bookingReference) {
+    return (
+      <section className="bg-background py-14 lg:py-20">
+        <div className="mx-auto max-w-2xl px-5 text-center sm:px-6">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent text-navy">
+            <Check className="h-6 w-6" />
+          </span>
+          <h2 className="mt-5 text-xl font-semibold text-navy-deep">Booking received</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Your reference number is below. Our front desk will confirm your slot shortly.
+          </p>
+          <p className="mt-4 rounded-xl border border-cyan/40 bg-accent p-4 font-mono text-base font-semibold text-navy-deep">
+            {state.bookingReference}
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02]"
+          >
+            Back to homepage
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="bg-background py-14 lg:py-20">
@@ -31,20 +98,10 @@ export function BookPageClient() {
             {steps.map((s, i) => (
               <li key={s} className="flex items-center gap-3">
                 <span className="flex items-center gap-2">
-                  <span
-                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${
-                      i <= 1
-                        ? "bg-navy text-primary-foreground"
-                        : "bg-secondary text-muted-foreground"
-                    }`}
-                  >
-                    {i < 1 ? <Check className="h-4 w-4" /> : i + 1}
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-bold text-muted-foreground">
+                    {i + 1}
                   </span>
-                  <span
-                    className={`text-sm font-medium ${i <= 1 ? "text-navy-deep" : "text-muted-foreground"}`}
-                  >
-                    {s}
-                  </span>
+                  <span className="text-sm font-medium text-muted-foreground">{s}</span>
                 </span>
                 {i < steps.length - 1 ? (
                   <span className="hidden h-px w-8 bg-border sm:block" aria-hidden="true" />
@@ -53,7 +110,11 @@ export function BookPageClient() {
             ))}
           </ol>
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-[1.35fr_0.65fr] lg:items-start">
+          <form action={formAction} className="mt-10 grid gap-6 lg:grid-cols-[1.35fr_0.65fr] lg:items-start">
+            <input type="hidden" name="preferredDate" value={days[selectedDay].iso} />
+            <input type="hidden" name="preferredTime" value={APPOINTMENT_TIME_SLOTS[selectedTime]} />
+            <input type="hidden" name="locationType" value={location} />
+
             <div className="surface-card p-6 sm:p-8">
               <h2 className="text-xl font-semibold text-navy-deep">Choose a date and time</h2>
               <p className="mt-1.5 text-sm text-muted-foreground">Pick a day that works for you</p>
@@ -61,7 +122,7 @@ export function BookPageClient() {
               <div className="mt-6 grid grid-cols-3 gap-2.5 sm:grid-cols-6">
                 {days.map((day, i) => (
                   <button
-                    key={day.n}
+                    key={day.iso}
                     type="button"
                     onClick={() => setSelectedDay(i)}
                     className={`rounded-2xl border px-2 py-3 text-center transition-colors ${
@@ -70,10 +131,8 @@ export function BookPageClient() {
                         : "border-border text-muted-foreground hover:border-cyan hover:bg-accent"
                     }`}
                   >
-                    <span className="block text-[0.7rem] font-medium uppercase tracking-wide">
-                      {day.d}
-                    </span>
-                    <span className="mt-1 block text-lg font-semibold text-navy-deep">{day.n}</span>
+                    <span className="block text-[0.7rem] font-medium uppercase tracking-wide">{day.label}</span>
+                    <span className="mt-1 block text-lg font-semibold text-navy-deep">{day.dayNum}</span>
                   </button>
                 ))}
               </div>
@@ -82,20 +141,26 @@ export function BookPageClient() {
                 Available slots
               </h3>
               <div className="mt-4 flex flex-wrap gap-2.5">
-                {times.map((t, i) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setSelectedTime(i)}
-                    className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
-                      i === selectedTime
-                        ? "bg-navy text-primary-foreground"
-                        : "border border-border text-navy hover:border-cyan hover:bg-accent"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
+                {APPOINTMENT_TIME_SLOTS.map((t, i) => {
+                  const full = (slotCounts[t] ?? 0) >= 3;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      disabled={full}
+                      onClick={() => setSelectedTime(i)}
+                      className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                        full
+                          ? "cursor-not-allowed border border-border text-muted-foreground/50 line-through"
+                          : i === selectedTime
+                            ? "bg-navy text-primary-foreground"
+                            : "border border-border text-navy hover:border-cyan hover:bg-accent"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
               </div>
 
               <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-purple">
@@ -103,18 +168,8 @@ export function BookPageClient() {
               </h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {[
-                  {
-                    key: "lab" as const,
-                    icon: MapPin,
-                    t: "Walk in to the lab",
-                    s: siteConfig.address.line1,
-                  },
-                  {
-                    key: "home" as const,
-                    icon: Home,
-                    t: "Home collection",
-                    s: "Phlebotomist visits you",
-                  },
+                  { key: "lab" as const, icon: MapPin, t: "Walk in to the lab", s: siteConfig.address.line1 },
+                  { key: "home" as const, icon: Home, t: "Home collection", s: "Phlebotomist visits you" },
                 ].map(({ key, icon: Icon, t, s }) => (
                   <button
                     key={t}
@@ -136,30 +191,33 @@ export function BookPageClient() {
               <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-purple">
                 Patient details
               </h3>
-              <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <label className="block text-sm font-medium text-navy-deep">
                   Full name
-                  <input className={fieldClass} placeholder="Your full name" name="fullName" />
+                  <input className={fieldClass} placeholder="Your full name" name="fullName" required />
                 </label>
                 <label className="block text-sm font-medium text-navy-deep">
                   Phone number
-                  <input className={fieldClass} placeholder="+234 …" name="phone" />
+                  <input className={fieldClass} placeholder="+234 …" name="phone" required />
                 </label>
                 <label className="block text-sm font-medium text-navy-deep">
-                  Email address
-                  <input className={fieldClass} placeholder="you@email.com" name="email" />
+                  Email address (optional)
+                  <input className={fieldClass} placeholder="you@email.com" name="email" type="email" />
                 </label>
                 <label className="block text-sm font-medium text-navy-deep">
-                  Date of birth
-                  <input className={fieldClass} placeholder="DD / MM / YYYY" name="dob" />
-                </label>
-                <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
                   Test or panel requested
                   <input
                     className={fieldClass}
-                    placeholder="e.g. Full Blood Count, or attach your doctor's request"
-                    name="testRequested"
+                    placeholder="e.g. Fasting Blood Sugar"
+                    name="testOrPackage"
+                    defaultValue={preselectedTestName}
+                    list="salem-test-list"
                   />
+                  <datalist id="salem-test-list">
+                    {tests.map((t) => (
+                      <option key={t.id} value={t.name} />
+                    ))}
+                  </datalist>
                 </label>
                 <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
                   Notes for the laboratory (optional)
@@ -170,20 +228,15 @@ export function BookPageClient() {
                     name="notes"
                   />
                 </label>
-              </form>
+              </div>
             </div>
 
             <aside className="surface-card p-6 lg:sticky lg:top-28">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-purple">
-                Booking summary
-              </h2>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-purple">Booking summary</h2>
               <dl className="mt-5 space-y-4 text-sm">
                 {[
-                  [
-                    "Date",
-                    days[selectedDay] ? `${days[selectedDay].d} ${days[selectedDay].n}` : "—",
-                  ],
-                  ["Time", times[selectedTime] ?? "—"],
+                  ["Date", `${days[selectedDay].label} ${days[selectedDay].dayNum}`],
+                  ["Time", APPOINTMENT_TIME_SLOTS[selectedTime]],
                   ["Location", location === "lab" ? "Walk-in laboratory" : "Home collection"],
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-start justify-between gap-4">
@@ -195,16 +248,14 @@ export function BookPageClient() {
               <p className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">
                 Pricing is confirmed by our front desk once your test or package is selected.
               </p>
-              <button
-                type="button"
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02]"
-              >
-                <CalendarCheck className="h-4 w-4 shrink-0" /> Review &amp; confirm
-              </button>
+
+              {state.error ? <p className="mt-4 text-sm font-medium text-destructive">{state.error}</p> : null}
+
+              <SubmitButton />
+
               <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan" />
-                Payment is completed at the laboratory or on collection. Your details stay
-                confidential.
+                Payment is completed at the laboratory or on collection. Your details stay confidential.
               </p>
               <Link
                 href="/contact"
@@ -213,7 +264,7 @@ export function BookPageClient() {
                 Prefer to speak with someone? Contact us
               </Link>
             </aside>
-          </div>
+          </form>
         </div>
       </section>
   );

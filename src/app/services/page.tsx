@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
+import { listTestCategories, listActiveTests } from "@/lib/data/testCatalog";
 import { ServicesPageClient } from "./ServicesPageClient";
 
 const description =
@@ -16,7 +17,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const [categories, tests] = await Promise.all([listTestCategories(), listActiveTests()]);
+
   return (
     <SiteLayout>
       <PageHeader
@@ -24,7 +27,7 @@ export default function ServicesPage() {
         title="A diagnostic menu, run under one quality system."
         lead="Every sample is barcoded on arrival, processed under documented quality control and reviewed by a scientist before release."
       />
-      <ServicesPageClient />
+      <ServicesPageClient categories={categories} tests={tests} />
     </SiteLayout>
   );
 }
