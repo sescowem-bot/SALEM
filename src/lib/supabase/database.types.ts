@@ -44,7 +44,7 @@ type TemplateField = {
   label: string;
   input_type: FieldInputType;
   unit: string | null;
-  options: Json;
+  options: string[] | null;
   sort_order: number;
   created_at: string;
 };
@@ -285,5 +285,20 @@ export interface Database {
       result_access_attempts: Table<ResultAccessAttempt>;
       public_form_attempts: Table<PublicFormAttempt>;
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: {
+      test_structure_type: TestStructureType;
+      field_input_type: FieldInputType;
+      report_status: ReportStatus;
+      report_test_status: ReportTestStatus;
+      result_flag: ResultFlag;
+      report_version_change_type: ReportVersionChangeType;
+      intake_status: IntakeStatus;
+      staff_role: StaffRoleDb;
+      audit_action: AuditAction;
+      home_collection_status: HomeCollectionStatus;
+    };
+    CompositeTypes: Record<string, never>;
   };
 }
