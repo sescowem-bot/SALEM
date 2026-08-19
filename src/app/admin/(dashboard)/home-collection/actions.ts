@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
 import { updateHomeCollectionStatus, assignPhlebotomist } from "@/lib/data/homeCollection";
-import type { HomeCollectionStatus } from "@/lib/supabase/database.types";
 import { homeCollectionStatusSchema, assignPhlebotomistSchema } from "@/lib/validation/schemas";
 
 export interface ActionState {
@@ -23,7 +22,7 @@ export async function updateHomeCollectionStatusAction(_prev: ActionState, formD
   try {
     await updateHomeCollectionStatus(
       parsed.data.requestId,
-      parsed.data.status as HomeCollectionStatus,
+      parsed.data.status,
       staff.role,
       staff.userId
     );

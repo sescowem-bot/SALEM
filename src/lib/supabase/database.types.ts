@@ -10,14 +10,97 @@ export type StaffRoleDb = "super_admin" | "admin" | "laboratory_staff" | "pathol
 export type AuditAction = "PATIENT_REGISTERED" | "VISIT_CREATED" | "LAB_CODE_GENERATED" | "RESULT_CREATED" | "RESULT_UPDATED" | "RESULT_UPLOADED" | "RESULT_SUBMITTED_FOR_REVIEW" | "RESULT_RETURNED" | "RESULT_APPROVED" | "RESULT_PUBLISHED" | "RESULT_VERIFIED_ACCESS" | "BOOKING_CREATED" | "BOOKING_STATUS_UPDATED" | "HOME_COLLECTION_CREATED" | "HOME_COLLECTION_STATUS_UPDATED" | "HOME_COLLECTION_ASSIGNED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 
-type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+type Json = string | number | boolean | null | { [key: string]: unknown } | unknown[];
 
-type Table<Row> = {
+type Relationship = {
+  foreignKeyName: string;
+  columns: string[];
+  isOneToOne: boolean;
+  referencedRelation: string;
+  referencedColumns: string[];
+};
+
+type Table<Row, Relationships extends readonly Relationship[] = readonly Relationship[]> = {
   Row: Row;
   Insert: Partial<Row>;
   Update: Partial<Row>;
-  Relationships: never[];
+  Relationships: Relationships;
 };
+
+type CategoryRelationships = [
+  {
+    foreignKeyName: "tests_category_id_fkey";
+    columns: ["id"];
+    isOneToOne: false;
+    referencedRelation: "tests";
+    referencedColumns: ["category_id"];
+  },
+];
+
+type TemplateRelationships = [
+  {
+    foreignKeyName: "tests_template_id_fkey";
+    columns: ["id"];
+    isOneToOne: false;
+    referencedRelation: "tests";
+    referencedColumns: ["template_id"];
+  },
+  {
+    foreignKeyName: "template_fields_template_id_fkey";
+    columns: ["id"];
+    isOneToOne: false;
+    referencedRelation: "template_fields";
+    referencedColumns: ["template_id"];
+  },
+  {
+    foreignKeyName: "template_table_columns_template_id_fkey";
+    columns: ["id"];
+    isOneToOne: false;
+    referencedRelation: "template_table_columns";
+    referencedColumns: ["template_id"];
+  },
+  {
+    foreignKeyName: "template_table_rows_template_id_fkey";
+    columns: ["id"];
+    isOneToOne: false;
+    referencedRelation: "template_table_rows";
+    referencedColumns: ["template_id"];
+  },
+];
+
+type TestRelationships = [
+  {
+    foreignKeyName: "tests_category_id_fkey";
+    columns: ["category_id"];
+    isOneToOne: false;
+    referencedRelation: "test_categories";
+    referencedColumns: ["id"];
+  },
+  {
+    foreignKeyName: "tests_template_id_fkey";
+    columns: ["template_id"];
+    isOneToOne: false;
+    referencedRelation: "test_templates";
+    referencedColumns: ["id"];
+  },
+];
+
+type ReportTestRelationships = [
+  {
+    foreignKeyName: "report_tests_lab_report_id_fkey";
+    columns: ["lab_report_id"];
+    isOneToOne: false;
+    referencedRelation: "lab_reports";
+    referencedColumns: ["id"];
+  },
+  {
+    foreignKeyName: "report_tests_test_id_fkey";
+    columns: ["test_id"];
+    isOneToOne: false;
+    referencedRelation: "tests";
+    referencedColumns: ["id"];
+  },
+];
 
 type TestCategory = {
   id: string;
@@ -205,9 +288,18 @@ type AppointmentRequest = {
   booking_reference: string | null;
 };
 
-type HomeCollectionRequest = Omit<AppointmentRequest, "location_type" | "test_or_package"> & {
+type HomeCollectionRequest = {
+  id: string;
+  full_name: string;
+  phone: string;
+  email: string | null;
   address: string | null;
+  preferred_date: string | null;
+  preferred_time: string | null;
+  notes: string | null;
   status: HomeCollectionStatus;
+  created_at: string;
+  booking_reference: string | null;
   assigned_phlebotomist_id: string | null;
 };
 
@@ -264,15 +356,15 @@ export interface Database {
   public: {
     Tables: {
       test_categories: Table<TestCategory>;
-      test_templates: Table<TestTemplate>;
+      test_templates: Table<TestTemplate, TemplateRelationships>;
       template_fields: Table<TemplateField>;
       template_table_columns: Table<TemplateTableColumn>;
       template_table_rows: Table<TemplateTableRow>;
-      tests: Table<Test>;
+      tests: Table<Test, TestRelationships>;
       signatories: Table<Signatory>;
       patients: Table<Patient>;
       lab_reports: Table<LabReport>;
-      report_tests: Table<ReportTest>;
+      report_tests: Table<ReportTest, ReportTestRelationships>;
       result_field_values: Table<ResultFieldValue>;
       result_table_cells: Table<ResultTableCell>;
       reference_ranges: Table<ReferenceRange>;

@@ -5,7 +5,7 @@ import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
 import { logAudit } from "./audit";
 
 type HomeCollectionRequest = Database["public"]["Tables"]["home_collection_requests"]["Row"];
-type HomeCollectionStatus = Database["public"]["Tables"]["home_collection_requests"]["Row"]["status"];
+type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 
 /**
  * This uses the service-role client, which bypasses RLS entirely — unlike
