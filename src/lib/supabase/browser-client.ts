@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import type { Database } from "./database.types";
 
 /**
  * Anon-key client. Safe to use in Client Components — it only ever has the
@@ -23,5 +24,5 @@ export function getBrowserClient() {
     );
   }
 
-  return createBrowserClient(url, anonKey);
+  return createBrowserClient<Database>(url, anonKey);
 }

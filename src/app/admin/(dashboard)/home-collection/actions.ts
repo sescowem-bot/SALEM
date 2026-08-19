@@ -22,7 +22,7 @@ export async function updateHomeCollectionStatusAction(_prev: ActionState, formD
   try {
     await updateHomeCollectionStatus(
       parsed.data.requestId,
-      parsed.data.status,
+      parsed.data.status as "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled",
       staff.role,
       staff.userId
     );
