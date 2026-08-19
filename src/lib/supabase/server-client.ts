@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
 /**
@@ -14,8 +15,23 @@ import type { Database } from "./database.types";
  *
  * Must be created fresh per request (it closes over the current request's
  * cookies via next/headers).
+ *
+ * The explicit `Promise<SupabaseClient<Database>>` return type below is
+ * required, not stylistic: `@supabase/ssr`'s `createServerClient<Database>`
+ * declares its own return type as `SupabaseClient<Database, SchemaName>`
+ * (only two of the three `SupabaseClient` generics), so without a concrete
+ * target type here TypeScript infers this function's return type purely
+ * from that narrower signature instead of re-deriving `SupabaseClient`'s
+ * own `Schema` default against our `Database` type — which is what was
+ * collapsing every query made through this client (e.g. the
+ * `staff_profiles` lookup in lib/auth/session.ts) to `never`, even though
+ * the identical table type resolved correctly through the service-role
+ * client in service-client.ts. Annotating the return type gives TypeScript
+ * a concrete `SupabaseClient<Database>` target to check the call against,
+ * which resolves the same `Database` type consistently with every other
+ * client in this codebase — no `any`/`unknown` involved.
  */
-export async function getSessionClient() {
+export async function getSessionClient(): Promise<SupabaseClient<Database>> {
   const cookieStore = await cookies();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
