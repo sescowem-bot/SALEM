@@ -5,7 +5,6 @@ import { Check, ShieldCheck, Syringe, ClipboardList, MapPin, PhoneCall } from "l
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { WhatsAppIcon } from "@/components/salem/WhatsAppButton";
 import { siteConfig } from "@/data/siteContent";
-import { HomeCollectionFormClient } from "./HomeCollectionFormClient";
 
 const description =
   "Book a home visit and have a Salem phlebotomist collect your sample safely and comfortably at home.";
@@ -61,7 +60,7 @@ export default function HomeCollectionPage() {
       >
         <div className="flex flex-wrap gap-3">
           <Link
-            href="#request-form"
+            href="/book"
             className="inline-flex items-center gap-2 rounded-full gradient-accent px-6 py-3.5 text-sm font-semibold text-navy-deep shadow-glow transition-transform hover:scale-[1.03]"
           >
             <MapPin className="h-4 w-4 shrink-0" /> Request a home visit
@@ -151,19 +150,13 @@ export default function HomeCollectionPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link
-                href="#request-form"
+                href="/book"
                 className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.03]"
               >
                 <PhoneCall className="h-4 w-4 shrink-0" /> Book a home visit
               </Link>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section id="request-form" className="bg-secondary py-16 lg:py-24 scroll-mt-24">
-        <div className="mx-auto max-w-2xl px-5 sm:px-6">
-          <HomeCollectionFormClient />
         </div>
       </section>
     </SiteLayout>

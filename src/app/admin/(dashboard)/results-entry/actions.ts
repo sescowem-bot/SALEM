@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
-import { searchPatientsByName, createPatient, getPatientById } from "@/lib/data/patients";
+import { searchPatientsByName, createPatient } from "@/lib/data/patients";
 import { createLabReport, addTestToReport } from "@/lib/data/labReports";
 import { registerPatientSchema, createVisitSchema } from "@/lib/validation/schemas";
 
@@ -80,6 +80,7 @@ export async function createVisitAction(_prev: ActionState, formData: FormData):
   try {
     // Snapshot the patient's current name/sex/dob onto the report at
     // creation time (Phase 2A: patient edits later must not rewrite history).
+    const { getPatientById } = await import("@/lib/data/patients");
     const patient = await getPatientById(parsed.data.patientId);
     if (!patient) return { error: "Patient not found." };
 

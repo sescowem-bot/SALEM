@@ -38,21 +38,6 @@ export function generateAccessCode(): { plaintext: string; hash: string } {
   return { plaintext, hash: hashAccessCode(plaintext) };
 }
 
-/**
- * Opaque booking/reference identifier for public appointment and home
- * collection requests (Phase 5 §2). Distinct prefix from the lab Result
- * Reference (SML-) — this is a booking confirmation number, not a medical
- * result access credential, so it carries no access-code pairing.
- */
-export function generateBookingReference(prefix: "APT" | "HSC"): string {
-  const bytes = randomBytes(8);
-  let code = "";
-  for (let i = 0; i < 8; i++) {
-    code += REFERENCE_ALPHABET[bytes[i] % REFERENCE_ALPHABET.length];
-  }
-  return `${prefix}-${code.slice(0, 4)}-${code.slice(4, 8)}`;
-}
-
 const SCRYPT_KEYLEN = 64;
 
 export function hashAccessCode(plaintext: string): string {

@@ -144,6 +144,7 @@ export async function setFieldResult(input: SetFieldResultInput) {
   if (!hasPermission(input.actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot enter results.`);
   }
+  await assertReportTestIsEditable(input.reportTestId);
 
   const range = await getReferenceRangesForField(input.testId, input.templateFieldId, input.sex ?? null);
 
@@ -194,6 +195,7 @@ export async function setTableCellResult(input: {
   if (!hasPermission(input.actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot enter results.`);
   }
+  await assertReportTestIsEditable(input.reportTestId);
 
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
@@ -510,9 +512,17 @@ export async function recordAmendment(labReportId: string, actorRole: StaffRole,
     .eq("id", labReportId);
 
   await writeVersionSnapshot(labReportId, nextVersionNumber, "amended", actorId);
+  await logAudit({
+    action: "RESULT_AMENDED",
+    entityType: "lab_reports",
+    entityId: labReportId,
+    actorId,
+    actorRole,
+    metadata: { versionNumber: nextVersionNumber },
+  });
 }
 
-async function assertReportIsEditable(labReportId: string) {
+export async function assertReportIsEditable(labReportId: string) {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
     .from("lab_reports")
@@ -527,6 +537,29 @@ async function assertReportIsEditable(labReportId: string) {
       "This report is published/archived and cannot be edited directly. Use recordAmendment() first."
     );
   }
+}
+
+/**
+ * Same guard as assertReportIsEditable, but resolved from a report_tests id
+ * — used by setFieldResult/setTableCellResult, which only receive
+ * reportTestId. Without this, those two functions had no status check at
+ * all: a direct POST to saveFieldResultAction/saveTableCellAction (bypassing
+ * the disabled UI state, which is display-only) could silently rewrite
+ * values on a reviewed/published/archived report with no version snapshot
+ * and no recordAmendment() call, even though RLS permits the UPDATE at the
+ * table level for any role with reports.edit_draft.
+ */
+async function assertReportTestIsEditable(reportTestId: string) {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("report_tests")
+    .select("lab_report_id")
+    .eq("id", reportTestId)
+    .single();
+
+  if (error) throw error;
+
+  await assertReportIsEditable(data.lab_report_id);
 }
 
 // ---------------------------------------------------------------------------

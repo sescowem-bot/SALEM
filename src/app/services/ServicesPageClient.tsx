@@ -3,27 +3,92 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Search, ArrowUpRight } from "lucide-react";
-import type { Database } from "@/lib/supabase/database.types";
 
-type TestCategory = Database["public"]["Tables"]["test_categories"]["Row"];
-type Test = Database["public"]["Tables"]["tests"]["Row"];
+const categories = [
+  "All services",
+  "Haematology",
+  "Clinical Chemistry",
+  "Microbiology",
+  "Immunology",
+  "Serology",
+  "Molecular",
+  "Histopathology",
+];
 
-const ALL = "All services";
+const services = [
+  {
+    name: "Full Blood Count (FBC)",
+    category: "Haematology",
+    body: "Complete cell profile with differential, indices and film comment.",
+  },
+  {
+    name: "Coagulation Profile",
+    category: "Haematology",
+    body: "PT, INR and APTT for bleeding risk and anticoagulant monitoring.",
+  },
+  {
+    name: "Liver Function Test",
+    category: "Clinical Chemistry",
+    body: "ALT, AST, ALP, bilirubin and protein markers on automated analysers.",
+  },
+  {
+    name: "Kidney Function & Electrolytes",
+    category: "Clinical Chemistry",
+    body: "Urea, creatinine, eGFR and full electrolyte panel.",
+  },
+  {
+    name: "Lipid Profile & HbA1c",
+    category: "Clinical Chemistry",
+    body: "Cardiometabolic risk markers with three-month glycaemic control.",
+  },
+  {
+    name: "Culture & Sensitivity",
+    category: "Microbiology",
+    body: "Urine, wound, sputum and swab cultures with antibiotic sensitivity.",
+  },
+  {
+    name: "Malaria & Typhoid Screening",
+    category: "Microbiology",
+    body: "Rapid antigen testing confirmed with microscopy by our scientists.",
+  },
+  {
+    name: "Thyroid & Hormone Assays",
+    category: "Immunology",
+    body: "TSH, T3, T4, fertility and reproductive hormone panels.",
+  },
+  {
+    name: "Allergy & Autoimmune Panel",
+    category: "Immunology",
+    body: "IgE screening, ANA and rheumatoid markers with clinical commentary.",
+  },
+  {
+    name: "Hepatitis & Retroviral Screening",
+    category: "Serology",
+    body: "Confidential HBsAg, HCV and HIV screening with counselling support.",
+  },
+  {
+    name: "PCR Diagnostics",
+    category: "Molecular",
+    body: "Nucleic acid amplification testing under strict chain-of-custody.",
+  },
+  {
+    name: "Histopathology & Cytology",
+    category: "Histopathology",
+    body: "Tissue and smear analysis reviewed by consultant pathologists.",
+  },
+];
 
-export function ServicesPageClient({ categories, tests }: { categories: TestCategory[]; tests: Test[] }) {
+export function ServicesPageClient() {
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState(ALL);
-
-  const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  const [category, setCategory] = useState("All services");
 
   const filtered = useMemo(() => {
-    return tests.filter((t) => {
-      const categoryName = categoryById.get(t.category_id)?.name ?? "";
-      const matchesCategory = category === ALL || categoryName === category;
-      const matchesQuery = t.name.toLowerCase().includes(query.toLowerCase());
+    return services.filter((s) => {
+      const matchesCategory = category === "All services" || s.category === category;
+      const matchesQuery = s.name.toLowerCase().includes(query.toLowerCase());
       return matchesCategory && matchesQuery;
     });
-  }, [tests, categoryById, query, category]);
+  }, [query, category]);
 
   return (
     <section className="bg-background py-14 lg:py-20">
@@ -36,7 +101,7 @@ export function ServicesPageClient({ categories, tests }: { categories: TestCate
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search a test, e.g. Fasting Blood Sugar"
+                placeholder="Search a test, e.g. Full Blood Count"
                 className="min-w-0 flex-1 bg-transparent text-sm text-navy-deep outline-none placeholder:text-muted-foreground"
               />
             </label>
@@ -47,7 +112,7 @@ export function ServicesPageClient({ categories, tests }: { categories: TestCate
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            {[ALL, ...categories.map((c) => c.name)].map((c) => (
+            {categories.map((c) => (
               <button
                 key={c}
                 type="button"
@@ -64,36 +129,18 @@ export function ServicesPageClient({ categories, tests }: { categories: TestCate
           </div>
 
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((t) => (
-              <article key={t.id} className="surface-card flex flex-col p-6">
+            {filtered.map((s) => (
+              <article key={s.name} className="surface-card flex flex-col p-6">
                 <span className="w-fit rounded-full bg-accent px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-navy">
-                  {categoryById.get(t.category_id)?.name ?? "Laboratory test"}
+                  {s.category}
                 </span>
-                <h2 className="mt-4 text-lg font-semibold text-navy-deep">{t.name}</h2>
-                {t.public_description ? (
-                  <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                    {t.public_description}
-                  </p>
-                ) : (
-                  <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                    Speak with our team for details on this test.
-                  </p>
-                )}
-                {t.preparation_info ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    <span className="font-semibold text-navy">Preparation:</span> {t.preparation_info}
-                  </p>
-                ) : null}
-                <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-                  {t.show_price && t.price_ngn != null ? (
-                    <span className="text-sm font-semibold text-navy-deep">
-                      &#8358;{t.price_ngn.toLocaleString()}
-                    </span>
-                  ) : (
-                    <span />
-                  )}
+                <h2 className="mt-4 text-lg font-semibold text-navy-deep">{s.name}</h2>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
+                  {s.body}
+                </p>
+                <div className="mt-5 flex items-center justify-end border-t border-border pt-4">
                   <Link
-                    href={`/book?testId=${t.id}`}
+                    href="/book"
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-purple transition-colors hover:text-navy"
                   >
                     Book test <ArrowUpRight className="h-4 w-4 shrink-0" />

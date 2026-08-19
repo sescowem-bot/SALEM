@@ -138,7 +138,7 @@ export async function getTestWithStructure(testId: string): Promise<TestWithStru
  */
 export async function getReferenceRangesForField(testId: string, templateFieldId: string, sex?: Database["public"]["Tables"]["patients"]["Row"]["sex"]) {
   const supabase = getServiceRoleClient();
-  let query = supabase
+  const query = supabase
     .from("reference_ranges")
     .select("*")
     .eq("test_id", testId)

@@ -18,13 +18,5 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavItem[] {
     items.push({ href: "/admin/review", label: "Review queue" });
   }
 
-  if (can(staff, "appointments.manage")) {
-    items.push({ href: "/admin/appointments", label: "Appointments" });
-  }
-
-  if (can(staff, "home_collection.manage") || can(staff, "home_collection.view_assigned")) {
-    items.push({ href: "/admin/home-collection", label: "Home collection" });
-  }
-
   return items;
 }
