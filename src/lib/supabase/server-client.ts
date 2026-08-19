@@ -1,7 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import type { Database } from "./database.types";
 
 /**
  * Session-aware Supabase client for Server Components, Route Handlers, and
@@ -28,7 +27,7 @@ export async function getSessionClient() {
     );
   }
 
-  return createServerClient<Database>(url, anonKey, {
+  return createServerClient(url, anonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
