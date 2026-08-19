@@ -1,6 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
+import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import { logAudit } from "./audit";
 
 type Patient = Database["public"]["Tables"]["patients"]["Row"];
 type PatientInsert = Database["public"]["Tables"]["patients"]["Insert"];
@@ -46,10 +48,24 @@ export async function getPatientReportHistory(patientId: string) {
   return data ?? [];
 }
 
-export async function createPatient(input: PatientInsert): Promise<Patient> {
+export async function createPatient(input: PatientInsert, actorRole: StaffRole, actorId?: string): Promise<Patient> {
+  if (!hasPermission(actorRole, "patients.register")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot register patients.`);
+  }
+
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.from("patients").insert(input).select().single();
 
   if (error) throw error;
+
+  await logAudit({
+    action: "PATIENT_REGISTERED",
+    entityType: "patients",
+    entityId: data.id,
+    actorId,
+    actorRole,
+    metadata: { fullName: input.full_name },
+  });
+
   return data;
 }

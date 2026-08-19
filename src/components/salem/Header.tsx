@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Menu, X, Phone, Instagram, CalendarCheck } from "lucide-react";
+import { Menu, X, Phone, CalendarCheck } from "lucide-react";
+import { InstagramIcon } from "@/components/salem/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SalemLogo } from "./Logo";
@@ -52,7 +53,7 @@ export function Header() {
               aria-label="Salem Medical Laboratories on Instagram"
               className="flex items-center gap-2 hover:text-white"
             >
-              <Instagram className="h-3.5 w-3.5" />
+              <InstagramIcon className="h-3.5 w-3.5" />
             </a>
           </div>
         </div>

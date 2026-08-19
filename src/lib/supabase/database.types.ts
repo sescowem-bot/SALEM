@@ -26,6 +26,18 @@ export type StaffRoleDb =
   | "pathologist"
   | "phlebotomist"
   | "frontdesk";
+export type AuditAction =
+  | "PATIENT_REGISTERED"
+  | "VISIT_CREATED"
+  | "LAB_CODE_GENERATED"
+  | "RESULT_CREATED"
+  | "RESULT_UPDATED"
+  | "RESULT_UPLOADED"
+  | "RESULT_SUBMITTED_FOR_REVIEW"
+  | "RESULT_RETURNED"
+  | "RESULT_APPROVED"
+  | "RESULT_PUBLISHED"
+  | "RESULT_VERIFIED_ACCESS";
 
 export interface Database {
   public: {
@@ -179,6 +191,7 @@ export interface Database {
           report_comment: string | null;
           signatory_id: string | null;
           current_version_number: number;
+          submitted_for_review: boolean;
           created_by: string | null;
           created_at: string;
           reviewed_by: string | null;
@@ -206,6 +219,7 @@ export interface Database {
           comment: string | null;
           sort_order: number;
           created_at: string;
+          pdf_storage_path: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["report_tests"]["Row"]> & {
           lab_report_id: string;
@@ -357,6 +371,37 @@ export interface Database {
           role: StaffRoleDb;
         };
         Update: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]>;
+      };
+      audit_logs: {
+        Row: {
+          id: string;
+          action: AuditAction;
+          entity_type: string;
+          entity_id: string | null;
+          actor_id: string | null;
+          actor_role: StaffRoleDb | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]> & {
+          action: AuditAction;
+          entity_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]>;
+      };
+      result_access_attempts: {
+        Row: {
+          id: string;
+          result_reference: string | null;
+          ip_hash: string;
+          succeeded: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["result_access_attempts"]["Row"]> & {
+          ip_hash: string;
+          succeeded: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["result_access_attempts"]["Row"]>;
       };
     };
   };

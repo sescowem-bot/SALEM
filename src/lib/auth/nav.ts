@@ -14,5 +14,9 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavItem[] {
     items.push({ href: "/admin/results-entry", label: "Results" });
   }
 
+  if (can(staff, "reports.review")) {
+    items.push({ href: "/admin/review", label: "Review queue" });
+  }
+
   return items;
 }

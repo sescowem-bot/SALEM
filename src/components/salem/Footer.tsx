@@ -1,4 +1,5 @@
-import { Phone, Mail, MapPin, Instagram } from "lucide-react";
+import { Phone, Mail, MapPin } from "lucide-react";
+import { InstagramIcon } from "@/components/salem/icons";
 import Link from "next/link";
 import { SalemLogo } from "./Logo";
 import { WhatsAppIcon } from "./WhatsAppButton";
@@ -81,7 +82,7 @@ export function Footer() {
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
-                <Instagram className="h-4 w-4 shrink-0 text-cyan" />
+                <InstagramIcon className="h-4 w-4 shrink-0 text-cyan" />
                 <a
                   href={siteConfig.social.instagramUrl}
                   target="_blank"

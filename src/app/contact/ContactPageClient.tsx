@@ -1,6 +1,7 @@
 "use client";
 
-import { MapPin, Phone, Mail, Clock3, Instagram, AlertCircle, Send } from "lucide-react";
+import { MapPin, Phone, Mail, Clock3, AlertCircle, Send } from "lucide-react";
+import { InstagramIcon } from "@/components/salem/icons";
 import { WhatsAppIcon } from "@/components/salem/WhatsAppButton";
 import { siteConfig } from "@/data/siteContent";
 
@@ -9,7 +10,7 @@ const cards = [
   { icon: Phone, title: "Call or WhatsApp", lines: [siteConfig.phone.primary, siteConfig.phone.whatsapp] },
   { icon: Mail, title: "Email us", lines: [siteConfig.email.general, siteConfig.email.results] },
   { icon: Clock3, title: "Opening hours", lines: [siteConfig.hours.weekdays, siteConfig.hours.weekend] },
-  { icon: Instagram, title: "Follow us", lines: [siteConfig.social.instagramHandle] },
+  { icon: InstagramIcon, title: "Follow us", lines: [siteConfig.social.instagramHandle] },
 ];
 
 const fieldClass =
@@ -108,7 +109,7 @@ export function ContactPageClient() {
               rel="noopener noreferrer"
               className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-semibold text-navy shadow-soft transition-transform hover:scale-[1.02] hover:border-cyan"
             >
-              <Instagram className="h-4.5 w-4.5 shrink-0" /> Follow us on Instagram
+              <InstagramIcon className="h-4.5 w-4.5 shrink-0" /> Follow us on Instagram
             </a>
           </div>
         </div>
