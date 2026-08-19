@@ -126,22 +126,28 @@ function TableCell({
   );
 }
 
+function PdfUploadButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent disabled:opacity-50"
+    >
+      <UploadCloud className="h-3.5 w-3.5" /> {pending ? "Uploading…" : "Upload PDF"}
+    </button>
+  );
+}
+
 function PdfUpload({ reportTestId, labReportId }: { reportTestId: string; labReportId: string }) {
   const [state, action] = useActionState(uploadPdfAction, initial);
-  const { pending } = useFormStatus();
 
   return (
     <form action={action} className="mt-3 flex flex-wrap items-center gap-2">
       <input type="hidden" name="reportTestId" value={reportTestId} />
       <input type="hidden" name="labReportId" value={labReportId} />
       <input type="file" name="file" accept="application/pdf" required className="text-xs" />
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent disabled:opacity-50"
-      >
-        <UploadCloud className="h-3.5 w-3.5" /> {pending ? "Uploading…" : "Upload PDF"}
-      </button>
+      <PdfUploadButton />
       {state.error ? <p className="w-full text-xs text-destructive">{state.error}</p> : null}
       {state.ok ? <p className="w-full text-xs text-navy">Uploaded.</p> : null}
     </form>

@@ -2,7 +2,6 @@ import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
 import { logAudit } from "./audit";
-import { assertReportIsEditable } from "./labReports";
 
 const BUCKET = "lab-report-pdfs";
 const SIGNED_URL_TTL_SECONDS = 300; // 5 minutes — short-lived per Phase 4 §11
@@ -24,7 +23,6 @@ export async function uploadReportPdf(input: {
   if (!hasPermission(input.actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot upload a result PDF.`);
   }
-  await assertReportIsEditable(input.labReportId);
 
   const supabase = getServiceRoleClient();
   const path = `${input.labReportId}/${input.reportTestId}-${Date.now()}.pdf`;

@@ -38,12 +38,14 @@ export type AuditAction =
   | "RESULT_APPROVED"
   | "RESULT_PUBLISHED"
   | "RESULT_VERIFIED_ACCESS"
-  | "RESULT_AMENDED";
+  | "BOOKING_CREATED"
+  | "BOOKING_STATUS_UPDATED"
+  | "HOME_COLLECTION_CREATED"
+  | "HOME_COLLECTION_STATUS_UPDATED"
+  | "HOME_COLLECTION_ASSIGNED";
+export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 
 export interface Database {
-  __InternalSupabase: {
-    PostgrestVersion: "12";
-  };
   public: {
     Tables: {
       test_categories: {
@@ -58,7 +60,6 @@ export interface Database {
           name: string;
         };
         Update: Partial<Database["public"]["Tables"]["test_categories"]["Row"]>;
-        Relationships: [];
       };
       test_templates: {
         Row: {
@@ -75,7 +76,6 @@ export interface Database {
           structure_type: TestStructureType;
         };
         Update: Partial<Database["public"]["Tables"]["test_templates"]["Row"]>;
-        Relationships: [];
       };
       template_fields: {
         Row: {
@@ -96,14 +96,6 @@ export interface Database {
           input_type: FieldInputType;
         };
         Update: Partial<Database["public"]["Tables"]["template_fields"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "template_fields_template_id_fkey",
-            columns: ["template_id"],
-            referencedRelation: "test_templates",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       template_table_columns: {
         Row: {
@@ -120,14 +112,6 @@ export interface Database {
           column_label: string;
         };
         Update: Partial<Database["public"]["Tables"]["template_table_columns"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "template_table_columns_template_id_fkey",
-            columns: ["template_id"],
-            referencedRelation: "test_templates",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       template_table_rows: {
         Row: {
@@ -144,14 +128,6 @@ export interface Database {
           row_label: string;
         };
         Update: Partial<Database["public"]["Tables"]["template_table_rows"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "template_table_rows_template_id_fkey",
-            columns: ["template_id"],
-            referencedRelation: "test_templates",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       tests: {
         Row: {
@@ -164,6 +140,10 @@ export interface Database {
           sort_order: number;
           created_at: string;
           updated_at: string;
+          public_description: string | null;
+          preparation_info: string | null;
+          price_ngn: number | null;
+          show_price: boolean;
         };
         Insert: Partial<Database["public"]["Tables"]["tests"]["Row"]> & {
           category_id: string;
@@ -171,20 +151,6 @@ export interface Database {
           name: string;
         };
         Update: Partial<Database["public"]["Tables"]["tests"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "tests_category_id_fkey",
-            columns: ["category_id"],
-            referencedRelation: "test_categories",
-            referencedColumns: ["id"],
-          },
-          {
-            foreignKeyName: "tests_template_id_fkey",
-            columns: ["template_id"],
-            referencedRelation: "test_templates",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       signatories: {
         Row: {
@@ -200,7 +166,6 @@ export interface Database {
           full_name: string;
         };
         Update: Partial<Database["public"]["Tables"]["signatories"]["Row"]>;
-        Relationships: [];
       };
       patients: {
         Row: {
@@ -217,7 +182,6 @@ export interface Database {
           full_name: string;
         };
         Update: Partial<Database["public"]["Tables"]["patients"]["Row"]>;
-        Relationships: [];
       };
       lab_reports: {
         Row: {
@@ -255,20 +219,6 @@ export interface Database {
           patient_name_snapshot: string;
         };
         Update: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "lab_reports_patient_id_fkey",
-            columns: ["patient_id"],
-            referencedRelation: "patients",
-            referencedColumns: ["id"],
-          },
-          {
-            foreignKeyName: "lab_reports_signatory_id_fkey",
-            columns: ["signatory_id"],
-            referencedRelation: "signatories",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       report_tests: {
         Row: {
@@ -286,20 +236,6 @@ export interface Database {
           test_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["report_tests"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "report_tests_lab_report_id_fkey",
-            columns: ["lab_report_id"],
-            referencedRelation: "lab_reports",
-            referencedColumns: ["id"],
-          },
-          {
-            foreignKeyName: "report_tests_test_id_fkey",
-            columns: ["test_id"],
-            referencedRelation: "tests",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       result_field_values: {
         Row: {
@@ -318,20 +254,6 @@ export interface Database {
           template_field_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["result_field_values"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "result_field_values_report_test_id_fkey",
-            columns: ["report_test_id"],
-            referencedRelation: "report_tests",
-            referencedColumns: ["id"],
-          },
-          {
-            foreignKeyName: "result_field_values_template_field_id_fkey",
-            columns: ["template_field_id"],
-            referencedRelation: "template_fields",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       result_table_cells: {
         Row: {
@@ -348,26 +270,6 @@ export interface Database {
           template_table_column_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["result_table_cells"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "result_table_cells_report_test_id_fkey",
-            columns: ["report_test_id"],
-            referencedRelation: "report_tests",
-            referencedColumns: ["id"],
-          },
-          {
-            foreignKeyName: "result_table_cells_template_table_row_id_fkey",
-            columns: ["template_table_row_id"],
-            referencedRelation: "template_table_rows",
-            referencedColumns: ["id"],
-          },
-          {
-            foreignKeyName: "result_table_cells_template_table_column_id_fkey",
-            columns: ["template_table_column_id"],
-            referencedRelation: "template_table_columns",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       reference_ranges: {
         Row: {
@@ -387,20 +289,6 @@ export interface Database {
           test_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["reference_ranges"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "reference_ranges_test_id_fkey",
-            columns: ["test_id"],
-            referencedRelation: "tests",
-            referencedColumns: ["id"],
-          },
-          {
-            foreignKeyName: "reference_ranges_template_field_id_fkey",
-            columns: ["template_field_id"],
-            referencedRelation: "template_fields",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       report_versions: {
         Row: {
@@ -419,14 +307,6 @@ export interface Database {
           snapshot: Record<string, unknown>;
         };
         Update: Partial<Database["public"]["Tables"]["report_versions"]["Row"]>;
-        Relationships: [
-          {
-            foreignKeyName: "report_versions_lab_report_id_fkey",
-            columns: ["lab_report_id"],
-            referencedRelation: "lab_reports",
-            referencedColumns: ["id"],
-          }
-        ];
       };
       appointment_requests: {
         Row: {
@@ -441,13 +321,13 @@ export interface Database {
           notes: string | null;
           status: IntakeStatus;
           created_at: string;
+          booking_reference: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["appointment_requests"]["Row"]> & {
           full_name: string;
           phone: string;
         };
         Update: Partial<Database["public"]["Tables"]["appointment_requests"]["Row"]>;
-        Relationships: [];
       };
       home_collection_requests: {
         Row: {
@@ -459,15 +339,16 @@ export interface Database {
           preferred_date: string | null;
           preferred_time: string | null;
           notes: string | null;
-          status: IntakeStatus;
+          status: HomeCollectionStatus;
           created_at: string;
+          assigned_phlebotomist_id: string | null;
+          booking_reference: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["home_collection_requests"]["Row"]> & {
           full_name: string;
           phone: string;
         };
         Update: Partial<Database["public"]["Tables"]["home_collection_requests"]["Row"]>;
-        Relationships: [];
       };
       contact_submissions: {
         Row: {
@@ -484,7 +365,6 @@ export interface Database {
           message: string;
         };
         Update: Partial<Database["public"]["Tables"]["contact_submissions"]["Row"]>;
-        Relationships: [];
       };
       staff_profiles: {
         Row: {
@@ -504,7 +384,6 @@ export interface Database {
           role: StaffRoleDb;
         };
         Update: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]>;
-        Relationships: [];
       };
       audit_logs: {
         Row: {
@@ -522,7 +401,6 @@ export interface Database {
           entity_type: string;
         };
         Update: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]>;
-        Relationships: [];
       };
       result_access_attempts: {
         Row: {
@@ -537,23 +415,22 @@ export interface Database {
           succeeded: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["result_access_attempts"]["Row"]>;
-        Relationships: [];
+      };
+      public_form_attempts: {
+        Row: {
+          id: string;
+          form_type: string;
+          ip_hash: string;
+          succeeded: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["public_form_attempts"]["Row"]> & {
+          form_type: string;
+          ip_hash: string;
+          succeeded: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["public_form_attempts"]["Row"]>;
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: {
-      test_structure_type: TestStructureType;
-      field_input_type: FieldInputType;
-      report_status: ReportStatus;
-      report_test_status: ReportTestStatus;
-      result_flag: ResultFlag;
-      report_version_change_type: ReportVersionChangeType;
-      intake_status: IntakeStatus;
-      sex: Sex;
-      staff_role: StaffRoleDb;
-      audit_action: AuditAction;
-    };
-    CompositeTypes: Record<string, never>;
   };
 }
