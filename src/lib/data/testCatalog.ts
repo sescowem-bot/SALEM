@@ -32,7 +32,10 @@ export async function listTestCategories(): Promise<TestCategory[]> {
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === "PGRST205") return [];
+    throw error;
+  }
   return data ?? [];
 }
 
@@ -44,7 +47,10 @@ export async function listActiveTests(): Promise<Test[]> {
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === "PGRST205") return [];
+    throw error;
+  }
   return data ?? [];
 }
 

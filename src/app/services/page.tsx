@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ServicesPage() {
   const [categories, tests] = await Promise.all([listTestCategories(), listActiveTests()]);
 
