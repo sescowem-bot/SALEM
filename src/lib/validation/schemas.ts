@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { APPOINTMENT_TIME_SLOTS, HOME_COLLECTION_TIME_SLOTS } from "@/lib/bookingConstants";
 
 export const registerPatientSchema = z.object({
   fullName: z.string().trim().min(2, "Full name is required").max(200),
@@ -61,7 +62,7 @@ export const bookAppointmentSchema = z.object({
   email: z.string().trim().email().optional().or(z.literal("")),
   testOrPackage: z.string().trim().max(300).optional().or(z.literal("")),
   preferredDate: z.string().date("Choose a valid date"),
-  preferredTime: z.string().trim().min(1, "Choose a time slot").max(50),
+  preferredTime: z.enum(APPOINTMENT_TIME_SLOTS, { message: "Choose a valid time slot" }),
   locationType: z.enum(["lab", "home"]),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
 });
@@ -73,7 +74,7 @@ export const homeCollectionRequestSchema = z.object({
   address: z.string().trim().min(5, "Address is required so we can send a phlebotomist").max(500),
   testOrPackage: z.string().trim().max(300).optional().or(z.literal("")),
   preferredDate: z.string().date("Choose a valid date"),
-  preferredTime: z.string().trim().min(1, "Choose a time slot").max(50),
+  preferredTime: z.enum(HOME_COLLECTION_TIME_SLOTS, { message: "Choose a valid time window" }),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 

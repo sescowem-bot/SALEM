@@ -59,36 +59,42 @@ export async function submitAppointmentRequest(
   }
 
   const supabase = getServiceRoleClient();
+  const bookingReference = generateBookingReference("APT");
 
-  // Best-effort double-booking guard: re-check the slot's current count
-  // immediately before insert. Not perfectly race-free without a DB-level
-  // serialized check, but sufficient to prevent obvious over-booking under
-  // normal (non-concurrent-burst) traffic.
-  if (input.preferred_date && input.preferred_time) {
-    const counts = await getBookedSlotCounts(input.preferred_date);
-    if ((counts[input.preferred_time] ?? 0) >= MAX_BOOKINGS_PER_SLOT) {
+  // Capacity check + insert happen atomically inside book_appointment_slot()
+  // (see supabase/migrations/20260820090001_book_appointment_slot_atomic.sql),
+  // serialized per date+time slot via a transaction-scoped advisory lock —
+  // closes the race where two concurrent requests could both pass a
+  // separate "is this slot full?" check before either row existed.
+  const { data, error } = await supabase.rpc("book_appointment_slot", {
+    p_full_name: input.full_name,
+    p_phone: input.phone,
+    p_email: input.email ?? null,
+    p_test_or_package: input.test_or_package ?? null,
+    p_preferred_date: input.preferred_date ?? "",
+    p_preferred_time: input.preferred_time ?? "",
+    p_location_type: input.location_type ?? null,
+    p_notes: input.notes ?? null,
+    p_booking_reference: bookingReference,
+    p_max_per_slot: MAX_BOOKINGS_PER_SLOT,
+  });
+
+  if (error) {
+    if (error.message.includes("SLOT_FULL")) {
       await recordFormAttempt("appointment", ipHash, false);
       return { ok: false, reason: "slot_full" };
     }
-  }
-
-  const bookingReference = generateBookingReference("APT");
-  const { data, error } = await supabase
-    .from("appointment_requests")
-    .insert({ ...input, booking_reference: bookingReference })
-    .select("id")
-    .single();
-
-  if (error) {
     await recordFormAttempt("appointment", ipHash, false);
     return { ok: false, reason: "error" };
   }
+
+  const newId = data?.[0]?.id;
 
   await recordFormAttempt("appointment", ipHash, true);
   await logAudit({
     action: "BOOKING_CREATED",
     entityType: "appointment_requests",
-    entityId: data.id,
+    entityId: newId,
     metadata: { bookingReference },
   });
 

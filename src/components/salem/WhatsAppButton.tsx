@@ -14,7 +14,7 @@ export function FloatingWhatsApp() {
       href={`${siteConfig.phone.whatsappHref}?text=Hello%20Salem%20Medical%20Laboratories%2C%20I%20would%20like%20to%20make%20an%20enquiry.`}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Chat with Salem Medical Laboratories on WhatsApp"
+      aria-label="Chat with Salem Medicals on WhatsApp"
       className="pulse-ring fixed bottom-6 right-5 z-50 flex items-center gap-3 rounded-full bg-whatsapp px-4 py-3.5 text-sm font-semibold text-white shadow-lift transition-transform hover:scale-[1.04] sm:bottom-8 sm:right-8"
     >
       <WhatsAppIcon className="h-6 w-6 shrink-0" />

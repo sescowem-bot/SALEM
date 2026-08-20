@@ -616,7 +616,23 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      book_appointment_slot: {
+        Args: {
+          p_full_name: string;
+          p_phone: string;
+          p_email: string | null;
+          p_test_or_package: string | null;
+          p_preferred_date: string;
+          p_preferred_time: string;
+          p_location_type: string | null;
+          p_notes: string | null;
+          p_booking_reference: string;
+          p_max_per_slot: number;
+        };
+        Returns: { id: string }[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

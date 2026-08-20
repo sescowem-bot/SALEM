@@ -54,7 +54,7 @@ export async function saveFieldResultAction(_prev: ActionState, formData: FormDa
       templateFieldId: parsed.data.templateFieldId,
       valueText: parsed.data.valueText || undefined,
       valueNumeric: parsed.data.valueNumeric,
-      flag: (parsed.data.flag || undefined) as never,
+      flag: parsed.data.flag || undefined,
       actorRole: staff.role,
       actorId: staff.userId,
     });
