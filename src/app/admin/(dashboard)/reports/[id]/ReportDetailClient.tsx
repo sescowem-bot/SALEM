@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { FileText, Save, Send, CheckCircle2, RotateCcw, UploadCloud, ShieldCheck } from "lucide-react";
 import {
@@ -33,6 +33,42 @@ function MiniSubmit({ label = "Save" }: { label?: string }) {
     >
       <Save className="h-3.5 w-3.5" /> {pending ? "…" : label}
     </button>
+  );
+}
+
+function SelectField({
+  value,
+  disabled,
+  options,
+}: {
+  value: string;
+  disabled: boolean;
+  options: string[];
+}) {
+  // Controlled — see AppointmentStatusForm.tsx for the full explanation:
+  // React 19 resets uncontrolled fields to their first option after every
+  // action submission, which made a saved Positive/Negative-style result
+  // visually snap back to the "Select" placeholder even though the save
+  // had actually succeeded.
+  const [current, setCurrent] = useState(value);
+  useEffect(() => setCurrent(value), [value]);
+  return (
+    <select
+      name="valueText"
+      value={current}
+      disabled={disabled}
+      onChange={(e) => setCurrent(e.target.value)}
+      className={fieldClass}
+    >
+      <option value="" disabled>
+        Select
+      </option>
+      {options.map((opt) => (
+        <option key={opt} value={opt}>
+          {opt}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -72,18 +108,11 @@ function FieldRow({
           className={fieldClass}
         />
       ) : field.input_type === "select" || field.input_type === "positive_negative" ? (
-        <select name="valueText" defaultValue={value?.valueText ?? ""} disabled={disabled} className={fieldClass}>
-          <option value="" disabled>
-            Select
-          </option>
-          {(field.options ?? (field.input_type === "positive_negative" ? ["Positive", "Negative"] : [])).map(
-            (opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            )
-          )}
-        </select>
+        <SelectField
+          value={value?.valueText ?? ""}
+          disabled={disabled}
+          options={field.options ?? (field.input_type === "positive_negative" ? ["Positive", "Negative"] : [])}
+        />
       ) : (
         <input type="text" name="valueText" defaultValue={value?.valueText ?? ""} disabled={disabled} className={fieldClass} />
       )}

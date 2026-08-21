@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Home } from "lucide-react";
 import { AdminShell } from "@/components/salem/AdminShell";
+import { StatusBadge } from "@/components/salem/StatusBadge";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getAdminNavItems } from "@/lib/auth/nav";
 import { listHomeCollectionRequests, listActivePhlebotomists } from "@/lib/data/homeCollection";
@@ -39,7 +40,7 @@ export default async function HomeCollectionPage() {
       title={canManage ? "Home collection requests" : "My assigned visits"}
       lead={
         canManage
-          ? "All public home-sample-collection requests. Assign a phlebotomist and track status."
+          ? `${requests.length} request${requests.length === 1 ? "" : "s"} · assign a phlebotomist and track status.`
           : "Home collection requests currently assigned to you."
       }
       backTo="/admin"
@@ -60,7 +61,10 @@ export default async function HomeCollectionPage() {
                   <Home className="h-4 w-4" />
                 </span>
                 <span>
-                  <span className="block text-sm font-semibold text-navy-deep">{r.full_name}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-navy-deep">{r.full_name}</span>
+                    <StatusBadge status={r.status} />
+                  </span>
                   <span className="block text-xs text-muted-foreground">
                     {r.phone} {"\u00b7"} {r.preferred_date ?? "\u2014"} {r.preferred_time ?? ""}
                   </span>
@@ -72,7 +76,9 @@ export default async function HomeCollectionPage() {
                 </span>
               </span>
               <div className="flex flex-wrap items-start gap-3">
-                {canManage ? <AssignPhlebotomistForm requestId={r.id} phlebotomists={phlebotomists} /> : null}
+                {canManage ? (
+                  <AssignPhlebotomistForm requestId={r.id} phlebotomists={phlebotomists} assignedId={r.assigned_phlebotomist_id} />
+                ) : null}
                 <HomeCollectionStatusForm requestId={r.id} status={r.status} />
               </div>
             </div>

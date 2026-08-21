@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/salem/AdminShell";
+import { StatusBadge } from "@/components/salem/StatusBadge";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getAdminNavItems } from "@/lib/auth/nav";
 import { getReportDetail } from "@/lib/data/labReports";
@@ -95,13 +96,14 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     <AdminShell
       eyebrow="Results System · Staff Area"
       title={`Report — ${report.patient_name_snapshot}`}
-      lead={`Lab number ${report.lab_number} · Status: ${report.status}${report.submitted_for_review && report.status === "draft" ? " (submitted for review)" : ""}`}
+      lead={`Lab number ${report.lab_number}`}
       backTo="/admin/results-entry"
       backLabel="Back to results"
       staffName={staff.fullName}
       staffRole={staff.role}
       navItems={navItems}
     >
+      <ReportSummary report={report} testNames={testViewModels.map((t) => t.testName)} />
       <ReportDetailClient
         report={report}
         tests={testViewModels}
@@ -110,5 +112,48 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         canPublish={canPublish}
       />
     </AdminShell>
+  );
+}
+
+function ReportSummary({
+  report,
+  testNames,
+}: {
+  report: Awaited<ReturnType<typeof getReportDetail>>["report"];
+  testNames: string[];
+}) {
+  const fields: { label: string; value: string }[] = [
+    { label: "Sex", value: report.patient_sex_snapshot ?? "—" },
+    { label: "Date of birth", value: report.patient_dob_snapshot ?? "—" },
+    { label: "Requested service(s)", value: testNames.length > 0 ? testNames.join(", ") : "—" },
+    { label: "Specimen", value: report.specimen ?? "—" },
+    { label: "Date collected", value: report.date_collected ?? "—" },
+    { label: "Date reported", value: report.date_reported ?? "—" },
+    { label: "Request", value: report.request ?? "—" },
+  ];
+
+  return (
+    <div className="surface-card mb-6 p-6 sm:p-8">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <StatusBadge status={report.status} />
+        {report.status === "draft" && report.submitted_for_review ? (
+          <StatusBadge status="contacted" label="Submitted for review" />
+        ) : null}
+      </div>
+      <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        {fields.map((f) => (
+          <div key={f.label}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{f.label}</p>
+            <p className="mt-0.5 text-sm text-navy-deep">{f.value}</p>
+          </div>
+        ))}
+        {report.report_comment ? (
+          <div className="sm:col-span-2 lg:col-span-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Comments</p>
+            <p className="mt-0.5 text-sm text-navy-deep">{report.report_comment}</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }

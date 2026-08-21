@@ -646,7 +646,9 @@ export async function listReviewQueue() {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
     .from("lab_reports")
-    .select("id, lab_number, patient_name_snapshot, status, submitted_for_review, created_at, reviewed_at")
+    .select(
+      "id, lab_number, patient_name_snapshot, status, submitted_for_review, created_at, reviewed_at, report_tests(tests(name))"
+    )
     .or("and(status.eq.draft,submitted_for_review.eq.true),status.eq.reviewed")
     .order("created_at", { ascending: true });
 

@@ -101,7 +101,12 @@ export function ServicesPageClient({ categories, tests }: { categories: TestCate
                 </div>
               </article>
             ))}
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && tests.length === 0 ? (
+              <p className="col-span-full py-10 text-center text-sm text-muted-foreground">
+                Our test catalogue isn&apos;t available online right now. Please call or WhatsApp us and our team
+                will help you directly.
+              </p>
+            ) : filtered.length === 0 ? (
               <p className="col-span-full py-10 text-center text-sm text-muted-foreground">
                 No tests match that search. Try a different term or category.
               </p>

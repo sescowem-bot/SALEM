@@ -11,7 +11,7 @@ export function WhatsAppIcon({ className = "h-6 w-6" }: { className?: string }) 
 export function FloatingWhatsApp() {
   return (
     <a
-      href={`${siteConfig.phone.whatsappHref}?text=Hello%20Salem%20Medical%20Laboratories%2C%20I%20would%20like%20to%20make%20an%20enquiry.`}
+      href={`${siteConfig.phone.whatsappHref}?text=Hello%20Salem%20Medicals%2C%20I%20would%20like%20to%20make%20an%20enquiry.`}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with Salem Medicals on WhatsApp"
