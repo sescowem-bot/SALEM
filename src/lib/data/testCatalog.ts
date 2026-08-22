@@ -1,6 +1,9 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
+import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import { slugify } from "@/lib/utils/slug";
+import { logAudit } from "./audit";
 
 type TestCategory = Database["public"]["Tables"]["test_categories"]["Row"];
 type TestTemplate = Database["public"]["Tables"]["test_templates"]["Row"];
@@ -138,7 +141,7 @@ export async function getTestWithStructure(testId: string): Promise<TestWithStru
  */
 export async function getReferenceRangesForField(testId: string, templateFieldId: string, sex?: Database["public"]["Tables"]["patients"]["Row"]["sex"]) {
   const supabase = getServiceRoleClient();
-  let query = supabase
+  const query = supabase
     .from("reference_ranges")
     .select("*")
     .eq("test_id", testId)
@@ -153,4 +156,333 @@ export async function getReferenceRangesForField(testId: string, templateFieldId
   const sexSpecific = sex ? rows.find((r) => r.sex === sex) : undefined;
   const generic = rows.find((r) => r.sex === null);
   return sexSpecific ?? generic ?? rows[0] ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Services CMS (Advanced 2) — same `tests` table, additional CMS columns.
+// See supabase/migrations/20260821090002_services_cms.sql for why this
+// extends `tests` rather than introducing a parallel services table.
+// ---------------------------------------------------------------------------
+
+export interface ServiceWithCategory extends Test {
+  category: TestCategory | null;
+}
+
+function requireCatalogueManage(actorRole: StaffRole) {
+  if (!hasPermission(actorRole, "catalogue.manage")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot manage the service catalogue.`);
+  }
+}
+
+/** Full admin listing — every status, every category, for the /admin/services table. */
+export async function listAllServicesForAdmin(actorRole: StaffRole): Promise<ServiceWithCategory[]> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+
+  const [{ data: tests, error: testsError }, { data: categories, error: catError }] = await Promise.all([
+    supabase.from("tests").select("*").order("sort_order", { ascending: true }),
+    supabase.from("test_categories").select("*"),
+  ]);
+  if (testsError) throw testsError;
+  if (catError) throw catError;
+
+  const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
+  return (tests ?? []).map((t) => ({ ...t, category: categoryById.get(t.category_id) ?? null }));
+}
+
+/** All categories regardless of is_active — for the admin editor's category picker. */
+export async function listAllTestCategoriesForAdmin(actorRole: StaffRole): Promise<TestCategory[]> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase.from("test_categories").select("*").order("sort_order", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Active result-entry templates — every service must be linked to one (see migration note). */
+export async function listActiveTestTemplates(actorRole: StaffRole): Promise<TestTemplate[]> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("test_templates")
+    .select("*")
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getServiceById(testId: string, actorRole: StaffRole): Promise<ServiceWithCategory | null> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+  const { data: test, error } = await supabase.from("tests").select("*").eq("id", testId).single();
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+  const { data: category } = await supabase.from("test_categories").select("*").eq("id", test.category_id).single();
+  return { ...test, category: category ?? null };
+}
+
+export async function isServiceSlugTaken(slug: string, excludeId: string | undefined, actorRole: StaffRole): Promise<boolean> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+  let query = supabase.from("tests").select("id", { count: "exact", head: true }).eq("slug", slug);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { count, error } = await query;
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
+export interface ServiceEditableFields {
+  name: string;
+  categoryId: string;
+  templateId: string;
+  slug: string;
+  publicDescription: string | null;
+  fullDescription: string | null;
+  preparationInfo: string | null;
+  requirements: string | null;
+  turnaroundTime: string | null;
+  priceNgn: number | null;
+  showPrice: boolean;
+  featured: boolean;
+  ctaLabel: string | null;
+  ctaDestination: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  isActive: boolean;
+}
+
+function toTestRow(input: ServiceEditableFields) {
+  return {
+    name: input.name,
+    category_id: input.categoryId,
+    template_id: input.templateId,
+    slug: input.slug,
+    public_description: input.publicDescription,
+    full_description: input.fullDescription,
+    preparation_info: input.preparationInfo,
+    requirements: input.requirements,
+    turnaround_time: input.turnaroundTime,
+    price_ngn: input.priceNgn,
+    show_price: input.showPrice,
+    featured: input.featured,
+    cta_label: input.ctaLabel,
+    cta_destination: input.ctaDestination,
+    seo_title: input.seoTitle,
+    seo_description: input.seoDescription,
+    is_active: input.isActive,
+  };
+}
+
+export async function createService(
+  input: ServiceEditableFields,
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<Test> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+
+  const { data: maxSort } = await supabase
+    .from("tests")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data, error } = await supabase
+    .from("tests")
+    .insert({ ...toTestRow(input), sort_order: (maxSort?.sort_order ?? 0) + 1, content_status: "draft" })
+    .select()
+    .single();
+  if (error) throw error;
+
+  await logAudit({
+    action: "SERVICE_CREATED",
+    entityType: "tests",
+    entityId: data.id,
+    actorId,
+    actorRole,
+    metadata: { name: input.name, slug: input.slug },
+  });
+
+  return data;
+}
+
+export async function updateService(
+  testId: string,
+  input: ServiceEditableFields,
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<Test> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+
+  const { data, error } = await supabase.from("tests").update(toTestRow(input)).eq("id", testId).select().single();
+  if (error) throw error;
+
+  await logAudit({
+    action: "SERVICE_UPDATED",
+    entityType: "tests",
+    entityId: testId,
+    actorId,
+    actorRole,
+    metadata: { name: input.name, slug: input.slug },
+  });
+
+  return data;
+}
+
+export async function publishService(testId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase
+    .from("tests")
+    .update({ content_status: "published", published_at: new Date().toISOString(), published_by: actorId ?? null })
+    .eq("id", testId);
+  if (error) throw error;
+
+  await logAudit({ action: "SERVICE_PUBLISHED", entityType: "tests", entityId: testId, actorId, actorRole });
+}
+
+export async function unpublishService(testId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase.from("tests").update({ content_status: "draft" }).eq("id", testId);
+  if (error) throw error;
+
+  await logAudit({ action: "SERVICE_UNPUBLISHED", entityType: "tests", entityId: testId, actorId, actorRole });
+}
+
+export async function archiveService(testId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase.from("tests").update({ content_status: "archived" }).eq("id", testId);
+  if (error) throw error;
+
+  await logAudit({ action: "SERVICE_ARCHIVED", entityType: "tests", entityId: testId, actorId, actorRole });
+}
+
+export async function setServiceFeatured(testId: string, featured: boolean, actorRole: StaffRole, actorId?: string): Promise<void> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase.from("tests").update({ featured }).eq("id", testId);
+  if (error) throw error;
+
+  await logAudit({
+    action: "SERVICE_UPDATED",
+    entityType: "tests",
+    entityId: testId,
+    actorId,
+    actorRole,
+    metadata: { featured },
+  });
+}
+
+/**
+ * Moves a service up or down within its category's sort order by swapping
+ * sort_order with its nearest neighbour on that side. Reuses the sort_order
+ * column that already existed for template/table ordering — no schema
+ * change needed for reordering.
+ */
+export async function reorderService(
+  testId: string,
+  direction: "up" | "down",
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<void> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+
+  const { data: current, error: currentError } = await supabase.from("tests").select("*").eq("id", testId).single();
+  if (currentError) throw currentError;
+
+  const { data: siblings, error: siblingsError } = await supabase
+    .from("tests")
+    .select("id, sort_order")
+    .eq("category_id", current.category_id)
+    .order("sort_order", { ascending: true });
+  if (siblingsError) throw siblingsError;
+
+  const list = siblings ?? [];
+  const index = list.findIndex((s) => s.id === testId);
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (index === -1 || swapIndex < 0 || swapIndex >= list.length) return;
+
+  const neighbour = list[swapIndex];
+  const [{ error: e1 }, { error: e2 }] = await Promise.all([
+    supabase.from("tests").update({ sort_order: neighbour.sort_order }).eq("id", testId),
+    supabase.from("tests").update({ sort_order: current.sort_order }).eq("id", neighbour.id),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+
+  await logAudit({
+    action: "SERVICE_UPDATED",
+    entityType: "tests",
+    entityId: testId,
+    actorId,
+    actorRole,
+    metadata: { reordered: direction },
+  });
+}
+
+export { slugify };
+
+// ---------------------------------------------------------------------------
+// Public-facing reads — only ever published content, never draft/archived.
+// ---------------------------------------------------------------------------
+
+export async function listPublishedServices(): Promise<ServiceWithCategory[]> {
+  const supabase = getServiceRoleClient();
+  const [{ data: tests, error: testsError }, { data: categories, error: catError }] = await Promise.all([
+    supabase.from("tests").select("*").eq("content_status", "published").order("sort_order", { ascending: true }),
+    supabase.from("test_categories").select("*").eq("is_active", true),
+  ]);
+  if (testsError) throw testsError;
+  if (catError) throw catError;
+
+  const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
+  return (tests ?? []).map((t) => ({ ...t, category: categoryById.get(t.category_id) ?? null }));
+}
+
+export async function getPublishedServiceBySlug(slug: string): Promise<ServiceWithCategory | null> {
+  const supabase = getServiceRoleClient();
+  const { data: test, error } = await supabase
+    .from("tests")
+    .select("*")
+    .eq("slug", slug)
+    .eq("content_status", "published")
+    .maybeSingle();
+  if (error) throw error;
+  if (!test) return null;
+
+  const { data: category } = await supabase.from("test_categories").select("*").eq("id", test.category_id).single();
+  return { ...test, category: category ?? null };
+}
+
+export async function listRelatedPublishedServices(categoryId: string, excludeId: string, limit = 3): Promise<Test[]> {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("tests")
+    .select("*")
+    .eq("category_id", categoryId)
+    .eq("content_status", "published")
+    .neq("id", excludeId)
+    .order("sort_order", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * Admin preview: the same shape as getPublishedServiceBySlug but bypasses
+ * the content_status filter (Part C/F — preview must show real draft
+ * content without requiring publish first). Never call this for public
+ * routes — only from an admin-authenticated page.
+ */
+export async function getServiceForPreview(testId: string, actorRole: StaffRole): Promise<ServiceWithCategory | null> {
+  requireCatalogueManage(actorRole);
+  return getServiceById(testId, actorRole);
 }

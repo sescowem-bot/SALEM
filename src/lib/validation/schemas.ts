@@ -99,6 +99,83 @@ export const appointmentStatusSchema = z.object({
   requestId: z.string().uuid(),
   status: z.enum(["new", "contacted", "scheduled", "completed", "cancelled"]),
 });
+const STAFF_ROLE_VALUES = [
+  "super_admin",
+  "admin",
+  "laboratory_staff",
+  "pathologist",
+  "phlebotomist",
+  "frontdesk",
+] as const;
+
+export const createStaffSchema = z.object({
+  email: z.string().trim().email("Enter a valid email"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  fullName: z.string().trim().min(2, "Full name is required").max(200),
+  role: z.enum(STAFF_ROLE_VALUES),
+  qualification: z.string().trim().max(200).optional().or(z.literal("")),
+  designation: z.string().trim().max(200).optional().or(z.literal("")),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+});
+
+export const updateStaffSchema = z.object({
+  staffId: z.string().uuid(),
+  fullName: z.string().trim().min(2, "Full name is required").max(200),
+  role: z.enum(STAFF_ROLE_VALUES),
+  qualification: z.string().trim().max(200).optional().or(z.literal("")),
+  designation: z.string().trim().max(200).optional().or(z.literal("")),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+});
+
+export const staffStatusSchema = z.object({
+  staffId: z.string().uuid(),
+  active: z.enum(["true", "false"]),
+});
+
+export const updatePatientSchema = z.object({
+  patientId: z.string().uuid(),
+  fullName: z.string().trim().min(2, "Full name is required").max(200),
+  sex: z.enum(["Male", "Female"]).optional().or(z.literal("")),
+  dateOfBirth: z.string().date().optional().or(z.literal("")),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+  email: z.string().trim().email().optional().or(z.literal("")),
+});
+
+export const contactStatusSchema = z.object({
+  submissionId: z.string().uuid(),
+  status: z.enum(["new", "contacted", "scheduled", "completed", "cancelled"]),
+});
+
+export const serviceEditorSchema = z.object({
+  testId: z.string().uuid().optional(),
+  name: z.string().trim().min(2, "Service name is required").max(200),
+  categoryId: z.string().uuid("Choose a category"),
+  templateId: z.string().uuid("Choose a result template"),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(2, "Slug is required")
+    .max(200)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens only"),
+  publicDescription: z.string().trim().max(500).optional().or(z.literal("")),
+  fullDescription: z.string().trim().max(5000).optional().or(z.literal("")),
+  preparationInfo: z.string().trim().max(2000).optional().or(z.literal("")),
+  requirements: z.string().trim().max(2000).optional().or(z.literal("")),
+  turnaroundTime: z.string().trim().max(200).optional().or(z.literal("")),
+  priceNgn: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().nonnegative().optional()
+  ),
+  showPrice: z.enum(["true", "false"]).default("false"),
+  featured: z.enum(["true", "false"]).default("false"),
+  ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+  ctaDestination: z.string().trim().max(300).optional().or(z.literal("")),
+  seoTitle: z.string().trim().max(70).optional().or(z.literal("")),
+  seoDescription: z.string().trim().max(160).optional().or(z.literal("")),
+  isActive: z.enum(["true", "false"]).default("true"),
+});
+
 export const verifyResultSchema = z.object({
   resultReference: z
     .string()

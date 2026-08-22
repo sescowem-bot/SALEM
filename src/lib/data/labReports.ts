@@ -669,6 +669,30 @@ export async function listDraftReports() {
   return data ?? [];
 }
 
+/**
+ * Report counts by status for the admin dashboard (Advanced 1 §2). Uses
+ * `head: true` count queries rather than fetching rows, since the
+ * dashboard only needs the numbers.
+ */
+export async function getReportStatusCounts(): Promise<Record<ReportStatus, number>> {
+  const supabase = getServiceRoleClient();
+  const statuses: ReportStatus[] = ["draft", "reviewed", "published", "archived"];
+
+  const results = await Promise.all(
+    statuses.map((status) =>
+      supabase.from("lab_reports").select("id", { count: "exact", head: true }).eq("status", status)
+    )
+  );
+
+  const counts = {} as Record<ReportStatus, number>;
+  statuses.forEach((status, i) => {
+    const { count, error } = results[i];
+    if (error) throw error;
+    counts[status] = count ?? 0;
+  });
+  return counts;
+}
+
 export async function getReportVersionHistory(labReportId: string) {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase

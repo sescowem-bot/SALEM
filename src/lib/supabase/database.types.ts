@@ -42,8 +42,25 @@ export type AuditAction =
   | "BOOKING_STATUS_UPDATED"
   | "HOME_COLLECTION_CREATED"
   | "HOME_COLLECTION_STATUS_UPDATED"
-  | "HOME_COLLECTION_ASSIGNED";
+  | "HOME_COLLECTION_ASSIGNED"
+  | "RESULT_AMENDED"
+  // Advanced 1 (admin/CMS foundation) — see
+  // supabase/migrations/20260821090001_admin_foundation_audit_actions.sql
+  | "STAFF_CREATED"
+  | "STAFF_UPDATED"
+  | "STAFF_DEACTIVATED"
+  | "STAFF_REACTIVATED"
+  | "PATIENT_UPDATED"
+  | "CONTACT_STATUS_UPDATED"
+  // Advanced 2 (Services CMS) — see
+  // supabase/migrations/20260821090002_services_cms.sql
+  | "SERVICE_CREATED"
+  | "SERVICE_UPDATED"
+  | "SERVICE_PUBLISHED"
+  | "SERVICE_UNPUBLISHED"
+  | "SERVICE_ARCHIVED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
+export type ServiceStatus = "draft" | "published" | "archived";
 
 /**
  * Root-cause fix (build-stabilization pass):
@@ -198,11 +215,25 @@ export interface Database {
           preparation_info: string | null;
           price_ngn: number | null;
           show_price: boolean;
+          slug: string;
+          full_description: string | null;
+          requirements: string | null;
+          turnaround_time: string | null;
+          featured: boolean;
+          cta_label: string | null;
+          cta_destination: string | null;
+          seo_title: string | null;
+          seo_description: string | null;
+          hero_image_path: string | null;
+          content_status: ServiceStatus;
+          published_at: string | null;
+          published_by: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["tests"]["Row"]> & {
           category_id: string;
           template_id: string;
           name: string;
+          slug: string;
         };
         Update: Partial<Database["public"]["Tables"]["tests"]["Row"]>;
         Relationships: [
@@ -211,6 +242,13 @@ export interface Database {
             columns: ["category_id"];
             isOneToOne: false;
             referencedRelation: "test_categories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tests_published_by_fkey";
+            columns: ["published_by"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
             referencedColumns: ["id"];
           },
           {

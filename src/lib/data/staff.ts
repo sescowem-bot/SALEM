@@ -2,6 +2,7 @@ import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import { logAudit } from "./audit";
 
 type StaffProfile = Database["public"]["Tables"]["staff_profiles"]["Row"];
 
@@ -62,7 +63,50 @@ export async function createStaffAccount(input: {
     throw profileError;
   }
 
+  await logAudit({
+    action: "STAFF_CREATED",
+    entityType: "staff_profiles",
+    entityId: profile.id,
+    actorRole: input.actorRole,
+    metadata: { role: input.role, fullName: input.fullName },
+  });
+
   return profile;
+}
+
+/**
+ * Edits an existing staff member's role/designation/qualification/phone.
+ * Deliberately cannot touch email or password — those live in Supabase
+ * Auth (auth.users), not staff_profiles, and changing them needs the
+ * Admin API's own dedicated flow, out of scope here.
+ */
+export async function updateStaffProfile(
+  staffId: string,
+  input: Partial<Pick<StaffProfile, "full_name" | "role" | "qualification" | "designation" | "phone">>,
+  actorRole: StaffRole
+): Promise<StaffProfile> {
+  if (!hasPermission(actorRole, "staff.manage")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot manage staff accounts.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("staff_profiles")
+    .update(input)
+    .eq("id", staffId)
+    .select()
+    .single();
+  if (error) throw error;
+
+  await logAudit({
+    action: "STAFF_UPDATED",
+    entityType: "staff_profiles",
+    entityId: staffId,
+    actorRole,
+    metadata: { updated: Object.keys(input) },
+  });
+
+  return data;
 }
 
 export async function deactivateStaffAccount(staffId: string, actorRole: StaffRole): Promise<void> {
@@ -73,6 +117,44 @@ export async function deactivateStaffAccount(staffId: string, actorRole: StaffRo
   const supabase = getServiceRoleClient();
   const { error } = await supabase.from("staff_profiles").update({ is_active: false }).eq("id", staffId);
   if (error) throw error;
+
+  await logAudit({
+    action: "STAFF_DEACTIVATED",
+    entityType: "staff_profiles",
+    entityId: staffId,
+    actorRole,
+  });
+}
+
+export async function reactivateStaffAccount(staffId: string, actorRole: StaffRole): Promise<void> {
+  if (!hasPermission(actorRole, "staff.manage")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot manage staff accounts.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase.from("staff_profiles").update({ is_active: true }).eq("id", staffId);
+  if (error) throw error;
+
+  await logAudit({
+    action: "STAFF_REACTIVATED",
+    entityType: "staff_profiles",
+    entityId: staffId,
+    actorRole,
+  });
+}
+
+export async function countActiveStaff(actorRole: StaffRole): Promise<number> {
+  if (!hasPermission(actorRole, "staff.manage") && actorRole !== "admin") {
+    throw new Error(`Forbidden: role "${actorRole}" cannot view the staff directory.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  const { count, error } = await supabase
+    .from("staff_profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function listStaffProfiles(actorRole: StaffRole): Promise<StaffProfile[]> {
