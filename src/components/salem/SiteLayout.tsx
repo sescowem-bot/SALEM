@@ -3,13 +3,21 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { FloatingWhatsApp } from "./WhatsAppButton";
 import { AiAssistant } from "./AiAssistant";
+import { getSiteSettings } from "@/lib/data/siteSettings";
+import { getPublishedPageContent } from "@/lib/data/websitePages";
+import type { FooterContent } from "@/lib/data/websiteContentTypes";
 
-export function SiteLayout({ children }: { children: ReactNode }) {
+export async function SiteLayout({ children }: { children: ReactNode }) {
+  const [settings, footerContent] = await Promise.all([
+    getSiteSettings(),
+    getPublishedPageContent<FooterContent>("footer"),
+  ]);
+
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header settings={settings} />
       <main>{children}</main>
-      <Footer />
+      <Footer settings={settings} content={footerContent} />
       <FloatingWhatsApp />
       <AiAssistant />
     </div>

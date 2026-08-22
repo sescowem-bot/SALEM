@@ -1,29 +1,60 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { getPublishedPageContent } from "@/lib/data/websitePages";
+import { getSiteSettings } from "@/lib/data/siteSettings";
+import type { SeoContent } from "@/lib/data/websiteContentTypes";
 
-const description =
+const fallbackDescription =
   "Salem Medical Laboratories offers blood tests, microbiology, molecular diagnostics, home sample collection and secure e-copy results.";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Salem Medical Laboratories | Pathology & Diagnostics",
-    template: "%s | Salem Medical Laboratories",
-  },
-  description,
-  openGraph: {
-    title: "Salem Medical Laboratories",
+/**
+ * Root layout metadata now reads live CMS/settings data from Supabase, so
+ * — same reasoning as the /services force-dynamic fix — this can't be
+ * statically prerendered at build time (every page inherits this layout,
+ * including /_not-found, which Next.js tries to prerender regardless of
+ * any page-level dynamic export). This also means a transient Supabase
+ * hiccup during a real build would otherwise fail the whole site, so the
+ * fetch below is wrapped in try/catch and falls back to the static
+ * defaults rather than ever breaking metadata generation.
+ */
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let seo: SeoContent = {};
+  let settings: Awaited<ReturnType<typeof getSiteSettings>> | null = null;
+  try {
+    [seo, settings] = await Promise.all([getPublishedPageContent<SeoContent>("seo"), getSiteSettings()]);
+  } catch {
+    // Fall through to static defaults below — never let a CMS/DB hiccup break metadata.
+  }
+
+  const title = seo.defaultTitle || "Salem Medical Laboratories | Pathology & Diagnostics";
+  const description = seo.defaultDescription || seo.orgDescription || settings?.description || fallbackDescription;
+  const orgName = settings?.orgName || "Salem Medical Laboratories";
+
+  return {
+    title: {
+      default: title,
+      template: `%s | ${orgName}`,
+    },
     description,
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Salem Medical Laboratories",
-    description,
-  },
-  icons: {
-    icon: "/favicon.ico",
-  },
-};
+    openGraph: {
+      title: orgName,
+      description,
+      type: "website",
+      images: settings?.ogImageUrl ? [settings.ogImageUrl] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: orgName,
+      description,
+    },
+    icons: {
+      icon: settings?.faviconUrl || "/favicon.ico",
+    },
+    robots: seo.robotsIndex === false ? { index: false, follow: false } : undefined,
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

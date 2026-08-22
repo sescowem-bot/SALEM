@@ -2,8 +2,17 @@ import { CalendarCheck, Phone, Mail, MapPin, Clock3 } from "lucide-react";
 import Link from "next/link";
 import { WhatsAppIcon } from "./WhatsAppButton";
 import { siteConfig } from "@/data/siteContent";
+import type { HomepageContent } from "@/lib/data/websiteContentTypes";
+import type { ResolvedSiteSettings } from "@/lib/data/siteSettings";
 
-export function BookingCta() {
+export function BookingCta({ content, settings }: { content?: HomepageContent; settings?: ResolvedSiteSettings }) {
+  const heading = content?.ctaHeading || "Book your appointment in under two minutes.";
+  const description = content?.ctaDescription ||
+    "Choose a walk-in slot at our laboratory or a home collection visit. Our front desk confirms every booking personally.";
+  const ctaLabel = content?.ctaLabel || "Book Appointment";
+  const ctaHref = content?.ctaHref || "/book";
+  const whatsappHref = settings?.whatsappHref ?? siteConfig.phone.whatsappHref;
+
   return (
     <section id="book" className="bg-background py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
@@ -15,21 +24,20 @@ export function BookingCta() {
           <div className="relative grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div className="min-w-0">
               <h2 className="text-3xl font-semibold tracking-tight text-navy-deep sm:text-4xl">
-                Book your appointment in under two minutes.
+                {heading}
               </h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-                Choose a walk-in slot at our laboratory or a home collection visit. Our front desk
-                confirms every booking personally.
+                {description}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href="/book"
+                  href={ctaHref}
                   className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.03]"
                 >
-                  <CalendarCheck className="h-4 w-4 shrink-0" /> Book Appointment
+                  <CalendarCheck className="h-4 w-4 shrink-0" /> {ctaLabel}
                 </Link>
                 <a
-                  href={siteConfig.phone.whatsappHref}
+                  href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full bg-whatsapp px-6 py-3.5 text-sm font-semibold text-white shadow-soft transition-transform hover:scale-[1.03]"
@@ -69,26 +77,25 @@ export function BookingCta() {
   );
 }
 
-const contactCards = [
-  {
-    icon: MapPin,
-    title: "Visit the laboratory",
-    lines: [siteConfig.address.line1, siteConfig.address.line2],
-  },
-  {
-    icon: Phone,
-    title: "Call or WhatsApp",
-    lines: [siteConfig.phone.primary, siteConfig.phone.whatsapp],
-  },
-  { icon: Mail, title: "Email us", lines: [siteConfig.email.general, siteConfig.email.results] },
-  {
-    icon: Clock3,
-    title: "Opening hours",
-    lines: [siteConfig.hours.weekdays, siteConfig.hours.weekend],
-  },
-];
-
-export function Contact() {
+export function Contact({ settings }: { settings?: ResolvedSiteSettings }) {
+  const cards = [
+    {
+      icon: MapPin,
+      title: "Visit the laboratory",
+      lines: [settings?.addressLine1 ?? siteConfig.address.line1, settings?.addressLine2 ?? siteConfig.address.line2],
+    },
+    {
+      icon: Phone,
+      title: "Call or WhatsApp",
+      lines: [settings?.phonePrimary ?? siteConfig.phone.primary, settings?.whatsappNumber ?? siteConfig.phone.whatsapp],
+    },
+    { icon: Mail, title: "Email us", lines: [settings?.emailPrimary ?? siteConfig.email.general, siteConfig.email.results] },
+    {
+      icon: Clock3,
+      title: "Opening hours",
+      lines: [settings?.hoursWeekdays ?? siteConfig.hours.weekdays, settings?.hoursWeekend ?? siteConfig.hours.weekend],
+    },
+  ];
   return (
     <section id="contact" className="bg-secondary py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
@@ -102,7 +109,7 @@ export function Contact() {
         </div>
 
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {contactCards.map(({ icon: Icon, title, lines }) => (
+          {cards.map(({ icon: Icon, title, lines }) => (
             <div key={title} className="surface-card p-6">
               <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-navy">
                 <Icon className="h-5 w-5" />

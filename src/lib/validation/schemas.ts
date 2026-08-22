@@ -176,6 +176,105 @@ export const serviceEditorSchema = z.object({
   isActive: z.enum(["true", "false"]).default("true"),
 });
 
+export const siteSettingsSchema = z.object({
+  orgName: z.string().trim().max(200).optional().or(z.literal("")),
+  shortName: z.string().trim().max(60).optional().or(z.literal("")),
+  tagline: z.string().trim().max(300).optional().or(z.literal("")),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+  copyrightText: z.string().trim().max(200).optional().or(z.literal("")),
+  emailPrimary: z.string().trim().email().optional().or(z.literal("")),
+  emailSecondary: z.string().trim().email().optional().or(z.literal("")),
+  phonePrimary: z.string().trim().max(30).optional().or(z.literal("")),
+  phoneSecondary: z.string().trim().max(30).optional().or(z.literal("")),
+  whatsappNumber: z.string().trim().max(30).optional().or(z.literal("")),
+  addressLine1: z.string().trim().max(200).optional().or(z.literal("")),
+  addressLine2: z.string().trim().max(200).optional().or(z.literal("")),
+  city: z.string().trim().max(100).optional().or(z.literal("")),
+  state: z.string().trim().max(100).optional().or(z.literal("")),
+  hoursWeekdays: z.string().trim().max(100).optional().or(z.literal("")),
+  hoursWeekend: z.string().trim().max(100).optional().or(z.literal("")),
+  socialFacebook: z.string().trim().url().optional().or(z.literal("")),
+  socialInstagram: z.string().trim().url().optional().or(z.literal("")),
+  socialLinkedin: z.string().trim().url().optional().or(z.literal("")),
+  socialTwitter: z.string().trim().url().optional().or(z.literal("")),
+  socialYoutube: z.string().trim().url().optional().or(z.literal("")),
+});
+
+const optionalUrlOrPath = z
+  .string()
+  .trim()
+  .max(400)
+  .optional()
+  .or(z.literal(""))
+  .refine((v) => !v || v.startsWith("/") || v.startsWith("http://") || v.startsWith("https://"), {
+    message: "Must be a relative path (starting with /) or a full URL",
+  });
+
+export const homepageContentSchema = z.object({
+  heroEyebrow: z.string().trim().max(80).optional().or(z.literal("")),
+  heroHeadline: z.string().trim().max(200).optional().or(z.literal("")),
+  heroDescription: z.string().trim().max(500).optional().or(z.literal("")),
+  heroCtaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+  heroCtaHref: optionalUrlOrPath,
+  heroSecondaryCtaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+  heroSecondaryCtaHref: optionalUrlOrPath,
+  heroTrustStatement: z.string().trim().max(200).optional().or(z.literal("")),
+  aboutPreviewHeading: z.string().trim().max(150).optional().or(z.literal("")),
+  aboutPreviewDescription: z.string().trim().max(500).optional().or(z.literal("")),
+  aboutPreviewCtaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+  aboutPreviewCtaHref: optionalUrlOrPath,
+  servicesHeading: z.string().trim().max(150).optional().or(z.literal("")),
+  servicesDescription: z.string().trim().max(500).optional().or(z.literal("")),
+  trustHeading: z.string().trim().max(150).optional().or(z.literal("")),
+  trustDescription: z.string().trim().max(500).optional().or(z.literal("")),
+  trustQualityStatement: z.string().trim().max(500).optional().or(z.literal("")),
+  trustProfessionalStandards: z.string().trim().max(500).optional().or(z.literal("")),
+  ctaHeading: z.string().trim().max(150).optional().or(z.literal("")),
+  ctaDescription: z.string().trim().max(500).optional().or(z.literal("")),
+  ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+  ctaHref: optionalUrlOrPath,
+});
+
+export const aboutContentSchema = z.object({
+  pageTitle: z.string().trim().max(200).optional().or(z.literal("")),
+  introduction: z.string().trim().max(500).optional().or(z.literal("")),
+  whoWeAre: z.string().trim().max(3000).optional().or(z.literal("")),
+  mission: z.string().trim().max(1000).optional().or(z.literal("")),
+  vision: z.string().trim().max(1000).optional().or(z.literal("")),
+  values: z.string().trim().max(1000).optional().or(z.literal("")),
+  qualityStatement: z.string().trim().max(1500).optional().or(z.literal("")),
+  professionalStandards: z.string().trim().max(1500).optional().or(z.literal("")),
+  ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+  ctaHref: optionalUrlOrPath,
+});
+
+export const contactContentSchema = z.object({
+  pageHeading: z.string().trim().max(200).optional().or(z.literal("")),
+  introduction: z.string().trim().max(500).optional().or(z.literal("")),
+  mapEmbedUrl: optionalUrlOrPath,
+  ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+});
+
+export const footerContentSchema = z.object({
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+  copyrightText: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
+export const seoContentSchema = z.object({
+  defaultTitle: z.string().trim().max(70).optional().or(z.literal("")),
+  defaultDescription: z.string().trim().max(160).optional().or(z.literal("")),
+  robotsIndex: z.boolean().optional(),
+  orgDescription: z.string().trim().max(500).optional().or(z.literal("")),
+  homepageTitle: z.string().trim().max(70).optional().or(z.literal("")),
+  homepageDescription: z.string().trim().max(160).optional().or(z.literal("")),
+  aboutTitle: z.string().trim().max(70).optional().or(z.literal("")),
+  aboutDescription: z.string().trim().max(160).optional().or(z.literal("")),
+  servicesTitle: z.string().trim().max(70).optional().or(z.literal("")),
+  servicesDescription: z.string().trim().max(160).optional().or(z.literal("")),
+  contactTitle: z.string().trim().max(70).optional().or(z.literal("")),
+  contactDescription: z.string().trim().max(160).optional().or(z.literal("")),
+});
+
 export const verifyResultSchema = z.object({
   resultReference: z
     .string()

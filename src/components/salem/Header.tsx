@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SalemLogo } from "./Logo";
 import { siteConfig } from "@/data/siteContent";
+import type { ResolvedSiteSettings } from "@/lib/data/siteSettings";
 
 const nav = [
   { label: "Home", href: "/" },
@@ -18,10 +19,17 @@ const nav = [
   { label: "Contact", href: "/contact" },
 ] as const;
 
-export function Header() {
+export function Header({ settings }: { settings?: ResolvedSiteSettings }) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const tagline = settings?.tagline ?? siteConfig.tagline;
+  const hoursWeekdays = settings?.hoursWeekdays ?? siteConfig.hours.weekdays;
+  const phonePrimary = settings?.phonePrimary ?? siteConfig.phone.primary;
+  const phonePrimaryHref = settings?.phonePrimaryHref ?? siteConfig.phone.primaryHref;
+  const instagramUrl = settings?.socialInstagram ?? siteConfig.social.instagramUrl;
+  const logoUrl = settings?.logoUrl ?? null;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -40,14 +48,14 @@ export function Header() {
         }`}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-2">
-          <p>{siteConfig.tagline}</p>
+          <p>{tagline}</p>
           <div className="flex items-center gap-6">
-            <span>{siteConfig.hours.weekdays}</span>
-            <a href={siteConfig.phone.primaryHref} className="flex items-center gap-2 hover:text-white">
-              <Phone className="h-3.5 w-3.5" /> {siteConfig.phone.primary}
+            <span>{hoursWeekdays}</span>
+            <a href={phonePrimaryHref} className="flex items-center gap-2 hover:text-white">
+              <Phone className="h-3.5 w-3.5" /> {phonePrimary}
             </a>
             <a
-              href={siteConfig.social.instagramUrl}
+              href={instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Salem Medical Laboratories on Instagram"
@@ -66,7 +74,7 @@ export function Header() {
       >
         <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3 sm:px-6 lg:py-4">
           <Link href="/" className="min-w-0">
-            <SalemLogo />
+            <SalemLogo logoUrl={logoUrl} />
           </Link>
 
           <div className="flex items-center gap-2">

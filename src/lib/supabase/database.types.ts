@@ -58,9 +58,19 @@ export type AuditAction =
   | "SERVICE_UPDATED"
   | "SERVICE_PUBLISHED"
   | "SERVICE_UNPUBLISHED"
-  | "SERVICE_ARCHIVED";
+  | "SERVICE_ARCHIVED"
+  // Advanced 3 (Website & Brand Content CMS) — see
+  // supabase/migrations/20260821090003_website_cms.sql
+  | "SITE_SETTINGS_UPDATED"
+  | "WEBSITE_CONTENT_UPDATED"
+  | "WEBSITE_CONTENT_PUBLISHED"
+  | "WEBSITE_CONTENT_UNPUBLISHED"
+  | "WEBSITE_MEDIA_UPLOADED"
+  | "WEBSITE_MEDIA_REMOVED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type ServiceStatus = "draft" | "published" | "archived";
+export type WebsitePageKey = "homepage" | "about" | "contact" | "footer" | "seo";
+export type WebsiteContentStatus = "draft" | "published";
 
 /**
  * Root-cause fix (build-stabilization pass):
@@ -634,6 +644,56 @@ export interface Database {
           succeeded: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["result_access_attempts"]["Row"]>;
+        Relationships: [];
+      };
+      site_settings: {
+        Row: {
+          id: boolean;
+          org_name: string | null;
+          short_name: string | null;
+          tagline: string | null;
+          description: string | null;
+          copyright_text: string | null;
+          logo_path: string | null;
+          logo_light_path: string | null;
+          favicon_path: string | null;
+          og_image_path: string | null;
+          email_primary: string | null;
+          email_secondary: string | null;
+          phone_primary: string | null;
+          phone_secondary: string | null;
+          whatsapp_number: string | null;
+          address_line1: string | null;
+          address_line2: string | null;
+          city: string | null;
+          state: string | null;
+          hours_weekdays: string | null;
+          hours_weekend: string | null;
+          social_facebook: string | null;
+          social_instagram: string | null;
+          social_linkedin: string | null;
+          social_twitter: string | null;
+          social_youtube: string | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
+        Relationships: [];
+      };
+      website_pages: {
+        Row: {
+          page_key: WebsitePageKey;
+          draft_content: Record<string, unknown>;
+          published_content: Record<string, unknown> | null;
+          status: WebsiteContentStatus;
+          updated_at: string;
+          updated_by: string | null;
+          published_at: string | null;
+          published_by: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["website_pages"]["Row"]> & { page_key: WebsitePageKey };
+        Update: Partial<Database["public"]["Tables"]["website_pages"]["Row"]>;
         Relationships: [];
       };
       public_form_attempts: {

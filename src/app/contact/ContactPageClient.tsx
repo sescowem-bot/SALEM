@@ -7,14 +7,8 @@ import { InstagramIcon } from "@/components/salem/icons";
 import { WhatsAppIcon } from "@/components/salem/WhatsAppButton";
 import { siteConfig } from "@/data/siteContent";
 import { submitContactAction, type ContactState } from "./actions";
-
-const cards = [
-  { icon: MapPin, title: "Visit the laboratory", lines: [siteConfig.address.line1, siteConfig.address.line2] },
-  { icon: Phone, title: "Call or WhatsApp", lines: [siteConfig.phone.primary, siteConfig.phone.whatsapp] },
-  { icon: Mail, title: "Email us", lines: [siteConfig.email.general, siteConfig.email.results] },
-  { icon: Clock3, title: "Opening hours", lines: [siteConfig.hours.weekdays, siteConfig.hours.weekend] },
-  { icon: InstagramIcon, title: "Follow us", lines: [siteConfig.social.instagramHandle] },
-];
+import type { ResolvedSiteSettings } from "@/lib/data/siteSettings";
+import type { ContactContent } from "@/lib/data/websiteContentTypes";
 
 const fieldClass =
   "mt-2 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-navy-deep outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan focus:bg-card";
@@ -34,8 +28,30 @@ function SendButton() {
   );
 }
 
-export function ContactPageClient() {
+export function ContactPageClient({ content, settings }: { content?: ContactContent; settings?: ResolvedSiteSettings }) {
   const [state, formAction] = useActionState(submitContactAction, initialState);
+
+  const addressLine1 = settings?.addressLine1 ?? siteConfig.address.line1;
+  const addressLine2 = settings?.addressLine2 ?? siteConfig.address.line2;
+  const phonePrimary = settings?.phonePrimary ?? siteConfig.phone.primary;
+  const phonePrimaryHref = settings?.phonePrimaryHref ?? siteConfig.phone.primaryHref;
+  const whatsappNumber = settings?.whatsappNumber ?? siteConfig.phone.whatsapp;
+  const whatsappHref = settings?.whatsappHref ?? siteConfig.phone.whatsappHref;
+  const emailPrimary = settings?.emailPrimary ?? siteConfig.email.general;
+  const hoursWeekdays = settings?.hoursWeekdays ?? siteConfig.hours.weekdays;
+  const hoursWeekend = settings?.hoursWeekend ?? siteConfig.hours.weekend;
+  const instagramUrl = settings?.socialInstagram ?? siteConfig.social.instagramUrl;
+  const ctaLabel = content?.ctaLabel || "Chat with us on WhatsApp";
+  const mapEmbedUrl = content?.mapEmbedUrl;
+
+  const cards = [
+    { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2] },
+    { icon: Phone, title: "Call or WhatsApp", lines: [phonePrimary, whatsappNumber] },
+    { icon: Mail, title: "Email us", lines: [emailPrimary, siteConfig.email.results] },
+    { icon: Clock3, title: "Opening hours", lines: [hoursWeekdays, hoursWeekend] },
+    { icon: InstagramIcon, title: "Follow us", lines: [siteConfig.social.instagramHandle] },
+  ];
+
   return (
     <section className="bg-background py-14 lg:py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
@@ -96,15 +112,25 @@ export function ContactPageClient() {
 
           <div className="space-y-6">
             <div className="surface-card overflow-hidden">
-              <div className="grid-lab relative grid h-72 place-items-center bg-secondary">
-                <div className="text-center">
-                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-navy text-primary-foreground">
-                    <MapPin className="h-5 w-5" />
-                  </span>
-                  <p className="mt-4 text-sm font-semibold text-navy-deep">{siteConfig.address.line1}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Map to be added once the address is confirmed</p>
+              {mapEmbedUrl ? (
+                <iframe
+                  src={mapEmbedUrl}
+                  className="h-72 w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Map to Salem Medical Laboratories"
+                />
+              ) : (
+                <div className="grid-lab relative grid h-72 place-items-center bg-secondary">
+                  <div className="text-center">
+                    <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-navy text-primary-foreground">
+                      <MapPin className="h-5 w-5" />
+                    </span>
+                    <p className="mt-4 text-sm font-semibold text-navy-deep">{addressLine1}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Map to be added once the address is confirmed</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6">
@@ -113,24 +139,24 @@ export function ContactPageClient() {
               </span>
               <p className="mt-3 text-sm leading-relaxed text-navy">
                 If your physician flagged a result as urgent, call our records desk directly on{" "}
-                <a href={siteConfig.phone.primaryHref} className="font-semibold underline">
-                  {siteConfig.phone.primary}
+                <a href={phonePrimaryHref} className="font-semibold underline">
+                  {phonePrimary}
                 </a>
                 .
               </p>
             </div>
 
             <a
-              href={siteConfig.phone.whatsappHref}
+              href={whatsappHref}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-whatsapp px-6 py-3.5 text-sm font-semibold text-white shadow-soft transition-transform hover:scale-[1.02]"
             >
-              <WhatsAppIcon className="h-4.5 w-4.5 shrink-0" /> Chat with us on WhatsApp
+              <WhatsAppIcon className="h-4.5 w-4.5 shrink-0" /> {ctaLabel}
             </a>
 
             <a
-              href={siteConfig.social.instagramUrl}
+              href={instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-semibold text-navy shadow-soft transition-transform hover:scale-[1.02] hover:border-cyan"

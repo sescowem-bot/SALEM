@@ -1,6 +1,7 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { Database } from "@/lib/supabase/database.types";
 import { logAudit } from "./audit";
 
 const BUCKET = "lab-report-pdfs";
@@ -165,5 +166,130 @@ export async function removeServiceImage(testId: string, actorRole: StaffRole, a
 export function getServiceImagePublicUrl(storagePath: string): string {
   const supabase = getServiceRoleClient();
   const { data } = supabase.storage.from(SERVICE_IMAGES_BUCKET).getPublicUrl(storagePath);
+  return data.publicUrl;
+}
+
+// ---------------------------------------------------------------------------
+// Website/brand media (Advanced 3). Same public-read-only,
+// service-role-write posture as service-images above, kept in a separate
+// bucket so brand assets (logo/favicon/OG image/page hero images) don't
+// share a flat namespace with service marketing photos.
+// ---------------------------------------------------------------------------
+
+const SITE_MEDIA_BUCKET = "site-media";
+const MAX_SITE_MEDIA_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_SITE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon"];
+
+export type SiteMediaSlot = "logo" | "logoLight" | "favicon" | "ogImage" | "pageHero";
+
+const SITE_SETTINGS_COLUMN: Partial<Record<SiteMediaSlot, "logo_path" | "logo_light_path" | "favicon_path" | "og_image_path">> = {
+  logo: "logo_path",
+  logoLight: "logo_light_path",
+  favicon: "favicon_path",
+  ogImage: "og_image_path",
+};
+
+/**
+ * Uploads a brand asset (logo/favicon/OG image) into site_settings, or a
+ * page hero image with an explicit storage path when `slot === "pageHero"`
+ * (used by the homepage/about editors, which store the resulting path
+ * inside their own website_pages JSON content rather than site_settings).
+ */
+export async function uploadSiteMedia(input: {
+  slot: SiteMediaSlot;
+  file: File | Blob;
+  fileName: string;
+  contentType: string;
+  size: number;
+  actorRole: StaffRole;
+  actorId?: string;
+  /** Required only for slot "pageHero" — a caller-chosen subpath, e.g. "homepage/hero". */
+  pathHint?: string;
+}): Promise<string> {
+  if (!hasPermission(input.actorRole, "settings.manage")) {
+    throw new Error(`Forbidden: role "${input.actorRole}" cannot manage website media.`);
+  }
+  if (!ALLOWED_SITE_MEDIA_TYPES.includes(input.contentType)) {
+    throw new Error("Unsupported image type. Use JPEG, PNG, WebP, SVG, or ICO.");
+  }
+  if (input.size > MAX_SITE_MEDIA_BYTES) {
+    throw new Error("Image is too large. The limit is 5MB.");
+  }
+
+  const supabase = getServiceRoleClient();
+  const extension = input.fileName.split(".").pop()?.toLowerCase() || "png";
+  const subpath = input.slot === "pageHero" ? (input.pathHint ?? "page-hero") : input.slot;
+  const path = `${subpath}/${Date.now()}.${extension}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(SITE_MEDIA_BUCKET)
+    .upload(path, input.file, { contentType: input.contentType, upsert: false });
+  if (uploadError) throw uploadError;
+
+  const column = SITE_SETTINGS_COLUMN[input.slot];
+  if (column) {
+    const { data: current } = await supabase.from("site_settings").select(column).eq("id", true).single();
+    const previousPath = current ? (current as Record<string, unknown>)[column] : null;
+    if (typeof previousPath === "string" && previousPath) {
+      await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
+    }
+    const { error: updateError } = await supabase
+      .from("site_settings")
+      .update({
+        [column]: path,
+        updated_at: new Date().toISOString(),
+        updated_by: input.actorId ?? null,
+      } as Database["public"]["Tables"]["site_settings"]["Update"])
+      .eq("id", true);
+    if (updateError) throw updateError;
+  }
+
+  await logAudit({
+    action: "WEBSITE_MEDIA_UPLOADED",
+    entityType: column ? "site_settings" : "website_pages",
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    metadata: { slot: input.slot, fileName: input.fileName },
+  });
+
+  return path;
+}
+
+export async function removeSiteMediaSlot(slot: SiteMediaSlot, actorRole: StaffRole, actorId?: string): Promise<void> {
+  if (!hasPermission(actorRole, "settings.manage")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot manage website media.`);
+  }
+  const column = SITE_SETTINGS_COLUMN[slot];
+  if (!column) throw new Error("This media slot cannot be removed directly.");
+
+  const supabase = getServiceRoleClient();
+  const { data: current } = await supabase.from("site_settings").select(column).eq("id", true).single();
+  const previousPath = current ? (current as Record<string, unknown>)[column] : null;
+  if (typeof previousPath === "string" && previousPath) {
+    await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
+  }
+
+  const { error } = await supabase
+    .from("site_settings")
+    .update({
+      [column]: null,
+      updated_at: new Date().toISOString(),
+      updated_by: actorId ?? null,
+    } as Database["public"]["Tables"]["site_settings"]["Update"])
+    .eq("id", true);
+  if (error) throw error;
+
+  await logAudit({
+    action: "WEBSITE_MEDIA_REMOVED",
+    entityType: "site_settings",
+    actorId,
+    actorRole,
+    metadata: { slot },
+  });
+}
+
+export function getSiteMediaPublicUrl(storagePath: string): string {
+  const supabase = getServiceRoleClient();
+  const { data } = supabase.storage.from(SITE_MEDIA_BUCKET).getPublicUrl(storagePath);
   return data.publicUrl;
 }

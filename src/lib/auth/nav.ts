@@ -60,10 +60,22 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   if (can(staff, "audit.view")) {
     administration.push({ href: "/admin/audit", label: "Audit logs" });
   }
-  if (can(staff, "settings.manage")) {
-    administration.push({ href: "/admin/settings", label: "Settings" });
-  }
   if (administration.length > 0) sections.push({ label: "Administration", items: administration });
+
+  const website: AdminNavItem[] = [];
+  if (can(staff, "settings.manage")) {
+    website.push(
+      { href: "/admin/website", label: "Overview" },
+      { href: "/admin/website/homepage", label: "Homepage" },
+      { href: "/admin/website/about", label: "About" },
+      { href: "/admin/services", label: "Services" },
+      { href: "/admin/website/contact", label: "Contact" },
+      { href: "/admin/website/footer", label: "Footer" },
+      { href: "/admin/website/seo", label: "SEO" },
+      { href: "/admin/settings", label: "Brand / Settings" }
+    );
+  }
+  if (website.length > 0) sections.push({ label: "Website", items: website });
 
   return sections;
 }

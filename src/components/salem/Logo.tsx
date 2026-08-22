@@ -35,7 +35,14 @@ export function SalemMark({ className = "h-10 w-10" }: { className?: string }) {
   );
 }
 
-export function SalemLogo({ inverted = false }: { inverted?: boolean }) {
+export function SalemLogo({ inverted = false, logoUrl }: { inverted?: boolean; logoUrl?: string | null }) {
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- storage-hosted brand asset, arbitrary aspect ratio
+      <img src={logoUrl} alt="Salem Medical Laboratories" className="h-10 w-auto max-w-[220px] object-contain" />
+    );
+  }
+
   return (
     <div className="flex min-w-0 items-center gap-3">
       <SalemMark className="h-10 w-10 shrink-0" />

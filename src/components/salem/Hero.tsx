@@ -2,10 +2,21 @@ import { CalendarCheck, FileText, ShieldCheck, Microscope, Home, ArrowRight } fr
 import Link from "next/link";
 import Image from "next/image";
 import { siteConfig } from "@/data/siteContent";
+import type { HomepageContent } from "@/lib/data/websiteContentTypes";
 
 const heroLab = "/images/hero-lab.jpg";
 
-export function Hero() {
+export function Hero({ content }: { content?: HomepageContent }) {
+  const eyebrow = content?.heroEyebrow || "Medical Diagnostic Laboratory";
+  const headline = content?.heroHeadline;
+  const description = content?.heroDescription ||
+    "Advanced medical laboratory testing delivered with scientific precision, compassionate care and clear, reliable results.";
+  const trustStatement = content?.heroTrustStatement || siteConfig.tagline;
+  const primaryCtaLabel = content?.heroCtaLabel || "Book an Appointment";
+  const primaryCtaHref = content?.heroCtaHref || "/book";
+  const secondaryCtaLabel = content?.heroSecondaryCtaLabel || "Access Your Results";
+  const secondaryCtaHref = content?.heroSecondaryCtaHref || "/results";
+
   return (
     <section id="top" className="relative overflow-hidden gradient-hero pt-28 lg:pt-36">
       <div
@@ -20,34 +31,33 @@ export function Hero() {
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 pb-20 pt-10 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pb-28">
         <div className="rise-in min-w-0">
           <span className="inline-flex items-center gap-2 rounded-full border border-cyan/30 bg-white/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-cyan-soft">
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0" /> Medical Diagnostic Laboratory
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0" /> {eyebrow}
           </span>
 
           <h1 className="mt-6 text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.6rem]">
-            Accurate <span className="text-gradient-accent">Diagnostics</span>. Better Health.
+            {headline ? headline : <>Accurate <span className="text-gradient-accent">Diagnostics</span>. Better Health.</>}
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-cyan-soft/80 sm:text-lg">
-            Advanced medical laboratory testing delivered with scientific precision, compassionate
-            care and clear, reliable results.
+            {description}
           </p>
 
           <p className="mt-5 border-l-2 border-cyan/60 pl-4 text-sm italic text-cyan-soft/90 sm:text-base">
-            “{siteConfig.tagline}”
+            “{trustStatement}”
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
-              href="/book"
+              href={primaryCtaHref}
               className="inline-flex items-center gap-2 rounded-full gradient-accent px-6 py-3.5 text-sm font-semibold text-navy-deep shadow-glow transition-transform hover:scale-[1.03]"
             >
-              <CalendarCheck className="h-4.5 w-4.5 shrink-0" /> Book an Appointment
+              <CalendarCheck className="h-4.5 w-4.5 shrink-0" /> {primaryCtaLabel}
             </Link>
             <Link
-              href="/results"
+              href={secondaryCtaHref}
               className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/15"
             >
-              <FileText className="h-4.5 w-4.5 shrink-0" /> Access Your Results
+              <FileText className="h-4.5 w-4.5 shrink-0" /> {secondaryCtaLabel}
             </Link>
           </div>
         </div>

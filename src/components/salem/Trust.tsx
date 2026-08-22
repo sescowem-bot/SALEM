@@ -1,4 +1,5 @@
 import { ShieldCheck, Timer, UserCheck, Sparkles } from "lucide-react";
+import type { HomepageContent } from "@/lib/data/websiteContentTypes";
 
 const values = [
   {
@@ -23,7 +24,13 @@ const values = [
   },
 ];
 
-export function Trust() {
+export function Trust({ content }: { content?: HomepageContent }) {
+  const heading = content?.trustHeading || "Built on accuracy. Delivered with warmth.";
+  const description = content?.trustDescription ||
+    "We know a laboratory result is rarely just paperwork — it is a family waiting for news. That is why our standards are clinical, but our people are kind.";
+  const qualityStatement = content?.trustQualityStatement ||
+    "Every report that leaves Salem carries a scientist\u2019s review — so what you receive is a result you can act on, explained in language you understand.";
+
   return (
     <section id="trust" className="relative overflow-hidden bg-secondary py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
@@ -33,18 +40,19 @@ export function Trust() {
               Why Salem
             </span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-navy-deep sm:text-4xl">
-              Built on accuracy. Delivered with warmth.
+              {heading}
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              We know a laboratory result is rarely just paperwork — it is a family waiting for
-              news. That is why our standards are clinical, but our people are kind.
+              {description}
             </p>
             <div className="mt-8 rounded-2xl border border-cyan/25 bg-card p-6 shadow-soft">
               <p className="text-sm leading-relaxed text-navy">
-                Every report that leaves Salem carries a scientist&apos;s review — so what you receive is
-                a result you can act on, explained in language you understand.
+                {qualityStatement}
               </p>
             </div>
+            {content?.trustProfessionalStandards ? (
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{content.trustProfessionalStandards}</p>
+            ) : null}
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
