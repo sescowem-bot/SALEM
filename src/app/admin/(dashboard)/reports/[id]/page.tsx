@@ -4,9 +4,10 @@ import { AdminShell } from "@/components/salem/AdminShell";
 import { StatusBadge } from "@/components/salem/StatusBadge";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getAdminNavItems } from "@/lib/auth/nav";
-import { getReportDetail } from "@/lib/data/labReports";
+import { getReportDetail, getReportVersionHistory } from "@/lib/data/labReports";
 import { getTestWithStructure, type TestWithStructure } from "@/lib/data/testCatalog";
 import { getSignedReportPdfUrl } from "@/lib/data/storage";
+import { listApprovers, getActiveApprovalRequest, getApprovalHistory } from "@/lib/data/approvals";
 import { ReportDetailClient } from "./ReportDetailClient";
 
 export const metadata: Metadata = {
@@ -87,10 +88,21 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     })
   );
 
-  const canEdit = can(staff, "reports.edit_draft") && report.status === "draft";
-  const canReview =
-    can(staff, "reports.review") && ((report.status === "draft" && report.submitted_for_review) || report.status === "reviewed");
+  const canEdit = can(staff, "reports.edit_draft") && report.status === "draft" && !report.submitted_for_review;
+  // Two distinct review moments: a pending approval request (draft, awaiting a decision
+  // from the chosen approver) vs. an already-approved report awaiting publish (can still
+  // be sent back, but there's nothing left to "approve" or "reject").
+  const canDecideApproval =
+    can(staff, "reports.review") && report.status === "draft" && report.submitted_for_review;
+  const canReturnReviewed = can(staff, "reports.review") && report.status === "reviewed";
   const canPublish = can(staff, "reports.publish") && report.status === "reviewed";
+
+  const [approvers, activeApprovalRequest, approvalHistory, versionHistory] = await Promise.all([
+    canEdit ? listApprovers() : Promise.resolve([]),
+    canDecideApproval || report.submitted_for_review ? getActiveApprovalRequest(report.id) : Promise.resolve(null),
+    getApprovalHistory(report.id),
+    getReportVersionHistory(report.id),
+  ]);
 
   return (
     <AdminShell
@@ -108,8 +120,13 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         report={report}
         tests={testViewModels}
         canEdit={canEdit}
-        canReview={canReview}
+        canDecideApproval={canDecideApproval}
+        canReturnReviewed={canReturnReviewed}
         canPublish={canPublish}
+        approvers={approvers}
+        activeApprovalRequestId={activeApprovalRequest?.id ?? null}
+        approvalHistory={approvalHistory}
+        versionHistory={versionHistory}
       />
     </AdminShell>
   );
@@ -137,7 +154,7 @@ function ReportSummary({
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <StatusBadge status={report.status} />
         {report.status === "draft" && report.submitted_for_review ? (
-          <StatusBadge status="contacted" label="Submitted for review" />
+          <StatusBadge status="pending" label="Submitted for approval" />
         ) : null}
       </div>
       <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -22,6 +22,10 @@ const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-amber-50 text-amber-700 border-amber-200",
   assigned: "bg-purple/10 text-purple border-purple/30",
   in_progress: "bg-amber-50 text-amber-700 border-amber-200",
+  // Approval workflow (approval_requests.status) — Advanced 4
+  approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  rejected: "bg-destructive/10 text-destructive border-destructive/30",
+  returned: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {

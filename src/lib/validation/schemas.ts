@@ -50,6 +50,18 @@ export const reportTransitionSchema = z.object({
   comment: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 
+/** Advanced 4 — staff selecting a specific authorized approver at submission time. */
+export const submitForApprovalSchema = z.object({
+  labReportId: z.string().uuid(),
+  approverId: z.string().uuid("Choose an approver"),
+});
+
+/** Advanced 4 — an approver actioning a specific approval_requests row (approve/reject/return). */
+export const approvalDecisionSchema = z.object({
+  requestId: z.string().uuid(),
+  comment: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
 /**
  * Public appointment booking (Phase 5 §2). Test/service requested is a
  * free-text field (or a catalogue test id from the booking UI's

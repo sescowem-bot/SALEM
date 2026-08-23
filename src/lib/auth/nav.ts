@@ -20,6 +20,9 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   ];
 
   const operations: AdminNavItem[] = [];
+  if (can(staff, "reports.view")) {
+    operations.push({ href: "/admin/operations", label: "Operations dashboard" });
+  }
   if (can(staff, "patients.view")) {
     operations.push({ href: "/admin/patients", label: "Patients" });
   }
@@ -32,8 +35,11 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   if (can(staff, "reports.view")) {
     operations.push({ href: "/admin/results-entry", label: "Results entry" });
   }
+  if (can(staff, "reports.create_draft") || can(staff, "reports.edit_draft")) {
+    operations.push({ href: "/admin/workspace", label: "My workspace" });
+  }
   if (can(staff, "reports.review")) {
-    operations.push({ href: "/admin/review", label: "Review queue" });
+    operations.push({ href: "/admin/review", label: "Approval queue" });
   }
   if (operations.length > 0) sections.push({ label: "Operations", items: operations });
 

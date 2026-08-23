@@ -2,21 +2,54 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { FileText, Save, Send, CheckCircle2, RotateCcw, UploadCloud, ShieldCheck } from "lucide-react";
+import {
+  FileText,
+  Save,
+  Send,
+  CheckCircle2,
+  RotateCcw,
+  UploadCloud,
+  ShieldCheck,
+  XCircle,
+  History,
+} from "lucide-react";
 import {
   saveFieldResultAction,
   saveTableCellAction,
   uploadPdfAction,
-  submitForReviewAction,
-  approveAction,
+  submitForApprovalAction,
+  approveApprovalRequestAction,
+  rejectApprovalRequestAction,
+  returnApprovalRequestAction,
   returnForCorrectionAction,
   publishAction,
   type ActionState,
 } from "./actions";
 import type { ReportTestViewModel } from "./page";
 import type { Database } from "@/lib/supabase/database.types";
+import type { ApproverOption } from "@/lib/data/approvals";
+import { StatusBadge } from "@/components/salem/StatusBadge";
 
 type LabReport = Database["public"]["Tables"]["lab_reports"]["Row"];
+
+interface ApprovalHistoryRow {
+  id: string;
+  status: string;
+  decision_comment: string | null;
+  decided_at: string | null;
+  created_at: string;
+  requested_by: { full_name: string } | null;
+  assigned_approver: { full_name: string } | null;
+  decided_by_staff: { full_name: string } | null;
+}
+
+interface VersionHistoryRow {
+  id: string;
+  version_number: number;
+  change_type: string;
+  changed_by: string | null;
+  changed_at: string;
+}
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-navy-deep outline-none transition-colors focus:border-cyan focus:bg-card";
@@ -238,19 +271,193 @@ function WorkflowButton({
   );
 }
 
+function ApproverSelect({
+  labReportId,
+  approvers,
+}: {
+  labReportId: string;
+  approvers: ApproverOption[];
+}) {
+  const [state, action] = useActionState(submitForApprovalAction, initial);
+  const [approverId, setApproverId] = useState("");
+
+  if (approvers.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No active approver accounts are available right now. Ask a super admin to enable one before submitting.
+      </p>
+    );
+  }
+
+  return (
+    <form action={action} className="flex flex-col items-start gap-2">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Select authorized approver
+      </label>
+      <select
+        name="approverId"
+        required
+        value={approverId}
+        onChange={(e) => setApproverId(e.target.value)}
+        className="w-64 rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-navy-deep outline-none focus:border-cyan"
+      >
+        <option value="" disabled>
+          Choose an approver
+        </option>
+        {approvers.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.full_name} — {a.designation ?? a.role.replace("_", " ")}
+          </option>
+        ))}
+      </select>
+      <WorkflowSubmit label="Submit for approval" icon={Send} variant="primary" />
+      {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
+    </form>
+  );
+}
+
+function ApprovalDecisionButtons({ labReportId, requestId }: { labReportId: string; requestId: string }) {
+  const [approveState, approveFormAction] = useActionState(approveApprovalRequestAction, initial);
+  const [rejectState, rejectFormAction] = useActionState(rejectApprovalRequestAction, initial);
+  const [returnState, returnFormAction] = useActionState(returnApprovalRequestAction, initial);
+  const [rejectComment, setRejectComment] = useState("");
+  const [returnComment, setReturnComment] = useState("");
+
+  return (
+    <div className="flex flex-wrap items-start gap-4">
+      <form action={approveFormAction}>
+        <input type="hidden" name="requestId" value={requestId} />
+        <input type="hidden" name="labReportId" value={labReportId} />
+        <WorkflowSubmit label="Approve" icon={CheckCircle2} variant="primary" />
+        {approveState.error ? <p className="mt-1.5 text-xs text-destructive">{approveState.error}</p> : null}
+      </form>
+
+      <form action={rejectFormAction} className="flex flex-col gap-2">
+        <input type="hidden" name="requestId" value={requestId} />
+        <input type="hidden" name="labReportId" value={labReportId} />
+        <textarea
+          name="comment"
+          value={rejectComment}
+          onChange={(e) => setRejectComment(e.target.value)}
+          placeholder="Reason for rejecting (optional)"
+          rows={1}
+          className="w-56 rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan"
+        />
+        <button
+          type="submit"
+          className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/40 px-5 py-2.5 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
+        >
+          <XCircle className="h-4 w-4 shrink-0" /> Reject
+        </button>
+        {rejectState.error ? <p className="text-xs text-destructive">{rejectState.error}</p> : null}
+      </form>
+
+      <form action={returnFormAction} className="flex flex-col gap-2">
+        <input type="hidden" name="requestId" value={requestId} />
+        <input type="hidden" name="labReportId" value={labReportId} />
+        <textarea
+          name="comment"
+          value={returnComment}
+          onChange={(e) => setReturnComment(e.target.value)}
+          placeholder="Reason for returning (optional)"
+          rows={1}
+          className="w-56 rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan"
+        />
+        <button
+          type="submit"
+          className="inline-flex w-fit items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
+        >
+          <RotateCcw className="h-4 w-4 shrink-0" /> Return for correction
+        </button>
+        {returnState.error ? <p className="text-xs text-destructive">{returnState.error}</p> : null}
+      </form>
+    </div>
+  );
+}
+
+function StatusHistoryPanel({
+  approvalHistory,
+  versionHistory,
+}: {
+  approvalHistory: ApprovalHistoryRow[];
+  versionHistory: VersionHistoryRow[];
+}) {
+  if (approvalHistory.length === 0 && versionHistory.length === 0) return null;
+
+  return (
+    <section className="surface-card p-6 sm:p-8">
+      <div className="flex items-center gap-2">
+        <History className="h-4 w-4 shrink-0 text-purple" />
+        <h2 className="text-base font-semibold text-navy-deep">Status history</h2>
+      </div>
+
+      {approvalHistory.length > 0 ? (
+        <ul className="mt-4 space-y-3 border-l border-border pl-4">
+          {approvalHistory.map((h) => (
+            <li key={h.id} className="text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={h.status} />
+                <span className="text-xs text-muted-foreground">
+                  {new Date(h.decided_at ?? h.created_at).toLocaleString()}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Submitted by {h.requested_by?.full_name ?? "—"} to {h.assigned_approver?.full_name ?? "—"}
+                {h.decided_by_staff ? ` · decided by ${h.decided_by_staff.full_name}` : ""}
+              </p>
+              {h.decision_comment ? <p className="mt-0.5 text-xs text-navy-deep">“{h.decision_comment}”</p> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {versionHistory.length > 0 ? (
+        <div className="mt-5 border-t border-border pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Document versions</p>
+          <ul className="mt-2 space-y-1.5">
+            {versionHistory.map((v) => (
+              <li key={v.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  v{v.version_number} · {v.change_type.replace("_", " ")}
+                </span>
+                <span>{new Date(v.changed_at).toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function ReportDetailClient({
   report,
   tests,
   canEdit,
-  canReview,
+  canDecideApproval,
+  canReturnReviewed,
   canPublish,
+  approvers,
+  activeApprovalRequestId,
+  approvalHistory,
+  versionHistory,
 }: {
   report: LabReport;
   tests: ReportTestViewModel[];
   canEdit: boolean;
-  canReview: boolean;
+  canDecideApproval: boolean;
+  canReturnReviewed: boolean;
   canPublish: boolean;
+  approvers: ApproverOption[];
+  activeApprovalRequestId: string | null;
+  approvalHistory: ApprovalHistoryRow[];
+  versionHistory: VersionHistoryRow[];
 }) {
+  const canSubmit = canEdit && report.status === "draft" && !report.submitted_for_review;
+  const pendingApprover =
+    approvalHistory.find((h) => h.status === "pending")?.assigned_approver?.full_name ?? null;
+
   return (
     <div className="space-y-6">
       {tests.map((t) => (
@@ -328,25 +535,36 @@ export function ReportDetailClient({
       ))}
 
       <section className="surface-card flex flex-wrap items-start gap-4 p-6 sm:p-8">
-        {canEdit ? (
-          <WorkflowButton action={submitForReviewAction} label="Submit for review" icon={Send} labReportId={report.id} />
+        {canSubmit ? <ApproverSelect labReportId={report.id} approvers={approvers} /> : null}
+
+        {!canDecideApproval && report.status === "draft" && report.submitted_for_review ? (
+          <p className="text-sm text-muted-foreground">
+            {pendingApprover
+              ? `Submitted — awaiting a decision from ${pendingApprover}.`
+              : "Submitted — awaiting a decision from the assigned approver."}
+          </p>
         ) : null}
 
-        {canReview ? (
-          <>
-            <WorkflowButton action={approveAction} label="Approve" icon={CheckCircle2} labReportId={report.id} />
-            <ReturnForCorrectionForm labReportId={report.id} />
-          </>
+        {canDecideApproval && activeApprovalRequestId ? (
+          <ApprovalDecisionButtons labReportId={report.id} requestId={activeApprovalRequestId} />
         ) : null}
+
+        {canReturnReviewed ? <ReturnForCorrectionForm labReportId={report.id} /> : null}
 
         {canPublish ? (
           <WorkflowButton action={publishAction} label="Publish" icon={ShieldCheck} labReportId={report.id} />
         ) : null}
 
-        {!canEdit && !canReview && !canPublish ? (
+        {!canEdit &&
+        !canDecideApproval &&
+        !canReturnReviewed &&
+        !canPublish &&
+        !(report.status === "draft" && report.submitted_for_review) ? (
           <p className="text-sm text-muted-foreground">No further action available for your role on this report.</p>
         ) : null}
       </section>
+
+      <StatusHistoryPanel approvalHistory={approvalHistory} versionHistory={versionHistory} />
     </div>
   );
 }

@@ -17,6 +17,7 @@ export type ReportStatus = "draft" | "reviewed" | "published" | "archived";
 export type ReportTestStatus = "pending" | "completed" | "cancelled";
 export type ResultFlag = "normal" | "high" | "low" | "critical" | "abnormal";
 export type ReportVersionChangeType = "created" | "reviewed" | "published" | "amended" | "archived";
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "returned";
 export type IntakeStatus = "new" | "contacted" | "scheduled" | "completed" | "cancelled";
 export type Sex = "Male" | "Female";
 export type StaffRoleDb =
@@ -44,6 +45,10 @@ export type AuditAction =
   | "HOME_COLLECTION_STATUS_UPDATED"
   | "HOME_COLLECTION_ASSIGNED"
   | "RESULT_AMENDED"
+  // Advanced 4 (Operations & Approval Workflow) — see
+  // supabase/migrations/20260822090002_approval_workflow_audit_actions.sql
+  | "APPROVAL_REQUEST_ASSIGNED"
+  | "RESULT_REJECTED"
   // Advanced 1 (admin/CMS foundation) — see
   // supabase/migrations/20260821090001_admin_foundation_audit_actions.sql
   | "STAFF_CREATED"
@@ -279,12 +284,21 @@ export interface Database {
           signature_image_url: string | null;
           is_active: boolean;
           created_at: string;
+          staff_profile_id: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["signatories"]["Row"]> & {
           full_name: string;
         };
         Update: Partial<Database["public"]["Tables"]["signatories"]["Row"]>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "signatories_staff_profile_id_fkey";
+            columns: ["staff_profile_id"];
+            isOneToOne: true;
+            referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       patients: {
         Row: {
@@ -332,6 +346,7 @@ export interface Database {
           archived_at: string | null;
           last_modified_by: string | null;
           last_modified_at: string;
+          assigned_approver_id: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]> & {
           patient_id: string;
@@ -352,6 +367,13 @@ export interface Database {
             columns: ["signatory_id"];
             isOneToOne: false;
             referencedRelation: "signatories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "lab_reports_assigned_approver_id_fkey";
+            columns: ["assigned_approver_id"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -711,6 +733,54 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["public_form_attempts"]["Row"]>;
         Relationships: [];
+      };
+      approval_requests: {
+        Row: {
+          id: string;
+          lab_report_id: string;
+          requested_by: string | null;
+          assigned_approver_id: string;
+          status: ApprovalStatus;
+          decision_comment: string | null;
+          decided_by: string | null;
+          decided_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["approval_requests"]["Row"]> & {
+          lab_report_id: string;
+          assigned_approver_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["approval_requests"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "approval_requests_lab_report_id_fkey";
+            columns: ["lab_report_id"];
+            isOneToOne: false;
+            referencedRelation: "lab_reports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "approval_requests_assigned_approver_id_fkey";
+            columns: ["assigned_approver_id"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "approval_requests_requested_by_fkey";
+            columns: ["requested_by"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "approval_requests_decided_by_fkey";
+            columns: ["decided_by"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<string, never>;

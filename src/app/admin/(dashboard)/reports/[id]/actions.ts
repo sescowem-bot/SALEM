@@ -2,16 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
+import { setFieldResult, setTableCellResult, returnForCorrection, publishReport } from "@/lib/data/labReports";
 import {
-  setFieldResult,
-  setTableCellResult,
-  submitForReview,
-  returnForCorrection,
-  transitionReportStatus,
-  publishReport,
-} from "@/lib/data/labReports";
+  submitReportForApproval,
+  approveApprovalRequest,
+  rejectApprovalRequest,
+  returnApprovalRequestForCorrection,
+} from "@/lib/data/approvals";
 import { uploadReportPdf } from "@/lib/data/storage";
-import { fieldResultSchema, tableCellSchema, reportTransitionSchema } from "@/lib/validation/schemas";
+import {
+  fieldResultSchema,
+  tableCellSchema,
+  reportTransitionSchema,
+  submitForApprovalSchema,
+  approvalDecisionSchema,
+} from "@/lib/validation/schemas";
 
 export interface ActionState {
   error?: string;
@@ -124,38 +129,103 @@ export async function uploadPdfAction(_prev: ActionState, formData: FormData): P
   return { ok: true };
 }
 
-export async function submitForReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+/** Advanced 4 — submit a draft for approval to a specific, chosen authorized approver. */
+export async function submitForApprovalAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireStaff();
-  const parsed = reportTransitionSchema.safeParse({ labReportId: formData.get("labReportId") });
-  if (!parsed.success) return { error: "Invalid report." };
+  const parsed = submitForApprovalSchema.safeParse({
+    labReportId: formData.get("labReportId"),
+    approverId: formData.get("approverId"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Choose an approver." };
 
   try {
-    await submitForReview(parsed.data.labReportId, staff.role, staff.userId);
+    await submitReportForApproval({
+      labReportId: parsed.data.labReportId,
+      approverId: parsed.data.approverId,
+      actorRole: staff.role,
+      actorId: staff.userId,
+    });
   } catch (err) {
     return { error: friendlyError(err) };
   }
 
   revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
   revalidatePath("/admin/review");
+  revalidatePath("/admin/workspace");
+  revalidatePath("/admin/operations");
   return { ok: true };
 }
 
-export async function approveAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+/** Advanced 4 — approver actions on a specific approval_requests row (not just the report). */
+export async function approveApprovalRequestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireStaff();
-  const parsed = reportTransitionSchema.safeParse({ labReportId: formData.get("labReportId") });
-  if (!parsed.success) return { error: "Invalid report." };
+  const parsed = approvalDecisionSchema.safeParse({ requestId: formData.get("requestId") });
+  if (!parsed.success) return { error: "Invalid approval request." };
+  const labReportId = String(formData.get("labReportId") ?? "");
 
   try {
-    await transitionReportStatus(parsed.data.labReportId, "reviewed", staff.userId, staff.role);
+    await approveApprovalRequest(parsed.data.requestId, staff.role, staff.userId);
   } catch (err) {
     return { error: friendlyError(err) };
   }
 
-  revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
+  if (labReportId) revalidatePath(`/admin/reports/${labReportId}`);
   revalidatePath("/admin/review");
+  revalidatePath("/admin/operations");
   return { ok: true };
 }
 
+export async function rejectApprovalRequestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const parsed = approvalDecisionSchema.safeParse({
+    requestId: formData.get("requestId"),
+    comment: formData.get("comment") || "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid approval request." };
+  const labReportId = String(formData.get("labReportId") ?? "");
+
+  try {
+    await rejectApprovalRequest(parsed.data.requestId, parsed.data.comment || undefined, staff.role, staff.userId);
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  if (labReportId) revalidatePath(`/admin/reports/${labReportId}`);
+  revalidatePath("/admin/review");
+  revalidatePath("/admin/workspace");
+  revalidatePath("/admin/operations");
+  return { ok: true };
+}
+
+export async function returnApprovalRequestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const parsed = approvalDecisionSchema.safeParse({
+    requestId: formData.get("requestId"),
+    comment: formData.get("comment") || "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid approval request." };
+  const labReportId = String(formData.get("labReportId") ?? "");
+
+  try {
+    await returnApprovalRequestForCorrection(
+      parsed.data.requestId,
+      parsed.data.comment || undefined,
+      staff.role,
+      staff.userId
+    );
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  if (labReportId) revalidatePath(`/admin/reports/${labReportId}`);
+  revalidatePath("/admin/review");
+  revalidatePath("/admin/workspace");
+  revalidatePath("/admin/operations");
+  return { ok: true };
+}
+
+/** Plain report-level return-for-correction — used only for the "reviewed" (already approved,
+ *  pre-publish) state, which has no pending approval_requests row to act on. */
 export async function returnForCorrectionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireStaff();
   const parsed = reportTransitionSchema.safeParse({
