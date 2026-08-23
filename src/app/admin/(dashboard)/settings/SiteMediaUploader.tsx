@@ -92,11 +92,13 @@ export function SiteMediaUploader({
   logoLightUrl,
   faviconUrl,
   ogImageUrl,
+  letterheadUrl,
 }: {
   logoUrl: string | null;
   logoLightUrl: string | null;
   faviconUrl: string | null;
   ogImageUrl: string | null;
+  letterheadUrl: string | null;
 }) {
   return (
     <div className="surface-card p-6">
@@ -107,6 +109,12 @@ export function SiteMediaUploader({
         <MediaSlot slot="logoLight" label="Light logo" hint="Optional — used on dark backgrounds like the footer if provided." currentUrl={logoLightUrl} />
         <MediaSlot slot="favicon" label="Favicon" hint="Shown in the browser tab." currentUrl={faviconUrl} square />
         <MediaSlot slot="ogImage" label="Default social sharing image" hint="Used when pages are shared on social media, unless a page sets its own." currentUrl={ogImageUrl} />
+        <MediaSlot
+          slot="letterhead"
+          label="Report letterhead"
+          hint="Print-quality header used on generated report PDFs and previews. Falls back to Logo above when not set."
+          currentUrl={letterheadUrl}
+        />
       </div>
     </div>
   );

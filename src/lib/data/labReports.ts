@@ -693,6 +693,44 @@ export async function getReportStatusCounts(): Promise<Record<ReportStatus, numb
   return counts;
 }
 
+/**
+ * Admin report index (Advanced 5 §6) — search/filter across all reports,
+ * regardless of status or who created them. Distinct from listReviewQueue
+ * (pathologist's queue) / listDraftReports (lab staff worklist) / the
+ * per-user listMyReports in lib/data/approvals.ts: this is the general
+ * "browse everything" screen for reports.view roles, gated the same as
+ * every other report read in this file.
+ */
+export async function listAllReports(
+  actorRole: StaffRole,
+  filters?: { query?: string; status?: ReportStatus | "all" }
+) {
+  if (!hasPermission(actorRole, "reports.view")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot view the report index.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  let query = supabase
+    .from("lab_reports")
+    .select(
+      "id, lab_number, patient_name_snapshot, status, submitted_for_review, result_reference, created_at, reviewed_at, published_at, assigned_approver:staff_profiles!lab_reports_assigned_approver_id_fkey(full_name)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (filters?.status && filters.status !== "all") {
+    query = query.eq("status", filters.status);
+  }
+  if (filters?.query && filters.query.trim().length > 0) {
+    const term = filters.query.trim();
+    query = query.or(`lab_number.ilike.%${term}%,patient_name_snapshot.ilike.%${term}%`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getReportVersionHistory(labReportId: string) {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase

@@ -24,10 +24,12 @@ export interface ResolvedSiteSettings {
   logoLightPath: string | null;
   faviconPath: string | null;
   ogImagePath: string | null;
+  letterheadPath: string | null;
   logoUrl: string | null;
   logoLightUrl: string | null;
   faviconUrl: string | null;
   ogImageUrl: string | null;
+  letterheadUrl: string | null;
   emailPrimary: string;
   emailSecondary: string | null;
   phonePrimary: string;
@@ -66,10 +68,12 @@ function resolve(row: SiteSettingsRow | null): ResolvedSiteSettings {
     logoLightPath: row?.logo_light_path ?? null,
     faviconPath: row?.favicon_path ?? null,
     ogImagePath: row?.og_image_path ?? null,
+    letterheadPath: row?.letterhead_path ?? null,
     logoUrl: row?.logo_path ? getSiteMediaPublicUrl(row.logo_path) : null,
     logoLightUrl: row?.logo_light_path ? getSiteMediaPublicUrl(row.logo_light_path) : null,
     faviconUrl: row?.favicon_path ? getSiteMediaPublicUrl(row.favicon_path) : null,
     ogImageUrl: row?.og_image_path ? getSiteMediaPublicUrl(row.og_image_path) : null,
+    letterheadUrl: row?.letterhead_path ? getSiteMediaPublicUrl(row.letterhead_path) : null,
     emailPrimary: row?.email_primary || siteConfig.email.general,
     emailSecondary: row?.email_secondary ?? null,
     phonePrimary: row?.phone_primary || siteConfig.phone.primary,

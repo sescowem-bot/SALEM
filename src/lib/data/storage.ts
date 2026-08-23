@@ -53,6 +53,40 @@ export async function uploadReportPdf(input: {
 }
 
 /**
+ * Uploads a system-generated FINAL report PDF (Advanced 5) into the same
+ * private lab-report-pdfs bucket used for staff-uploaded result PDFs, but
+ * under a `final/` sub-path so the two never collide. `upsert: true`
+ * because a controlled, explicit regeneration of the *same* version's PDF
+ * (re-rendering after a letterhead/signature fix, say) should replace that
+ * exact file — report_final_documents' unique (lab_report_id,
+ * version_number) constraint is what actually prevents an approved
+ * version's document from changing silently; a new lab_reports version
+ * number always gets its own row and its own path here, never an overwrite
+ * of a prior version's file.
+ */
+export async function uploadFinalReportPdf(input: {
+  labReportId: string;
+  versionNumber: number;
+  buffer: Buffer;
+  actorRole: StaffRole;
+  actorId?: string;
+}): Promise<string> {
+  if (!hasPermission(input.actorRole, "reports.review")) {
+    throw new Error(`Forbidden: role "${input.actorRole}" cannot generate a final report document.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  const path = `${input.labReportId}/final/v${input.versionNumber}.pdf`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, input.buffer, { contentType: "application/pdf", upsert: true });
+  if (error) throw error;
+
+  return path;
+}
+
+/**
  * Server-only. Generates a short-lived signed URL — never a public URL.
  * Caller must already have verified the requester is authorized to see this
  * report (staff with reports.view, or a successfully-verified patient
@@ -180,13 +214,16 @@ const SITE_MEDIA_BUCKET = "site-media";
 const MAX_SITE_MEDIA_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_SITE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon"];
 
-export type SiteMediaSlot = "logo" | "logoLight" | "favicon" | "ogImage" | "pageHero";
+export type SiteMediaSlot = "logo" | "logoLight" | "favicon" | "ogImage" | "pageHero" | "letterhead";
 
-const SITE_SETTINGS_COLUMN: Partial<Record<SiteMediaSlot, "logo_path" | "logo_light_path" | "favicon_path" | "og_image_path">> = {
+const SITE_SETTINGS_COLUMN: Partial<
+  Record<SiteMediaSlot, "logo_path" | "logo_light_path" | "favicon_path" | "og_image_path" | "letterhead_path">
+> = {
   logo: "logo_path",
   logoLight: "logo_light_path",
   favicon: "favicon_path",
   ogImage: "og_image_path",
+  letterhead: "letterhead_path",
 };
 
 /**
@@ -292,4 +329,143 @@ export function getSiteMediaPublicUrl(storagePath: string): string {
   const supabase = getServiceRoleClient();
   const { data } = supabase.storage.from(SITE_MEDIA_BUCKET).getPublicUrl(storagePath);
   return data.publicUrl;
+}
+
+// ---------------------------------------------------------------------------
+// Staff signature images (Advanced 5). Private bucket, same posture as
+// lab-report-pdfs — signature images are tied to a specific staff member's
+// identity and end up embedded in official approved documents, so unlike
+// the public site-media assets above, there is no public URL path at all.
+// Every read goes through a short-lived signed URL (admin preview) or a
+// direct in-memory download (embedding into a generated PDF — see
+// lib/data/reportDocuments.ts), both via the service-role client.
+// ---------------------------------------------------------------------------
+
+const STAFF_SIGNATURES_BUCKET = "staff-signatures";
+const MAX_SIGNATURE_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB
+const ALLOWED_SIGNATURE_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+export async function uploadSignatureImage(input: {
+  signatoryId: string;
+  file: File | Blob;
+  fileName: string;
+  contentType: string;
+  size: number;
+  actorRole: StaffRole;
+  actorId?: string;
+}): Promise<string> {
+  if (!hasPermission(input.actorRole, "documents.manage")) {
+    throw new Error(`Forbidden: role "${input.actorRole}" cannot manage signatures.`);
+  }
+  if (!ALLOWED_SIGNATURE_IMAGE_TYPES.includes(input.contentType)) {
+    throw new Error("Unsupported image type. Use PNG, JPEG, or WebP — PNG with a transparent background is best.");
+  }
+  if (input.size > MAX_SIGNATURE_IMAGE_BYTES) {
+    throw new Error("Image is too large. The limit is 2MB.");
+  }
+
+  const supabase = getServiceRoleClient();
+  const extension = input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
+  const path = `${input.signatoryId}/${Date.now()}.${extension}`;
+
+  const { data: current } = await supabase
+    .from("signatories")
+    .select("signature_image_url")
+    .eq("id", input.signatoryId)
+    .single();
+
+  const { error: uploadError } = await supabase.storage
+    .from(STAFF_SIGNATURES_BUCKET)
+    .upload(path, input.file, { contentType: input.contentType, upsert: false });
+  if (uploadError) throw uploadError;
+
+  const { error: updateError } = await supabase
+    .from("signatories")
+    .update({ signature_image_url: path })
+    .eq("id", input.signatoryId);
+  if (updateError) throw updateError;
+
+  if (current?.signature_image_url) {
+    await supabase.storage.from(STAFF_SIGNATURES_BUCKET).remove([current.signature_image_url]);
+  }
+
+  await logAudit({
+    action: "SIGNATURE_UPLOADED",
+    entityType: "signatories",
+    entityId: input.signatoryId,
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    metadata: { fileName: input.fileName },
+  });
+
+  return path;
+}
+
+export async function removeSignatureImage(signatoryId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
+  if (!hasPermission(actorRole, "documents.manage")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot manage signatures.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data: current } = await supabase
+    .from("signatories")
+    .select("signature_image_url")
+    .eq("id", signatoryId)
+    .single();
+  if (current?.signature_image_url) {
+    await supabase.storage.from(STAFF_SIGNATURES_BUCKET).remove([current.signature_image_url]);
+  }
+
+  const { error } = await supabase.from("signatories").update({ signature_image_url: null }).eq("id", signatoryId);
+  if (error) throw error;
+
+  await logAudit({
+    action: "SIGNATURE_UPLOADED",
+    entityType: "signatories",
+    entityId: signatoryId,
+    actorId,
+    actorRole,
+    metadata: { removed: true },
+  });
+}
+
+/** Server-only. Short-lived signed URL for admin preview of a stored signature image. */
+export async function getSignedSignatureUrl(storagePath: string): Promise<string> {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase.storage
+    .from(STAFF_SIGNATURES_BUCKET)
+    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+  if (error) throw error;
+  if (!data?.signedUrl) throw new Error("Failed to generate signed URL.");
+  return data.signedUrl;
+}
+
+/**
+ * Server-only. Downloads a signature image straight into memory as a base64
+ * data URI, for embedding into a generated PDF (@react-pdf/renderer's Image
+ * component needs a URL or data URI, and a signed URL would be an
+ * unnecessary network round trip for a same-process render). Used only by
+ * lib/data/reportDocuments.ts.
+ */
+export async function getSignatureImageDataUri(storagePath: string): Promise<string> {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase.storage.from(STAFF_SIGNATURES_BUCKET).download(storagePath);
+  if (error) throw error;
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const contentType = data.type || "image/png";
+  return `data:${contentType};base64,${buffer.toString("base64")}`;
+}
+
+/**
+ * Server-only. Downloads the letterhead/logo image (public site-media
+ * bucket) straight into memory as a base64 data URI, for the same
+ * same-process-embed reason as getSignatureImageDataUri above.
+ */
+export async function getSiteMediaDataUri(storagePath: string): Promise<string | null> {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase.storage.from(SITE_MEDIA_BUCKET).download(storagePath);
+  if (error) return null;
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const contentType = data.type || "image/png";
+  return `data:${contentType};base64,${buffer.toString("base64")}`;
 }

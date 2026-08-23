@@ -47,6 +47,7 @@ export default async function SettingsPage() {
           logoLightUrl={row.logo_light_path ? getSiteMediaPublicUrl(row.logo_light_path) : null}
           faviconUrl={row.favicon_path ? getSiteMediaPublicUrl(row.favicon_path) : null}
           ogImageUrl={row.og_image_path ? getSiteMediaPublicUrl(row.og_image_path) : null}
+          letterheadUrl={row.letterhead_path ? getSiteMediaPublicUrl(row.letterhead_path) : null}
         />
         <SettingsEditorForm row={row} />
       </div>

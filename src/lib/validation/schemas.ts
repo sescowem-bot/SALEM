@@ -139,6 +139,16 @@ export const updateStaffSchema = z.object({
   phone: z.string().trim().max(30).optional().or(z.literal("")),
 });
 
+/** Advanced 5 — admin-managed signatory record (linking a staff login to a stored signature). */
+export const signatorySchema = z.object({
+  signatoryId: z.string().uuid().optional(),
+  fullName: z.string().trim().min(2, "Full name is required").max(200),
+  qualification: z.string().trim().max(200).optional().or(z.literal("")),
+  designation: z.string().trim().max(200).optional().or(z.literal("")),
+  staffProfileId: z.string().uuid().optional().or(z.literal("")),
+  isActive: z.enum(["true", "false"]).default("true"),
+});
+
 export const staffStatusSchema = z.object({
   staffId: z.string().uuid(),
   active: z.enum(["true", "false"]),

@@ -71,7 +71,13 @@ export type AuditAction =
   | "WEBSITE_CONTENT_PUBLISHED"
   | "WEBSITE_CONTENT_UNPUBLISHED"
   | "WEBSITE_MEDIA_UPLOADED"
-  | "WEBSITE_MEDIA_REMOVED";
+  | "WEBSITE_MEDIA_REMOVED"
+  // Advanced 5 (Professional Reporting, Letterhead, Signature & Final PDF)
+  // — see supabase/migrations/20260823090002_report_documents_audit_actions.sql
+  | "FINAL_PDF_GENERATED"
+  | "SIGNATORY_CREATED"
+  | "SIGNATORY_UPDATED"
+  | "SIGNATURE_UPLOADED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type ServiceStatus = "draft" | "published" | "archived";
 export type WebsitePageKey = "homepage" | "about" | "contact" | "footer" | "seo";
@@ -680,6 +686,7 @@ export interface Database {
           logo_light_path: string | null;
           favicon_path: string | null;
           og_image_path: string | null;
+          letterhead_path: string | null;
           email_primary: string | null;
           email_secondary: string | null;
           phone_primary: string | null;
@@ -776,6 +783,54 @@ export interface Database {
           {
             foreignKeyName: "approval_requests_decided_by_fkey";
             columns: ["decided_by"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      report_final_documents: {
+        Row: {
+          id: string;
+          lab_report_id: string;
+          version_number: number;
+          approval_request_id: string | null;
+          signatory_id: string | null;
+          storage_path: string;
+          generated_by: string | null;
+          generated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["report_final_documents"]["Row"]> & {
+          lab_report_id: string;
+          version_number: number;
+          storage_path: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["report_final_documents"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "report_final_documents_lab_report_id_fkey";
+            columns: ["lab_report_id"];
+            isOneToOne: false;
+            referencedRelation: "lab_reports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_final_documents_approval_request_id_fkey";
+            columns: ["approval_request_id"];
+            isOneToOne: false;
+            referencedRelation: "approval_requests";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_final_documents_signatory_id_fkey";
+            columns: ["signatory_id"];
+            isOneToOne: false;
+            referencedRelation: "signatories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_final_documents_generated_by_fkey";
+            columns: ["generated_by"];
             isOneToOne: false;
             referencedRelation: "staff_profiles";
             referencedColumns: ["id"];

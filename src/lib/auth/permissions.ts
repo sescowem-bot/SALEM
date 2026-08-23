@@ -54,7 +54,15 @@ export type Permission =
   | "analytics.view"
   | "audit.view"
   | "settings.manage"
-  | "enquiries.manage";
+  | "enquiries.manage"
+  // Advanced 5 — managing signatories (linking a staff login to a stored
+  // signature image used on final report PDFs). Deliberately its own
+  // permission rather than reusing staff.manage/settings.manage: it's
+  // super_admin-only today (same roles as both of those), but it gates a
+  // distinct action — attaching a signature to an identity — that
+  // shouldn't silently widen if staff.manage or settings.manage is ever
+  // extended to another role later.
+  | "documents.manage";
 
 const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
   super_admin: [
@@ -75,6 +83,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "audit.view",
     "settings.manage",
     "enquiries.manage",
+    "documents.manage",
   ],
   admin: [
     // Everything super_admin has except staff.manage and settings.manage.

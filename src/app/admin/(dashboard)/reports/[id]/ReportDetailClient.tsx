@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import {
   FileText,
   Save,
@@ -12,6 +13,8 @@ import {
   ShieldCheck,
   XCircle,
   History,
+  Eye,
+  Download,
 } from "lucide-react";
 import {
   saveFieldResultAction,
@@ -28,6 +31,7 @@ import {
 import type { ReportTestViewModel } from "./page";
 import type { Database } from "@/lib/supabase/database.types";
 import type { ApproverOption } from "@/lib/data/approvals";
+import type { FinalDocumentSummary } from "@/lib/data/reportDocuments";
 import { StatusBadge } from "@/components/salem/StatusBadge";
 
 type LabReport = Database["public"]["Tables"]["lab_reports"]["Row"];
@@ -442,6 +446,7 @@ export function ReportDetailClient({
   activeApprovalRequestId,
   approvalHistory,
   versionHistory,
+  finalDocument,
 }: {
   report: LabReport;
   tests: ReportTestViewModel[];
@@ -453,6 +458,7 @@ export function ReportDetailClient({
   activeApprovalRequestId: string | null;
   approvalHistory: ApprovalHistoryRow[];
   versionHistory: VersionHistoryRow[];
+  finalDocument: FinalDocumentSummary | null;
 }) {
   const canSubmit = canEdit && report.status === "draft" && !report.submitted_for_review;
   const pendingApprover =
@@ -460,6 +466,36 @@ export function ReportDetailClient({
 
   return (
     <div className="space-y-6">
+      <section className="surface-card flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="text-sm font-semibold text-navy-deep">Document</h2>
+          <p className="text-xs text-muted-foreground">
+            {finalDocument
+              ? `Final PDF generated for version v${finalDocument.versionNumber} on ${new Date(finalDocument.generatedAt).toLocaleString()}.`
+              : "No final PDF yet — generated automatically once this report is approved."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/admin/reports/${report.id}/preview`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
+          >
+            <Eye className="h-3.5 w-3.5" /> Preview
+          </Link>
+          {finalDocument ? (
+            <a
+              href={finalDocument.signedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft"
+            >
+              <Download className="h-3.5 w-3.5" /> Download final PDF
+            </a>
+          ) : null}
+        </div>
+      </section>
+
       {tests.map((t) => (
         <section key={t.reportTestId} className="surface-card p-6 sm:p-8">
           <div className="flex items-center gap-2">

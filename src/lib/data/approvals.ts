@@ -4,6 +4,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
 import { logAudit } from "./audit";
 import { submitForReview, returnForCorrection, transitionReportStatus } from "./labReports";
+import { generateFinalReportPdf } from "./reportDocuments";
 
 type ApprovalRequest = Database["public"]["Tables"]["approval_requests"]["Row"];
 
@@ -282,12 +283,42 @@ export async function approveApprovalRequest(
   // RESULT_APPROVED audit entry + report_versions snapshot).
   await transitionReportStatus(request.lab_report_id, "reviewed", actorId, actorRole);
 
+  const decidedAt = new Date().toISOString();
   const supabase = getServiceRoleClient();
   const { error } = await supabase
     .from("approval_requests")
-    .update({ status: "approved", decided_by: actorId ?? null, decided_at: new Date().toISOString() })
+    .update({ status: "approved", decided_by: actorId ?? null, decided_at: decidedAt })
     .eq("id", requestId);
   if (error) throw error;
+
+  // Advanced 5 — the approval decision is what makes a report "final".
+  // Generate and store the official letterhead + signature PDF now, tied
+  // to this exact approval_requests row and the report's current version
+  // number. A failure here must not roll back the approval decision itself
+  // (already committed above) — surface it loudly instead of silently
+  // losing the approval, and let an authorized user regenerate/investigate
+  // via the report detail screen.
+  if (actorId) {
+    try {
+      const { data: approverProfile } = await supabase
+        .from("staff_profiles")
+        .select("full_name")
+        .eq("id", actorId)
+        .single();
+
+      await generateFinalReportPdf({
+        labReportId: request.lab_report_id,
+        approvalRequestId: requestId,
+        approverStaffId: actorId,
+        approverName: approverProfile?.full_name ?? "Authorized approver",
+        decidedAt,
+        actorRole,
+        actorId,
+      });
+    } catch (err) {
+      console.error("[approvals] failed to generate final report PDF", requestId, err);
+    }
+  }
 }
 
 export async function rejectApprovalRequest(

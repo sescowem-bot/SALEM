@@ -35,6 +35,9 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   if (can(staff, "reports.view")) {
     operations.push({ href: "/admin/results-entry", label: "Results entry" });
   }
+  if (can(staff, "reports.view")) {
+    operations.push({ href: "/admin/reports", label: "Reports" });
+  }
   if (can(staff, "reports.create_draft") || can(staff, "reports.edit_draft")) {
     operations.push({ href: "/admin/workspace", label: "My workspace" });
   }
@@ -65,6 +68,9 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   }
   if (can(staff, "audit.view")) {
     administration.push({ href: "/admin/audit", label: "Audit logs" });
+  }
+  if (can(staff, "documents.manage")) {
+    administration.push({ href: "/admin/signatories", label: "Report signatories" });
   }
   if (administration.length > 0) sections.push({ label: "Administration", items: administration });
 
