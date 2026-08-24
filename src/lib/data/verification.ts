@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import { verifyAccessCode } from "./security";
-import { getSignedReportPdfUrl } from "./storage";
+import { getSignedReportPdfUrl, downloadReportPdfBytes } from "./storage";
 import { logAudit } from "./audit";
 
 const MAX_ATTEMPTS_PER_WINDOW = 5;
@@ -13,6 +13,25 @@ export interface VerifyResultInput {
   accessCode: string;
   ipAddress: string; // caller (Server Action/Route Handler) supplies the request IP
 }
+
+type AccessOutcome =
+  | {
+      ok: true;
+      report: {
+        id: string;
+        lab_number: string;
+        result_reference: string | null;
+        patient_name_snapshot: string;
+        patient_sex_snapshot: string | null;
+        request: string | null;
+        specimen: string | null;
+        date_collected: string | null;
+        date_reported: string | null;
+        published_at: string | null;
+        current_version_number: number;
+      };
+    }
+  | { ok: false; reason: "rate_limited" | "not_found" | "invalid_code" | "not_published" };
 
 export type VerifyResultOutcome =
   | { ok: true; result: PublishedResultDto }
@@ -28,6 +47,8 @@ export interface PublishedResultDto {
   dateCollected: string | null;
   dateReported: string | null;
   publishedAt: string | null;
+  documentVersion: number;
+  hasFinalPdf: boolean;
   tests: {
     testName: string;
     comment: string | null;
@@ -63,12 +84,15 @@ async function recordAttempt(ipHash: string, resultReference: string, succeeded:
 }
 
 /**
- * Public entry point for the /results verification page. Never bypasses
- * rate limiting or the access-code check, regardless of how it's called.
- * Returns only published-report data — no staff notes, no audit trail, no
- * unrelated patient fields.
+ * The single, shared reference + access-code check — rate limiting,
+ * "must be published", and the code hash comparison. Both
+ * verifyPatientResult (page view) and downloadPatientFinalPdf (§6's
+ * controlled download route) call this rather than each re-implementing
+ * the check, so the security model can never drift between the two.
+ * Deliberately does NOT weaken or shortcut anything for the download path
+ * — a download request re-verifies the code exactly like a page view does.
  */
-export async function verifyPatientResult(input: VerifyResultInput): Promise<VerifyResultOutcome> {
+async function authenticatePatientAccess(input: VerifyResultInput): Promise<AccessOutcome> {
   const ipHash = hashIp(input.ipAddress);
 
   if (await isRateLimited(ipHash)) {
@@ -79,7 +103,7 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
   const { data: report, error } = await supabase
     .from("lab_reports")
     .select(
-      "id, lab_number, result_reference, access_code_hash, patient_name_snapshot, patient_sex_snapshot, request, specimen, date_collected, date_reported, status, published_at"
+      "id, lab_number, result_reference, access_code_hash, patient_name_snapshot, patient_sex_snapshot, request, specimen, date_collected, date_reported, status, published_at, current_version_number"
     )
     .eq("result_reference", input.resultReference)
     .maybeSingle();
@@ -97,12 +121,39 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
   }
 
   await recordAttempt(ipHash, input.resultReference, true);
+  return { ok: true, report };
+}
+
+/**
+ * Public entry point for the /results verification page. Never bypasses
+ * rate limiting or the access-code check, regardless of how it's called.
+ * Returns only published-report data — no staff notes, no audit trail, no
+ * unrelated patient fields, and (troubleshooting §6) never a raw Supabase
+ * signed URL — only a `hasFinalPdf` flag; the actual bytes are fetched
+ * through the app-controlled /results/download route.
+ */
+export async function verifyPatientResult(input: VerifyResultInput): Promise<VerifyResultOutcome> {
+  const access = await authenticatePatientAccess(input);
+  if (!access.ok) return access;
+  const { report } = access;
+
   await logAudit({
     action: "RESULT_VERIFIED_ACCESS",
     entityType: "lab_reports",
     entityId: report.id,
     metadata: { resultReference: input.resultReference },
   });
+
+  // Advanced 6 §3/§4 — use the ALREADY-generated official final PDF
+  // (Advanced 5's report_final_documents), matched to this exact published
+  // version, never a freshly generated or independent document.
+  const supabase = getServiceRoleClient();
+  const { data: finalDoc } = await supabase
+    .from("report_final_documents")
+    .select("storage_path")
+    .eq("lab_report_id", report.id)
+    .eq("version_number", report.current_version_number)
+    .maybeSingle();
 
   const { data: reportTests, error: rtError } = await supabase
     .from("report_tests")
@@ -193,7 +244,50 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
       dateCollected: report.date_collected,
       dateReported: report.date_reported,
       publishedAt: report.published_at,
+      documentVersion: report.current_version_number,
+      hasFinalPdf: Boolean(finalDoc?.storage_path),
       tests,
     },
   };
+}
+
+export type DownloadFinalPdfOutcome =
+  | { ok: true; buffer: Buffer; labNumber: string }
+  | { ok: false; reason: "rate_limited" | "not_found" | "invalid_code" | "not_published" | "no_final_document" };
+
+/**
+ * Troubleshooting §6 — the actual bytes behind the "Download PDF" button on
+ * /results, served through /results/download so the browser only ever sees
+ * our own domain and a professional filename, never a Supabase storage URL.
+ * Re-runs the FULL reference + access-code check (via
+ * authenticatePatientAccess) — a download request is never trusted on the
+ * strength of a prior page view alone.
+ */
+export async function downloadPatientFinalPdf(input: VerifyResultInput): Promise<DownloadFinalPdfOutcome> {
+  const access = await authenticatePatientAccess(input);
+  if (!access.ok) return access;
+  const { report } = access;
+
+  const supabase = getServiceRoleClient();
+  const { data: finalDoc } = await supabase
+    .from("report_final_documents")
+    .select("storage_path")
+    .eq("lab_report_id", report.id)
+    .eq("version_number", report.current_version_number)
+    .maybeSingle();
+
+  if (!finalDoc?.storage_path) {
+    return { ok: false, reason: "no_final_document" };
+  }
+
+  const buffer = await downloadReportPdfBytes(finalDoc.storage_path);
+
+  await logAudit({
+    action: "PATIENT_PDF_DOWNLOADED",
+    entityType: "lab_reports",
+    entityId: report.id,
+    metadata: { resultReference: input.resultReference, versionNumber: report.current_version_number },
+  });
+
+  return { ok: true, buffer, labNumber: report.lab_number };
 }

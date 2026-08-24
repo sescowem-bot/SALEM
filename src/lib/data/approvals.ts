@@ -5,6 +5,7 @@ import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
 import { logAudit } from "./audit";
 import { submitForReview, returnForCorrection, transitionReportStatus } from "./labReports";
 import { generateFinalReportPdf } from "./reportDocuments";
+import { dispatchReportNotification } from "./notifications";
 
 type ApprovalRequest = Database["public"]["Tables"]["approval_requests"]["Row"];
 
@@ -112,6 +113,15 @@ export async function submitReportForApproval(input: {
     actorRole: input.actorRole,
     metadata: { labReportId: input.labReportId, approverId: input.approverId },
   });
+
+  // Advanced 6 §1 event B — the chosen approver now has a report waiting
+  // on them. Never blocks/rolls back the submission itself on failure.
+  dispatchReportNotification({
+    eventType: "approval_requested",
+    labReportId: input.labReportId,
+    recipientType: "staff",
+    recipientStaffId: input.approverId,
+  }).catch((err) => console.error("[approvals] approval_requested notification failed", request.id, err));
 
   return request;
 }
@@ -281,7 +291,7 @@ export async function approveApprovalRequest(
 
   // Reuses the existing draft -> reviewed transition (writes its own
   // RESULT_APPROVED audit entry + report_versions snapshot).
-  await transitionReportStatus(request.lab_report_id, "reviewed", actorId, actorRole);
+  const updatedReport = await transitionReportStatus(request.lab_report_id, "reviewed", actorId, actorRole);
 
   const decidedAt = new Date().toISOString();
   const supabase = getServiceRoleClient();
@@ -290,6 +300,16 @@ export async function approveApprovalRequest(
     .update({ status: "approved", decided_by: actorId ?? null, decided_at: decidedAt })
     .eq("id", requestId);
   if (error) throw error;
+
+  // Advanced 6 §1 event C — let the report's author know it went through.
+  if (updatedReport.created_by) {
+    dispatchReportNotification({
+      eventType: "report_approved",
+      labReportId: request.lab_report_id,
+      recipientType: "staff",
+      recipientStaffId: updatedReport.created_by,
+    }).catch((err) => console.error("[approvals] report_approved notification failed", requestId, err));
+  }
 
   // Advanced 5 — the approval decision is what makes a report "final".
   // Generate and store the official letterhead + signature PDF now, tied
@@ -344,7 +364,7 @@ export async function rejectApprovalRequest(
   // flag is cleared so it drops out of any queue and the staff member must
   // explicitly resubmit (choosing an approver again, possibly a different
   // one) once revised — never silently discards their entered result values.
-  const { error: reportError } = await supabase
+  const { data: reportRow, error: reportError } = await supabase
     .from("lab_reports")
     .update({
       submitted_for_review: false,
@@ -352,7 +372,9 @@ export async function rejectApprovalRequest(
       last_modified_by: actorId ?? null,
       last_modified_at: now,
     })
-    .eq("id", request.lab_report_id);
+    .eq("id", request.lab_report_id)
+    .select("created_by")
+    .single();
   if (reportError) throw reportError;
 
   await logAudit({
@@ -363,6 +385,17 @@ export async function rejectApprovalRequest(
     actorRole,
     metadata: { approvalRequestId: requestId, comment },
   });
+
+  // Advanced 6 §1 event D.
+  if (reportRow.created_by) {
+    dispatchReportNotification({
+      eventType: "report_rejected",
+      labReportId: request.lab_report_id,
+      recipientType: "staff",
+      recipientStaffId: reportRow.created_by,
+      comment,
+    }).catch((err) => console.error("[approvals] report_rejected notification failed", requestId, err));
+  }
 }
 
 export async function returnApprovalRequestForCorrection(

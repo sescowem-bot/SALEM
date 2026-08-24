@@ -43,7 +43,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           <Link href={`/admin/reports/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:underline">
             <ArrowLeft className="h-4 w-4" /> Back to report
           </Link>
-          <PreviewToolbar labReportId={id} finalPdfUrl={finalDoc?.signedUrl ?? null} />
+          <PreviewToolbar labReportId={id} hasFinalPdf={Boolean(finalDoc)} />
         </div>
       </div>
 

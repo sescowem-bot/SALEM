@@ -112,6 +112,7 @@ async function buildReportPdfData(input: {
       approverQualification: signatory?.qualification ?? null,
       decidedAt: new Date(input.approvalInfo.decidedAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }),
       signatureDataUri,
+      isAuthorizedSignatory: Boolean(signatory),
     };
   }
 
@@ -232,6 +233,33 @@ export async function generateFinalReportPdf(input: {
     actorRole: input.actorRole,
     metadata: { versionNumber: data.report.versionNumber, approvalRequestId: input.approvalRequestId, signed: Boolean(signatory?.signature_image_url) },
   });
+}
+
+/**
+ * Troubleshooting §6 — storage path (never a signed URL) for the admin
+ * download route to stream directly, so the browser only ever sees our own
+ * domain and a professional filename.
+ */
+export async function getFinalDocumentForDownload(
+  labReportId: string,
+  actorRole: StaffRole
+): Promise<{ storagePath: string; labNumber: string } | null> {
+  if (!hasPermission(actorRole, "reports.view")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot access report documents.`);
+  }
+  const supabase = getServiceRoleClient();
+  const [{ data: finalDoc }, { data: report }] = await Promise.all([
+    supabase
+      .from("report_final_documents")
+      .select("storage_path")
+      .eq("lab_report_id", labReportId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from("lab_reports").select("lab_number").eq("id", labReportId).maybeSingle(),
+  ]);
+  if (!finalDoc?.storage_path || !report?.lab_number) return null;
+  return { storagePath: finalDoc.storage_path, labNumber: report.lab_number };
 }
 
 export interface FinalDocumentSummary {

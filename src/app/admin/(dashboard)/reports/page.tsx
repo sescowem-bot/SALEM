@@ -97,6 +97,7 @@ export default async function ReportsIndexPage({
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Approver</th>
               <th className="px-3 py-2">Report reference</th>
+              <th className="px-3 py-2">Delivery</th>
               <th className="px-3 py-2">Created</th>
               <th className="px-3 py-2" />
             </tr>
@@ -116,6 +117,17 @@ export default async function ReportsIndexPage({
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground">{joined.assigned_approver?.full_name ?? "—"}</td>
                   <td className="px-3 py-2.5 text-muted-foreground">{r.result_reference ?? "—"}</td>
+                  <td className="px-3 py-2.5">
+                    {r.status === "published" && r.access_code_hash ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                        Available to patient
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                        Not yet available
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</td>
                   <td className="px-3 py-2.5 text-right">
                     <Link
@@ -130,7 +142,7 @@ export default async function ReportsIndexPage({
             })}
             {reports.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">
                   No reports match this search.
                 </td>
               </tr>

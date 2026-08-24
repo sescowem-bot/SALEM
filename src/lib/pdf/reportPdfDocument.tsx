@@ -86,6 +86,18 @@ export interface ReportPdfApprovalInfo {
   approverQualification: string | null;
   decidedAt: string;
   signatureDataUri: string | null;
+  /**
+   * True only when the approving staff member has an active signatories
+   * row explicitly linked to them (signatories.staff_profile_id) — see
+   * lib/data/signatories.ts resolveSignatoryForStaff. False means no
+   * Super Admin has linked this approver to an authorized signatory yet;
+   * the document must say so plainly rather than presenting their raw
+   * account name as if it were a verified signatory (troubleshooting §8:
+   * "clearly indicate that the final document cannot receive an
+   * electronic signature yet, rather than silently attaching the wrong
+   * signature").
+   */
+  isAuthorizedSignatory: boolean;
 }
 
 export interface ReportPdfInput {
@@ -160,10 +172,18 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
         )}
 
         <View style={styles.reportTitleRow}>
-          <Text style={styles.reportTitle}>{isFinal ? "Laboratory Report — Approved" : "Laboratory Report — Preview"}</Text>
-          <Text style={[styles.statusBadge, { backgroundColor: badge.bg, color: badge.fg }]}>
-            {report.status.replace("_", " ")}
-          </Text>
+          <Text style={styles.reportTitle}>{isFinal ? "Laboratory Report" : "Laboratory Report — Internal Preview"}</Text>
+          {/* Internal workflow status (draft/reviewed/published/archived) is
+              staff-only context for the live preview. The final document —
+              the one stored in report_final_documents and ultimately
+              downloaded by patients — never surfaces workflow terminology;
+              see the Advanced-6 troubleshooting notes in
+              lib/data/reportDocuments.tsx. */}
+          {!isFinal ? (
+            <Text style={[styles.statusBadge, { backgroundColor: badge.bg, color: badge.fg }]}>
+              {report.status.replace("_", " ")}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.infoGrid}>
@@ -247,7 +267,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
 
         <View style={styles.signatureBlock} wrap={false}>
           <View style={styles.signatureColumn}>
-            {approval ? (
+            {approval && approval.isAuthorizedSignatory ? (
               <>
                 {approval.signatureDataUri ? (
                   // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image, not a DOM <img>
@@ -265,6 +285,13 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
                   </Text>
                 </View>
               </>
+            ) : approval && !approval.isAuthorizedSignatory ? (
+              <View>
+                <Text style={styles.signatureTimestamp}>Approved on {approval.decidedAt}</Text>
+                <Text style={styles.pendingNotice}>
+                  Authorized signatory not yet linked for this approver — contact a Super Admin to complete signature setup.
+                </Text>
+              </View>
             ) : (
               <Text style={styles.pendingNotice}>Pending authorized approval — not yet signed.</Text>
             )}
@@ -273,7 +300,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
 
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
-            {org.orgName} · Lab {report.labNumber} · {isFinal ? "Approved document" : "Preview — not a final document"}
+            {org.orgName} · Lab {report.labNumber} · {isFinal ? "Official laboratory report" : "Internal preview — not a final document"}
           </Text>
           <Text
             style={styles.footerText}

@@ -69,6 +69,9 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   if (can(staff, "audit.view")) {
     administration.push({ href: "/admin/audit", label: "Audit logs" });
   }
+  if (can(staff, "audit.view")) {
+    administration.push({ href: "/admin/notifications", label: "Notifications" });
+  }
   if (can(staff, "documents.manage")) {
     administration.push({ href: "/admin/signatories", label: "Report signatories" });
   }

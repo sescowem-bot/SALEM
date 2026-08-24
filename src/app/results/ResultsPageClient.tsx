@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ShieldCheck, Download, Lock, KeyRound, FileCheck2, Mail, FileText } from "lucide-react";
 import { siteConfig } from "@/data/siteContent";
@@ -46,6 +46,8 @@ function UnlockButton() {
 
 export function ResultsPageClient() {
   const [state, formAction] = useActionState(verifyResultAction, initialState);
+  const [reference, setReference] = useState("");
+  const [code, setCode] = useState("");
 
   return (
     <section className="bg-background py-14 lg:py-20">
@@ -68,12 +70,21 @@ export function ResultsPageClient() {
                       className={fieldClass}
                       placeholder="e.g. SML-XXXX-XXXX"
                       name="reference"
+                      value={reference}
+                      onChange={(e) => setReference(e.target.value)}
                       required
                     />
                   </label>
                   <label className="block text-sm font-medium text-navy-deep">
                     One-time access code
-                    <input className={fieldClass} placeholder="6-digit code" name="code" required />
+                    <input
+                      className={fieldClass}
+                      placeholder="6-digit code"
+                      name="code"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      required
+                    />
                   </label>
                   {state.error ? (
                     <p className="text-sm font-medium text-destructive">{state.error}</p>
@@ -114,7 +125,7 @@ export function ResultsPageClient() {
             </div>
 
             {state.result ? (
-              <ReportPreview result={state.result} />
+              <ReportPreview result={state.result} reference={reference} code={code} />
             ) : (
               <div className="surface-card grid min-h-[420px] place-items-center p-8 text-center">
                 <div className="max-w-sm">
@@ -137,7 +148,37 @@ export function ResultsPageClient() {
   );
 }
 
-function ReportPreview({ result }: { result: PublishedResultDto }) {
+function DownloadPdfButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex shrink-0 items-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02] disabled:opacity-60"
+    >
+      <Download className="h-4 w-4 shrink-0" /> {pending ? "Preparing…" : "Download PDF"}
+    </button>
+  );
+}
+
+/**
+ * Posts to the app-controlled /results/download route (troubleshooting
+ * §6) rather than linking a raw Supabase signed URL — the browser only
+ * ever sees our own domain, and the route re-verifies the reference +
+ * access code from scratch before streaming any bytes. Reference/code are
+ * form fields (not query params), so they never appear in a URL.
+ */
+function DownloadPdfForm({ reference, code }: { reference: string; code: string }) {
+  return (
+    <form action="/results/download" method="POST">
+      <input type="hidden" name="reference" value={reference} />
+      <input type="hidden" name="code" value={code} />
+      <DownloadPdfButton />
+    </form>
+  );
+}
+
+function ReportPreview({ result, reference, code }: { result: PublishedResultDto; reference: string; code: string }) {
   return (
     <article className="surface-card overflow-hidden">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-b border-border bg-secondary p-6 sm:p-8">
@@ -151,6 +192,7 @@ function ReportPreview({ result }: { result: PublishedResultDto }) {
             {result.dateReported ? <> &middot; Reported {result.dateReported}</> : null}
           </p>
         </div>
+        {result.hasFinalPdf ? <DownloadPdfForm reference={reference} code={code} /> : null}
       </div>
 
       <div className="space-y-6 p-6 sm:p-8">

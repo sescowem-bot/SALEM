@@ -77,7 +77,14 @@ export type AuditAction =
   | "FINAL_PDF_GENERATED"
   | "SIGNATORY_CREATED"
   | "SIGNATORY_UPDATED"
-  | "SIGNATURE_UPLOADED";
+  | "SIGNATURE_UPLOADED"
+  // Advanced 6 (Notifications & Patient Result Delivery) — see
+  // supabase/migrations/20260824090002_notifications_audit_actions.sql
+  | "NOTIFICATION_CREATED"
+  | "NOTIFICATION_SENT"
+  | "NOTIFICATION_FAILED"
+  | "PATIENT_RESULT_MADE_AVAILABLE"
+  | "PATIENT_PDF_DOWNLOADED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type ServiceStatus = "draft" | "published" | "archived";
 export type WebsitePageKey = "homepage" | "about" | "contact" | "footer" | "seo";
@@ -833,6 +840,58 @@ export interface Database {
             columns: ["generated_by"];
             isOneToOne: false;
             referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          event_type:
+            | "approval_requested"
+            | "report_approved"
+            | "report_rejected"
+            | "report_returned"
+            | "report_published"
+            | "patient_result_available";
+          recipient_type: "staff" | "patient";
+          recipient_staff_id: string | null;
+          recipient_patient_id: string | null;
+          recipient_email: string | null;
+          lab_report_id: string | null;
+          subject: string;
+          status: "pending" | "sent" | "failed";
+          failure_reason: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+          sent_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notifications"]["Row"]> & {
+          event_type: Database["public"]["Tables"]["notifications"]["Row"]["event_type"];
+          recipient_type: Database["public"]["Tables"]["notifications"]["Row"]["recipient_type"];
+          subject: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "notifications_recipient_staff_id_fkey";
+            columns: ["recipient_staff_id"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_recipient_patient_id_fkey";
+            columns: ["recipient_patient_id"];
+            isOneToOne: false;
+            referencedRelation: "patients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_lab_report_id_fkey";
+            columns: ["lab_report_id"];
+            isOneToOne: false;
+            referencedRelation: "lab_reports";
             referencedColumns: ["id"];
           },
         ];

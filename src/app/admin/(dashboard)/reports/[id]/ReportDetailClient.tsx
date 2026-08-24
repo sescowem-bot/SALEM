@@ -33,6 +33,8 @@ import type { Database } from "@/lib/supabase/database.types";
 import type { ApproverOption } from "@/lib/data/approvals";
 import type { FinalDocumentSummary } from "@/lib/data/reportDocuments";
 import { StatusBadge } from "@/components/salem/StatusBadge";
+import { MailWarning, MailCheck, Clock3 } from "lucide-react";
+import { DirtyFieldsProvider, useDirtyFields } from "./DirtyFieldsContext";
 
 type LabReport = Database["public"]["Tables"]["lab_reports"]["Row"];
 
@@ -54,6 +56,26 @@ interface VersionHistoryRow {
   changed_by: string | null;
   changed_at: string;
 }
+
+interface NotificationRow {
+  id: string;
+  event_type: string;
+  recipient_type: string;
+  recipient_email: string | null;
+  status: string;
+  failure_reason: string | null;
+  created_at: string;
+  sent_at: string | null;
+}
+
+const EVENT_LABEL: Record<string, string> = {
+  approval_requested: "Approver notified",
+  report_approved: "Approval notice",
+  report_rejected: "Rejection notice",
+  report_returned: "Return notice",
+  report_published: "Publish notice",
+  patient_result_available: "Patient result-ready email",
+};
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-navy-deep outline-none transition-colors focus:border-cyan focus:bg-card";
@@ -125,9 +147,19 @@ function FieldRow({
   disabled: boolean;
 }) {
   const [state, action] = useActionState(saveFieldResultAction, initial);
+  const { markDirty, markClean } = useDirtyFields();
+  const dirtyKey = `field-${reportTestId}-${field.id}`;
+
+  useEffect(() => {
+    if (state.ok) markClean(dirtyKey);
+  }, [state.ok, markClean, dirtyKey]);
 
   return (
-    <form action={action} className="grid grid-cols-[1fr_auto] items-end gap-2 sm:grid-cols-[160px_1fr_100px_auto]">
+    <form
+      action={action}
+      onChangeCapture={() => markDirty(dirtyKey)}
+      className="grid grid-cols-[1fr_auto] items-end gap-2 sm:grid-cols-[160px_1fr_100px_auto]"
+    >
       <input type="hidden" name="reportTestId" value={reportTestId} />
       <input type="hidden" name="testId" value={testId} />
       <input type="hidden" name="templateFieldId" value={field.id} />
@@ -178,10 +210,16 @@ function TableCell({
   value?: string | null;
   disabled: boolean;
 }) {
-  const [, action] = useActionState(saveTableCellAction, initial);
+  const [state, action] = useActionState(saveTableCellAction, initial);
+  const { markDirty, markClean } = useDirtyFields();
+  const dirtyKey = `cell-${reportTestId}-${rowId}-${columnId}`;
+
+  useEffect(() => {
+    if (state.ok) markClean(dirtyKey);
+  }, [state.ok, markClean, dirtyKey]);
 
   return (
-    <form action={action} className="flex items-center gap-1">
+    <form action={action} onChangeCapture={() => markDirty(dirtyKey)} className="flex items-center gap-1">
       <input type="hidden" name="reportTestId" value={reportTestId} />
       <input type="hidden" name="templateTableRowId" value={rowId} />
       <input type="hidden" name="templateTableColumnId" value={columnId} />
@@ -224,16 +262,18 @@ function WorkflowSubmit({
   label,
   icon: Icon,
   variant,
+  disabled,
 }: {
   label: string;
   icon: typeof Send;
   variant: "primary" | "secondary";
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       className={
         variant === "primary"
           ? "inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02] disabled:opacity-60"
@@ -284,11 +324,23 @@ function ApproverSelect({
 }) {
   const [state, action] = useActionState(submitForApprovalAction, initial);
   const [approverId, setApproverId] = useState("");
+  const { dirtyCount } = useDirtyFields();
 
   if (approvers.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         No active approver accounts are available right now. Ask a super admin to enable one before submitting.
+      </p>
+    );
+  }
+
+  const selectedApprover = approvers.find((a) => a.id === approverId);
+
+  if (state.ok && selectedApprover) {
+    return (
+      <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        Report saved and submitted to {selectedApprover.full_name} for approval.
       </p>
     );
   }
@@ -315,7 +367,13 @@ function ApproverSelect({
           </option>
         ))}
       </select>
-      <WorkflowSubmit label="Submit for approval" icon={Send} variant="primary" />
+      {dirtyCount > 0 ? (
+        <p className="max-w-xs text-xs font-medium text-amber-700">
+          You have {dirtyCount} unsaved result field{dirtyCount === 1 ? "" : "s"} above. Save {dirtyCount === 1 ? "it" : "them"}{" "}
+          before submitting for approval, so the approver reviews your latest entries.
+        </p>
+      ) : null}
+      <WorkflowSubmit label="Submit for approval" icon={Send} variant="primary" disabled={dirtyCount > 0} />
       {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
     </form>
   );
@@ -447,6 +505,7 @@ export function ReportDetailClient({
   approvalHistory,
   versionHistory,
   finalDocument,
+  notifications,
 }: {
   report: LabReport;
   tests: ReportTestViewModel[];
@@ -459,13 +518,15 @@ export function ReportDetailClient({
   approvalHistory: ApprovalHistoryRow[];
   versionHistory: VersionHistoryRow[];
   finalDocument: FinalDocumentSummary | null;
+  notifications: NotificationRow[];
 }) {
   const canSubmit = canEdit && report.status === "draft" && !report.submitted_for_review;
   const pendingApprover =
     approvalHistory.find((h) => h.status === "pending")?.assigned_approver?.full_name ?? null;
 
   return (
-    <div className="space-y-6">
+    <DirtyFieldsProvider>
+      <div className="space-y-6">
       <section className="surface-card flex flex-wrap items-center justify-between gap-3 p-5">
         <div>
           <h2 className="text-sm font-semibold text-navy-deep">Document</h2>
@@ -485,15 +546,62 @@ export function ReportDetailClient({
           </Link>
           {finalDocument ? (
             <a
-              href={finalDocument.signedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`/admin/reports/${report.id}/download`}
               className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft"
             >
               <Download className="h-3.5 w-3.5" /> Download final PDF
             </a>
           ) : null}
         </div>
+      </section>
+
+      <section className="surface-card p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-navy-deep">Delivery</h2>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+              report.status === "published" && report.access_code_hash
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            {report.status === "published" && report.access_code_hash
+              ? `Available to patient since ${report.published_at ? new Date(report.published_at).toLocaleString() : "publication"}`
+              : "Not yet available to patient"}
+          </span>
+        </div>
+
+        {notifications.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No notifications recorded for this report yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {notifications.map((n) => (
+              <li key={n.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
+                <div className="flex items-center gap-2">
+                  {n.status === "sent" ? (
+                    <MailCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                  ) : n.status === "failed" ? (
+                    <MailWarning className="h-3.5 w-3.5 shrink-0 text-destructive" />
+                  ) : (
+                    <Clock3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="font-medium text-navy-deep">{EVENT_LABEL[n.event_type] ?? n.event_type}</span>
+                  <span className="text-muted-foreground">
+                    &middot; {n.recipient_type === "patient" ? "Patient" : "Staff"}
+                    {n.recipient_email ? ` (${n.recipient_email})` : " (no email on file)"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="capitalize">{n.status}</span>
+                  <span>{new Date(n.sent_at ?? n.created_at).toLocaleString()}</span>
+                  {n.status === "failed" && n.failure_reason ? (
+                    <span className="text-destructive">— {n.failure_reason}</span>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {tests.map((t) => (
@@ -601,7 +709,8 @@ export function ReportDetailClient({
       </section>
 
       <StatusHistoryPanel approvalHistory={approvalHistory} versionHistory={versionHistory} />
-    </div>
+      </div>
+    </DirtyFieldsProvider>
   );
 }
 

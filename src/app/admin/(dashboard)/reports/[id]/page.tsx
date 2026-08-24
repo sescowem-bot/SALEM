@@ -9,6 +9,7 @@ import { getTestWithStructure, type TestWithStructure } from "@/lib/data/testCat
 import { getSignedReportPdfUrl } from "@/lib/data/storage";
 import { listApprovers, getActiveApprovalRequest, getApprovalHistory } from "@/lib/data/approvals";
 import { getLatestFinalDocument } from "@/lib/data/reportDocuments";
+import { listReportNotifications } from "@/lib/data/notifications";
 import { ReportDetailClient } from "./ReportDetailClient";
 
 export const metadata: Metadata = {
@@ -98,12 +99,13 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   const canReturnReviewed = can(staff, "reports.review") && report.status === "reviewed";
   const canPublish = can(staff, "reports.publish") && report.status === "reviewed";
 
-  const [approvers, activeApprovalRequest, approvalHistory, versionHistory, finalDocument] = await Promise.all([
+  const [approvers, activeApprovalRequest, approvalHistory, versionHistory, finalDocument, notifications] = await Promise.all([
     canEdit ? listApprovers() : Promise.resolve([]),
     canDecideApproval || report.submitted_for_review ? getActiveApprovalRequest(report.id) : Promise.resolve(null),
     getApprovalHistory(report.id),
     getReportVersionHistory(report.id),
     getLatestFinalDocument(report.id, staff.role),
+    listReportNotifications(report.id, staff.role),
   ]);
 
   return (
@@ -130,6 +132,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         approvalHistory={approvalHistory}
         versionHistory={versionHistory}
         finalDocument={finalDocument}
+        notifications={notifications}
       />
     </AdminShell>
   );

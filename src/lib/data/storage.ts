@@ -87,6 +87,22 @@ export async function uploadFinalReportPdf(input: {
 }
 
 /**
+ * Server-only. Downloads the PDF bytes directly into memory, for a
+ * server-controlled download route (troubleshooting §6) to stream with a
+ * professional Content-Disposition filename — never a Supabase-domain
+ * signed URL exposed directly to the browser's address bar/download UI.
+ * Caller must already have verified the requester is authorized (staff
+ * reports.view, or a successfully-verified patient access-code check) —
+ * same authorization contract as getSignedReportPdfUrl below.
+ */
+export async function downloadReportPdfBytes(storagePath: string): Promise<Buffer> {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase.storage.from(BUCKET).download(storagePath);
+  if (error) throw error;
+  return Buffer.from(await data.arrayBuffer());
+}
+
+/**
  * Server-only. Generates a short-lived signed URL — never a public URL.
  * Caller must already have verified the requester is authorized to see this
  * report (staff with reports.view, or a successfully-verified patient

@@ -5,6 +5,7 @@ import { getReferenceRangesForField } from "./testCatalog";
 import { generateResultReference, generateAccessCode } from "./security";
 import { hasPermission, permissionForReportTransition, type StaffRole } from "@/lib/auth/permissions";
 import { logAudit } from "./audit";
+import { dispatchReportNotification } from "./notifications";
 
 type LabReport = Database["public"]["Tables"]["lab_reports"]["Row"];
 type LabReportInsert = Database["public"]["Tables"]["lab_reports"]["Insert"];
@@ -283,7 +284,7 @@ export async function returnForCorrection(
   if (current.status === "reviewed") {
     await transitionReportStatus(labReportId, "draft", actorId, actorRole, comment);
   } else if (current.status === "draft") {
-    const { error } = await supabase
+    const { data: reportRow, error } = await supabase
       .from("lab_reports")
       .update({
         submitted_for_review: false,
@@ -291,7 +292,9 @@ export async function returnForCorrection(
         last_modified_by: actorId ?? null,
         last_modified_at: new Date().toISOString(),
       })
-      .eq("id", labReportId);
+      .eq("id", labReportId)
+      .select("created_by")
+      .single();
     if (error) throw error;
 
     await logAudit({
@@ -302,6 +305,17 @@ export async function returnForCorrection(
       actorRole,
       metadata: { comment },
     });
+
+    // Advanced 6 §1 event E.
+    if (reportRow.created_by) {
+      dispatchReportNotification({
+        eventType: "report_returned",
+        labReportId,
+        recipientType: "staff",
+        recipientStaffId: reportRow.created_by,
+        comment,
+      }).catch((err) => console.error("[labReports] report_returned notification failed", labReportId, err));
+    }
   } else {
     throw new Error(`Cannot return a report with status "${current.status}" for correction.`);
   }
@@ -328,6 +342,28 @@ export async function publishReport(
     const supabase = getServiceRoleClient();
     const { error } = await supabase.from("lab_reports").update({ access_code_hash: hash }).eq("id", labReportId);
     if (error) throw error;
+
+    // Advanced 6 §1 events F/G — the report is now genuinely
+    // patient-visible (published status + an access code exists). Only
+    // fires on the transition that actually provisions the access code —
+    // transitionReportStatus above already rejects a second call once a
+    // report is "published" (its only outgoing transition is "archived"),
+    // so in practice this always runs exactly once per report.
+    await logAudit({
+      action: "PATIENT_RESULT_MADE_AVAILABLE",
+      entityType: "lab_reports",
+      entityId: labReportId,
+      actorId,
+      actorRole,
+      metadata: { resultReference: report.result_reference },
+    });
+
+    dispatchReportNotification({
+      eventType: "patient_result_available",
+      labReportId,
+      recipientType: "patient",
+      recipientPatientId: report.patient_id,
+    }).catch((err) => console.error("[labReports] patient_result_available notification failed", labReportId, err));
   }
 
   return { report, accessCodePlaintext };
@@ -468,6 +504,19 @@ export async function transitionReportStatus(
       actorRole,
       metadata: { comment },
     });
+
+    // Advanced 6 §1 event E — covers the reviewed -> draft return path
+    // (returnForCorrection's other branch, still-draft, has its own
+    // identical dispatch right after its own RESULT_RETURNED log above).
+    if (updated.created_by) {
+      dispatchReportNotification({
+        eventType: "report_returned",
+        labReportId,
+        recipientType: "staff",
+        recipientStaffId: updated.created_by,
+        comment,
+      }).catch((err) => console.error("[labReports] report_returned notification failed", labReportId, err));
+    }
   }
 
   return updated;
@@ -713,7 +762,7 @@ export async function listAllReports(
   let query = supabase
     .from("lab_reports")
     .select(
-      "id, lab_number, patient_name_snapshot, status, submitted_for_review, result_reference, created_at, reviewed_at, published_at, assigned_approver:staff_profiles!lab_reports_assigned_approver_id_fkey(full_name)"
+      "id, lab_number, patient_name_snapshot, status, submitted_for_review, result_reference, access_code_hash, created_at, reviewed_at, published_at, assigned_approver:staff_profiles!lab_reports_assigned_approver_id_fkey(full_name)"
     )
     .order("created_at", { ascending: false })
     .limit(200);
