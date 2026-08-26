@@ -90,6 +90,27 @@ export function SettingsEditorForm({ row }: { row: SiteSettingsRow }) {
         <Field label="Copyright text" name="copyrightText" defaultValue={row.copyright_text ?? ""} placeholder="Salem Medical Laboratories. All rights reserved." full />
       </Section>
 
+      <Section title="Patient delivery" description="Controls the automatic email sent when a report is published.">
+        <label className="flex items-start gap-3 sm:col-span-2">
+          <input
+            type="checkbox"
+            name="patientEmailIncludesAccessCode"
+            value="true"
+            defaultChecked={row.patient_email_includes_access_code}
+            className="mt-0.5 h-4 w-4 rounded border-border text-navy focus:ring-cyan"
+          />
+          <span className="text-sm text-navy-deep">
+            Include the one-time access code in the automatic &quot;result ready&quot; email
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Off by default: keeping the access code out of email keeps it on a separate delivery channel from the
+              Lab Reference Number, so a compromised inbox alone can&apos;t unlock a result. Turning this on puts
+              both in the same email. You can still send the code to an individual patient manually — by email or
+              WhatsApp — from that report&apos;s page regardless of this setting.
+            </span>
+          </span>
+        </label>
+      </Section>
+
       {state.error ? <p className="surface-card p-4 text-sm text-destructive">{state.error}</p> : null}
       <div className="flex items-center gap-3">
         <SaveBar />

@@ -220,6 +220,7 @@ export const siteSettingsSchema = z.object({
   socialLinkedin: z.string().trim().url().optional().or(z.literal("")),
   socialTwitter: z.string().trim().url().optional().or(z.literal("")),
   socialYoutube: z.string().trim().url().optional().or(z.literal("")),
+  patientEmailIncludesAccessCode: z.enum(["true", "false"]).default("false"),
 });
 
 const optionalUrlOrPath = z

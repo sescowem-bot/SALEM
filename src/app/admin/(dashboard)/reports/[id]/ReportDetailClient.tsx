@@ -15,6 +15,10 @@ import {
   History,
   Eye,
   Download,
+  Copy,
+  KeyRound,
+  Mail,
+  MessageCircle,
 } from "lucide-react";
 import {
   saveFieldResultAction,
@@ -26,6 +30,9 @@ import {
   returnApprovalRequestAction,
   returnForCorrectionAction,
   publishAction,
+  unlockPublishedReportAction,
+  resetAccessCodeAction,
+  sendAccessCodeAction,
   type ActionState,
 } from "./actions";
 import type { ReportTestViewModel } from "./page";
@@ -285,18 +292,141 @@ function WorkflowSubmit({
   );
 }
 
+/**
+ * Shared by the initial Publish success state and the Reset-access-code
+ * control — same "shown once, copy it now" moment either way, since the
+ * plaintext genuinely will not be retrievable again after this render.
+ */
+function SendAccessCodeSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[0.65rem] font-semibold text-navy hover:border-cyan disabled:opacity-60"
+    >
+      <Mail className="h-3 w-3" /> {pending ? "Sending…" : "Email now"}
+    </button>
+  );
+}
+
+function SendAccessCodeEmailButton({ labReportId, accessCode }: { labReportId: string; accessCode: string }) {
+  const [state, action] = useActionState(sendAccessCodeAction, initial);
+
+  if (state.ok) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-[0.65rem] font-semibold text-emerald-700">
+        <Mail className="h-3 w-3" /> Sent
+      </span>
+    );
+  }
+
+  return (
+    <form action={action}>
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <input type="hidden" name="accessCode" value={accessCode} />
+      <SendAccessCodeSubmit />
+      {state.error ? <p className="mt-1 text-[0.6rem] text-destructive">{state.error}</p> : null}
+    </form>
+  );
+}
+
+function AccessCodeReveal({
+  accessCode,
+  labReference,
+  labReportId,
+  patientPhone,
+}: {
+  accessCode: string;
+  labReference?: string;
+  labReportId: string;
+  patientPhone?: string | null;
+}) {
+  const [copiedField, setCopiedField] = useState<"reference" | "code" | null>(null);
+
+  const copy = (value: string, field: "reference" | "code") => {
+    navigator.clipboard?.writeText(value).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1500);
+    });
+  };
+
+  const whatsAppHref = patientPhone
+    ? `https://wa.me/${patientPhone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(
+        `Your Salem Medical Laboratories result is ready.${labReference ? `\nLab reference: ${labReference}` : ""}\nAccess code: ${accessCode}\nView it at ${
+          typeof window !== "undefined" ? window.location.origin : ""
+        }/results`
+      )}`
+    : null;
+
+  return (
+    <div className="mt-2 w-full max-w-sm rounded-lg border border-cyan/40 bg-accent p-3 text-xs text-navy-deep">
+      <p className="mb-2 flex items-center gap-1.5 font-semibold">
+        <ShieldCheck className="h-4 w-4 shrink-0" /> Shown once — copy both now and deliver to the patient securely
+      </p>
+      {labReference ? (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded border border-cyan/30 bg-card px-2 py-1.5">
+          <div>
+            <p className="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Lab reference</p>
+            <span className="font-mono font-semibold">{labReference}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => copy(labReference, "reference")}
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[0.65rem] font-semibold text-navy hover:border-cyan"
+          >
+            <Copy className="h-3 w-3" /> {copiedField === "reference" ? "Copied" : "Copy"}
+          </button>
+        </div>
+      ) : null}
+      <div className="mb-2 flex items-center justify-between gap-2 rounded border border-cyan/30 bg-card px-2 py-1.5">
+        <div>
+          <p className="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Access code</p>
+          <span className="font-mono font-semibold">{accessCode}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => copy(accessCode, "code")}
+          className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[0.65rem] font-semibold text-navy hover:border-cyan"
+        >
+          <Copy className="h-3 w-3" /> {copiedField === "code" ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <SendAccessCodeEmailButton labReportId={labReportId} accessCode={accessCode} />
+        {whatsAppHref ? (
+          <a
+            href={whatsAppHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-2 py-1 text-[0.65rem] font-semibold text-emerald-700 hover:bg-emerald-50"
+          >
+            <MessageCircle className="h-3 w-3" /> Share via WhatsApp
+          </a>
+        ) : (
+          <span className="text-[0.6rem] text-muted-foreground">No phone on file for WhatsApp</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function WorkflowButton({
   action,
   label,
   icon: Icon,
   labReportId,
   variant = "primary",
+  labReference,
+  patientPhone,
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   label: string;
   icon: typeof Send;
   labReportId: string;
   variant?: "primary" | "secondary";
+  labReference?: string;
+  patientPhone?: string | null;
 }) {
   const [state, formAction] = useActionState(action, initial);
 
@@ -306,11 +436,81 @@ function WorkflowButton({
       <WorkflowSubmit label={label} icon={Icon} variant={variant} />
       {state.error ? <p className="mt-1.5 text-xs text-destructive">{state.error}</p> : null}
       {state.accessCode ? (
-        <p className="mt-2 max-w-xs rounded-lg border border-cyan/40 bg-accent p-3 text-xs text-navy-deep">
-          <ShieldCheck className="mb-1 h-4 w-4" /> {"Patient access code (shown once — deliver securely):"}{" "}
-          <span className="font-mono font-semibold">{state.accessCode}</span>
-        </p>
+        <AccessCodeReveal
+          accessCode={state.accessCode}
+          labReference={labReference}
+          labReportId={labReportId}
+          patientPhone={patientPhone}
+        />
       ) : null}
+    </form>
+  );
+}
+
+/**
+ * Lets an admin/pathologist reissue a published report's access code when
+ * the patient (or the admin themselves) never received or lost the
+ * original — see resetPatientAccessCode in lib/data/labReports.ts for why
+ * this is a reissue, not a lookup: the plaintext was never stored anywhere
+ * after the one-time reveal at publish, by design.
+ */
+function ResetAccessCodeControl({
+  labReportId,
+  labReference,
+  patientPhone,
+}: {
+  labReportId: string;
+  labReference?: string;
+  patientPhone?: string | null;
+}) {
+  const [state, action] = useActionState(resetAccessCodeAction, initial);
+  const [confirming, setConfirming] = useState(false);
+
+  if (state.accessCode) {
+    return (
+      <AccessCodeReveal
+        accessCode={state.accessCode}
+        labReference={labReference}
+        labReportId={labReportId}
+        patientPhone={patientPhone}
+      />
+    );
+  }
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
+      >
+        <KeyRound className="h-3.5 w-3.5" /> Reset access code
+      </button>
+    );
+  }
+
+  return (
+    <form action={action} className="flex shrink-0 flex-col items-end gap-1.5">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <p className="max-w-[200px] text-right text-[0.65rem] text-muted-foreground">
+        The current code stops working immediately. You&apos;ll need to redeliver the new one.
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setConfirming(false)}
+          className="text-[0.65rem] font-semibold text-muted-foreground hover:text-navy"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="inline-flex items-center gap-1.5 rounded-full bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+        >
+          <KeyRound className="h-3.5 w-3.5" /> Confirm reset
+        </button>
+      </div>
+      {state.error ? <p className="text-[0.65rem] text-destructive">{state.error}</p> : null}
     </form>
   );
 }
@@ -500,12 +700,15 @@ export function ReportDetailClient({
   canDecideApproval,
   canReturnReviewed,
   canPublish,
+  canUnlockPublished,
+  canResetAccessCode,
   approvers,
   activeApprovalRequestId,
   approvalHistory,
   versionHistory,
   finalDocument,
   notifications,
+  patientPhone,
 }: {
   report: LabReport;
   tests: ReportTestViewModel[];
@@ -513,12 +716,15 @@ export function ReportDetailClient({
   canDecideApproval: boolean;
   canReturnReviewed: boolean;
   canPublish: boolean;
+  canUnlockPublished: boolean;
+  canResetAccessCode: boolean;
   approvers: ApproverOption[];
   activeApprovalRequestId: string | null;
   approvalHistory: ApprovalHistoryRow[];
   versionHistory: VersionHistoryRow[];
   finalDocument: FinalDocumentSummary | null;
   notifications: NotificationRow[];
+  patientPhone: string | null;
 }) {
   const canSubmit = canEdit && report.status === "draft" && !report.submitted_for_review;
   const pendingApprover =
@@ -570,6 +776,28 @@ export function ReportDetailClient({
               : "Not yet available to patient"}
           </span>
         </div>
+
+        {report.result_reference ? (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-secondary/60 p-3">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                Lab reference number
+              </p>
+              <p className="font-mono text-sm font-semibold text-navy-deep">{report.result_reference}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Safe to re-share — this is what the patient enters on /results alongside their access code. Unlike
+                the access code, it doesn&apos;t change.
+              </p>
+            </div>
+            {canResetAccessCode ? (
+              <ResetAccessCodeControl
+                labReportId={report.id}
+                labReference={report.result_reference ?? undefined}
+                patientPhone={patientPhone}
+              />
+            ) : null}
+          </div>
+        ) : null}
 
         {notifications.length === 0 ? (
           <p className="text-xs text-muted-foreground">No notifications recorded for this report yet.</p>
@@ -696,13 +924,23 @@ export function ReportDetailClient({
         {canReturnReviewed ? <ReturnForCorrectionForm labReportId={report.id} /> : null}
 
         {canPublish ? (
-          <WorkflowButton action={publishAction} label="Publish" icon={ShieldCheck} labReportId={report.id} />
+          <WorkflowButton
+            action={publishAction}
+            label="Publish"
+            icon={ShieldCheck}
+            labReportId={report.id}
+            labReference={report.result_reference ?? undefined}
+            patientPhone={patientPhone}
+          />
         ) : null}
+
+        {canUnlockPublished ? <UnlockPublishedForm labReportId={report.id} /> : null}
 
         {!canEdit &&
         !canDecideApproval &&
         !canReturnReviewed &&
         !canPublish &&
+        !canUnlockPublished &&
         !(report.status === "draft" && report.submitted_for_review) ? (
           <p className="text-sm text-muted-foreground">No further action available for your role on this report.</p>
         ) : null}
@@ -731,6 +969,65 @@ function ReturnForCorrectionForm({ labReportId }: { labReportId: string }) {
       >
         <RotateCcw className="h-4 w-4 shrink-0" /> Return for correction
       </button>
+      {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
+    </form>
+  );
+}
+
+/**
+ * Reopening an already-published report is materially riskier than an
+ * approver's ordinary return-for-correction — the patient may already have
+ * viewed or downloaded this exact result — so unlike ReturnForCorrectionForm
+ * above, the reason is required, and the copy spells out the consequence
+ * (goes back through submit -> approve -> republish) rather than looking
+ * like a routine one-click action.
+ */
+function UnlockPublishedForm({ labReportId }: { labReportId: string }) {
+  const [state, action] = useActionState(unlockPublishedReportAction, initial);
+  const [confirming, setConfirming] = useState(false);
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-400/60 px-5 py-2.5 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-50"
+      >
+        <RotateCcw className="h-4 w-4 shrink-0" /> Unlock for correction
+      </button>
+    );
+  }
+
+  return (
+    <form action={action} className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <p className="text-xs text-amber-900">
+        This report is published and the patient may already have viewed or downloaded it. Reopening moves it back
+        to draft — you&apos;ll need to correct the result, resubmit for approval, and republish before the patient
+        sees the update. Their existing access code will keep working.
+      </p>
+      <textarea
+        name="comment"
+        required
+        placeholder="Reason for reopening this report (required)"
+        rows={2}
+        className="rounded-lg border border-border bg-card px-3 py-2 text-xs outline-none focus:border-cyan"
+      />
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          className="inline-flex w-fit items-center gap-2 rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+        >
+          <RotateCcw className="h-4 w-4 shrink-0" /> Confirm unlock
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirming(false)}
+          className="text-xs font-semibold text-muted-foreground hover:text-navy"
+        >
+          Cancel
+        </button>
+      </div>
       {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
     </form>
   );

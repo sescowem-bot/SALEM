@@ -30,6 +30,7 @@ export interface ResolvedSiteSettings {
   faviconUrl: string | null;
   ogImageUrl: string | null;
   letterheadUrl: string | null;
+  patientEmailIncludesAccessCode: boolean;
   emailPrimary: string;
   emailSecondary: string | null;
   phonePrimary: string;
@@ -74,6 +75,7 @@ function resolve(row: SiteSettingsRow | null): ResolvedSiteSettings {
     faviconUrl: row?.favicon_path ? getSiteMediaPublicUrl(row.favicon_path) : null,
     ogImageUrl: row?.og_image_path ? getSiteMediaPublicUrl(row.og_image_path) : null,
     letterheadUrl: row?.letterhead_path ? getSiteMediaPublicUrl(row.letterhead_path) : null,
+    patientEmailIncludesAccessCode: row?.patient_email_includes_access_code ?? false,
     emailPrimary: row?.email_primary || siteConfig.email.general,
     emailSecondary: row?.email_secondary ?? null,
     phonePrimary: row?.phone_primary || siteConfig.phone.primary,

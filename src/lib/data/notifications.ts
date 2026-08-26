@@ -50,6 +50,20 @@ export async function dispatchReportNotification(input: {
   recipientStaffId?: string;
   recipientPatientId?: string;
   comment?: string | null;
+  /**
+   * ONLY meaningful for "patient_result_available", and only ever the
+   * plaintext generated in the SAME request that's calling this (publish,
+   * or a manual resend from the report screen) — this function itself
+   * never fetches it from anywhere, because there is nowhere to fetch it
+   * from; see the module comment on buildPatientResultAvailableTemplate.
+   * Whether it actually renders into the email is decided just below,
+   * against site_settings.patient_email_includes_access_code — a manual
+   * resend forces it in regardless of that setting, since the admin
+   * triggering a manual resend has already made that call explicitly for
+   * this one message.
+   */
+  accessCodePlaintext?: string | null;
+  forceIncludeAccessCode?: boolean;
 }): Promise<void> {
   const supabase = getServiceRoleClient();
 
@@ -80,7 +94,16 @@ export async function dispatchReportNotification(input: {
     resultReference: report.result_reference,
     patientName: report.patient_name_snapshot,
   };
-  const template = buildTemplate(input.eventType, { report: reportContext, siteSettings, comment: input.comment });
+  const includeAccessCode =
+    input.eventType === "patient_result_available" &&
+    Boolean(input.accessCodePlaintext) &&
+    (input.forceIncludeAccessCode || siteSettings.patientEmailIncludesAccessCode);
+  const template = buildTemplate(input.eventType, {
+    report: reportContext,
+    siteSettings,
+    comment: input.comment,
+    accessCode: includeAccessCode ? input.accessCodePlaintext : null,
+  });
 
   const { data: notification, error: insertError } = await supabase
     .from("notifications")

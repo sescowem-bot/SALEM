@@ -84,7 +84,10 @@ export type AuditAction =
   | "NOTIFICATION_SENT"
   | "NOTIFICATION_FAILED"
   | "PATIENT_RESULT_MADE_AVAILABLE"
-  | "PATIENT_PDF_DOWNLOADED";
+  | "PATIENT_PDF_DOWNLOADED"
+  // Troubleshooting follow-up — see
+  // supabase/migrations/20260825090001_patient_access_code_reset_audit_action.sql
+  | "PATIENT_ACCESS_CODE_RESET";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type ServiceStatus = "draft" | "published" | "archived";
 export type WebsitePageKey = "homepage" | "about" | "contact" | "footer" | "seo";
@@ -694,6 +697,7 @@ export interface Database {
           favicon_path: string | null;
           og_image_path: string | null;
           letterhead_path: string | null;
+          patient_email_includes_access_code: boolean;
           email_primary: string | null;
           email_secondary: string | null;
           phone_primary: string | null;

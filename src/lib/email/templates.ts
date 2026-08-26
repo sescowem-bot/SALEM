@@ -41,6 +41,17 @@ interface TemplateContext {
   report: NotificationReportContext;
   siteSettings: ResolvedSiteSettings;
   comment?: string | null;
+  /**
+   * Only ever set for patient_result_available, and only with the plaintext
+   * access code that was generated in the SAME request (publishReport or a
+   * manual resend) — never re-fetched, because the plaintext is never
+   * stored anywhere after its one-time reveal to staff. Whether this
+   * actually renders into the email depends on
+   * site_settings.patient_email_includes_access_code (see
+   * buildPatientResultAvailableTemplate) — an admin-controlled override of
+   * the default two-factor-separation design (module comment above).
+   */
+  accessCode?: string | null;
 }
 
 function wrap(siteSettings: ResolvedSiteSettings, title: string, bodyHtml: string, bodyText: string): EmailTemplate {
@@ -145,19 +156,35 @@ export function buildReportReturnedTemplate(ctx: TemplateContext): EmailTemplate
 }
 
 export function buildPatientResultAvailableTemplate(ctx: TemplateContext): EmailTemplate {
-  const { report, siteSettings } = ctx;
+  const { report, siteSettings, accessCode } = ctx;
   const appUrl = getAppUrl();
   const title = `Your ${siteSettings.orgName} result is ready`;
   const resultsLink = `${appUrl}/results`;
-  // Deliberately no result values and no access code in this email — see
-  // the module comment above.
+  // Result values are NEVER included, regardless of settings — that line
+  // is not admin-configurable. The access code below is: it only renders
+  // when the caller explicitly passed one, which only happens when
+  // site_settings.patient_email_includes_access_code is on (see
+  // lib/data/notifications.ts) or this was triggered as an explicit manual
+  // resend from the report screen — see the module comment above.
+  const codeHtml = accessCode
+    ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;"><strong>Access code:</strong> <span style="font-family:monospace;font-size:15px;letter-spacing:1px;">${accessCode}</span></p>`
+    : "";
+  const codeText = accessCode ? `\nAccess code: ${accessCode}` : "";
+  const instructionHtml = accessCode
+    ? `<p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:#5b6b85;">Enter your lab reference and the access code above on the results page to view and download your report. Keep this email confidential — it contains everything needed to access your result.</p>`
+    : `<p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:#5b6b85;">Enter your lab reference above together with the one-time access code provided to you to view and download your report.</p>`;
+  const instructionText = accessCode
+    ? "Enter your lab reference and the access code above on the results page to view and download your report. Keep this email confidential."
+    : "Visit the link above and enter your lab reference together with the one-time access code provided to you.";
+
   const bodyHtml = `
     <p style="margin:0 0 12px;font-size:14px;line-height:1.6;">Dear ${report.patientName},</p>
     <p style="margin:0 0 12px;font-size:14px;line-height:1.6;">Your laboratory result is now available for secure viewing and download.</p>
-    <p style="margin:0 0 20px;font-size:14px;line-height:1.6;"><strong>Lab reference:</strong> ${report.resultReference ?? report.labNumber}</p>
+    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;"><strong>Lab reference:</strong> ${report.resultReference ?? report.labNumber}</p>
+    ${codeHtml}
     <a href="${resultsLink}" style="display:inline-block;background-color:#0f2a52;color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;">View my result</a>
-    <p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:#5b6b85;">Enter your lab reference above together with the one-time access code provided to you to view and download your report.</p>
+    ${instructionHtml}
   `;
-  const bodyText = `Dear ${report.patientName},\n\nYour laboratory result is now available for secure viewing and download.\n\nLab reference: ${report.resultReference ?? report.labNumber}\n\nVisit ${resultsLink} and enter your lab reference together with the one-time access code provided to you.`;
+  const bodyText = `Dear ${report.patientName},\n\nYour laboratory result is now available for secure viewing and download.\n\nLab reference: ${report.resultReference ?? report.labNumber}${codeText}\n\nVisit ${resultsLink} — ${instructionText}`;
   return wrap(siteSettings, title, bodyHtml, bodyText);
 }

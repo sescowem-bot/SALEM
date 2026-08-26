@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database, ReportStatus } from "@/lib/supabase/database.types";
 import { getReferenceRangesForField } from "./testCatalog";
-import { generateResultReference, generateAccessCode } from "./security";
+import { generateResultReference, generateAccessCode, verifyAccessCode } from "./security";
 import { hasPermission, permissionForReportTransition, type StaffRole } from "@/lib/auth/permissions";
 import { logAudit } from "./audit";
 import { dispatchReportNotification } from "./notifications";
@@ -363,6 +363,7 @@ export async function publishReport(
       labReportId,
       recipientType: "patient",
       recipientPatientId: report.patient_id,
+      accessCodePlaintext: plaintext,
     }).catch((err) => console.error("[labReports] patient_result_available notification failed", labReportId, err));
   }
 
@@ -376,7 +377,7 @@ export async function publishReport(
 const ALLOWED_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
   draft: ["reviewed"],
   reviewed: ["draft", "published"],
-  published: ["archived"], // further edits to a published report go through amendReport(), not this
+  published: ["archived", "draft"], // "draft" here = an authorized unlock-for-correction (see unlockPublishedReportForCorrection), not the reviewed->draft "return for correction" path
   archived: [],
 };
 
@@ -496,19 +497,34 @@ export async function transitionReportStatus(
       metadata: { resultReference: updated.result_reference },
     });
   } else if (toStatus === "draft") {
+    // currentStatus distinguishes two very different real-world events that
+    // both happen to land the report back in "draft": an approver sending a
+    // report back before it was ever published (reviewed -> draft, the
+    // original "return for correction"), versus a Super Admin/pathologist
+    // reopening an ALREADY-published report to fix a mistake in a result
+    // the patient may already have seen (published -> draft, "unlock for
+    // correction" — see unlockPublishedReportForCorrection below). The
+    // second is a materially different, more sensitive event and must not
+    // be logged or announced as if it were the first.
+    const isUnlockFromPublished = currentStatus === "published";
+
     await logAudit({
-      action: "RESULT_RETURNED",
+      action: isUnlockFromPublished ? "RESULT_AMENDED" : "RESULT_RETURNED",
       entityType: "lab_reports",
       entityId: labReportId,
       actorId,
       actorRole,
-      metadata: { comment },
+      metadata: { comment, previousStatus: currentStatus },
     });
 
-    // Advanced 6 §1 event E — covers the reviewed -> draft return path
+    // Advanced 6 §1 event E — only for the reviewed -> draft return path
     // (returnForCorrection's other branch, still-draft, has its own
     // identical dispatch right after its own RESULT_RETURNED log above).
-    if (updated.created_by) {
+    // Deliberately NOT fired for an unlock-from-published: that's an
+    // internal correction initiated by an admin/pathologist, not an
+    // approver sending work back to its author, and "report_returned"'s
+    // wording ("was sent back for correction") would misrepresent it.
+    if (!isUnlockFromPublished && updated.created_by) {
       dispatchReportNotification({
         eventType: "report_returned",
         labReportId,
@@ -523,42 +539,170 @@ export async function transitionReportStatus(
 }
 
 /**
- * The only way to change a published report's content. Never overwrites in
- * place — it snapshots the current state as a version first (Phase 2B rules
- * #7-8), then the caller applies changes via setFieldResult/setTableCellResult
- * as normal, and finally calls this again (or transitionReportStatus) to
- * record the amendment.
+ * The only way to reopen an already-published report for editing.
+ *
+ * A published report is deliberately locked — assertReportIsEditable()
+ * below rejects every field/table-cell save while status is "published" or
+ * "archived", specifically so nothing can silently change a result the
+ * patient may already have downloaded. This function is the explicit,
+ * audited escape hatch: it moves the report back to "draft" (reusing the
+ * existing transitionReportStatus machinery, which snapshots the current
+ * state as a new report_versions row and logs RESULT_AMENDED — see the
+ * isUnlockFromPublished branch there), which is what actually lifts the
+ * assertReportIsEditable block. From there, staff edit fields exactly like
+ * any other draft, then resubmit -> re-approve -> re-publish as normal.
+ *
+ * Deliberately does NOT touch access_code_hash or result_reference —
+ * publishReport() only generates those when they don't already exist, so
+ * the patient's existing reference + access code keep working unchanged;
+ * they'll simply see the corrected result once the report is republished.
+ * The final PDF the patient may have already downloaded stays exactly as
+ * it was (report_final_documents is keyed by version_number and is never
+ * overwritten) — re-approval produces a NEW final PDF at the new version,
+ * it does not replace the old one's stored file.
+ *
+ * "archived" reports are deliberately out of scope here — reopening a
+ * report that was already superseded/closed out is a bigger decision than
+ * "fix a mistake shortly after publishing" and isn't supported yet.
  */
-export async function recordAmendment(labReportId: string, actorRole: StaffRole, actorId?: string) {
+export async function unlockPublishedReportForCorrection(
+  labReportId: string,
+  actorRole: StaffRole,
+  actorId?: string,
+  reason?: string
+): Promise<LabReport> {
   if (!hasPermission(actorRole, "reports.review")) {
-    throw new Error(`Forbidden: role "${actorRole}" cannot amend a published report.`);
+    throw new Error(`Forbidden: role "${actorRole}" cannot unlock a published report for correction.`);
   }
 
   const supabase = getServiceRoleClient();
   const { data: current, error } = await supabase
     .from("lab_reports")
-    .select("*")
+    .select("status")
     .eq("id", labReportId)
     .single();
-
   if (error) throw error;
 
-  if (current.status !== "published" && current.status !== "archived") {
-    throw new Error("recordAmendment is only for published or archived reports.");
+  if (current.status !== "published") {
+    throw new Error(`Only a published report can be unlocked for correction (current status: "${current.status}").`);
   }
 
-  const nextVersionNumber = current.current_version_number + 1;
+  return transitionReportStatus(labReportId, "draft", actorId, actorRole, reason);
+}
 
-  await supabase
+/**
+ * Reissues a published report's patient access code. The old code is
+ * hashed-only (generateAccessCode in lib/data/security.ts never persists
+ * the plaintext, by design — same posture as a password) so a lost or
+ * never-received code cannot be looked up or redisplayed, only replaced.
+ * The old code stops working the instant this runs — there is no grace
+ * period, so this should only be used once the admin is ready to actually
+ * redeliver the new one to the patient.
+ *
+ * Does NOT touch result_reference (the Lab Reference Number) — that stays
+ * stable for the life of the report; only the access code half of the pair
+ * changes. Does NOT email the new code (consistent with
+ * lib/email/templates.ts buildPatientResultAvailableTemplate's deliberate
+ * choice to never put the code in an email) — the admin sees it once on
+ * screen here and is responsible for delivering it out-of-band, same as
+ * the original publish flow.
+ */
+export async function resetPatientAccessCode(
+  labReportId: string,
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<{ report: LabReport; accessCodePlaintext: string }> {
+  if (!hasPermission(actorRole, "reports.publish")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot reset a patient access code.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data: current, error: fetchError } = await supabase
     .from("lab_reports")
-    .update({
-      current_version_number: nextVersionNumber,
-      last_modified_by: actorId ?? null,
-      last_modified_at: new Date().toISOString(),
-    })
-    .eq("id", labReportId);
+    .select("status")
+    .eq("id", labReportId)
+    .single();
+  if (fetchError) throw fetchError;
 
-  await writeVersionSnapshot(labReportId, nextVersionNumber, "amended", actorId);
+  if (current.status !== "published") {
+    throw new Error(`Only a published report has a patient access code to reset (current status: "${current.status}").`);
+  }
+
+  const { plaintext, hash } = generateAccessCode();
+
+  const { data: report, error: updateError } = await supabase
+    .from("lab_reports")
+    .update({ access_code_hash: hash })
+    .eq("id", labReportId)
+    .select()
+    .single();
+  if (updateError) throw updateError;
+
+  await logAudit({
+    action: "PATIENT_ACCESS_CODE_RESET",
+    entityType: "lab_reports",
+    entityId: labReportId,
+    actorId,
+    actorRole,
+  });
+
+  return { report, accessCodePlaintext: plaintext };
+}
+
+/**
+ * Manual "send/resend to patient now" — triggered from the access-code
+ * reveal box right after a publish or a reset, using the plaintext that's
+ * already in the admin's browser at that moment (never re-fetched — see
+ * resetPatientAccessCode above for why that's impossible after the fact).
+ * Always includes the code in this one message, regardless of
+ * site_settings.patient_email_includes_access_code — that setting governs
+ * the AUTOMATIC email only; a manual resend is the admin explicitly
+ * choosing to send it, in the moment, for this one patient.
+ *
+ * Re-verifies the supplied plaintext against the current access_code_hash
+ * before sending anything — protects against a stale code still sitting in
+ * an open browser tab being resent after it was reset elsewhere.
+ */
+export async function sendAccessCodeToPatientNow(
+  labReportId: string,
+  accessCodePlaintext: string,
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<void> {
+  if (!hasPermission(actorRole, "reports.publish")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot send a patient access code.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data: report, error } = await supabase
+    .from("lab_reports")
+    .select("status, access_code_hash, patient_id")
+    .eq("id", labReportId)
+    .single();
+  if (error) throw error;
+
+  if (report.status !== "published" || !report.access_code_hash) {
+    throw new Error("This report has no active access code to send.");
+  }
+  if (!verifyAccessCode(accessCodePlaintext, report.access_code_hash)) {
+    throw new Error("That code is no longer current — it may have been reset. Refresh the page and try again.");
+  }
+
+  await dispatchReportNotification({
+    eventType: "patient_result_available",
+    labReportId,
+    recipientType: "patient",
+    recipientPatientId: report.patient_id,
+    accessCodePlaintext,
+    forceIncludeAccessCode: true,
+  });
+
+  // dispatchReportNotification's own NOTIFICATION_CREATED/SENT/FAILED audit
+  // entries are system-attributed (no actor column on that table) — this
+  // line is what actually attributes the manual trigger to a specific
+  // staff member in the server logs, since a deliberate "send this now"
+  // click is worth being able to trace to who clicked it.
+  console.info(`[labReports] Access code for report ${labReportId} manually resent by staff ${actorId ?? "unknown"}.`);
 }
 
 async function assertReportIsEditable(labReportId: string) {
@@ -573,7 +717,7 @@ async function assertReportIsEditable(labReportId: string) {
 
   if (data.status === "published" || data.status === "archived") {
     throw new Error(
-      "This report is published/archived and cannot be edited directly. Use recordAmendment() first."
+      "This report is published/archived and cannot be edited directly. Use unlockPublishedReportForCorrection() first."
     );
   }
 }

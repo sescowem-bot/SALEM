@@ -139,6 +139,7 @@ export async function updateSiteSettingsAction(_prev: ActionState, formData: For
     social_linkedin: validated.data.socialLinkedin || null,
     social_twitter: validated.data.socialTwitter || null,
     social_youtube: validated.data.socialYoutube || null,
+    patient_email_includes_access_code: validated.data.patientEmailIncludesAccessCode === "true",
   };
 
   try {

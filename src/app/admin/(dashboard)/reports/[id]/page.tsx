@@ -10,6 +10,7 @@ import { getSignedReportPdfUrl } from "@/lib/data/storage";
 import { listApprovers, getActiveApprovalRequest, getApprovalHistory } from "@/lib/data/approvals";
 import { getLatestFinalDocument } from "@/lib/data/reportDocuments";
 import { listReportNotifications } from "@/lib/data/notifications";
+import { getPatientById } from "@/lib/data/patients";
 import { ReportDetailClient } from "./ReportDetailClient";
 
 export const metadata: Metadata = {
@@ -98,15 +99,20 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     can(staff, "reports.review") && report.status === "draft" && report.submitted_for_review;
   const canReturnReviewed = can(staff, "reports.review") && report.status === "reviewed";
   const canPublish = can(staff, "reports.publish") && report.status === "reviewed";
+  const canUnlockPublished = can(staff, "reports.review") && report.status === "published";
+  const canResetAccessCode =
+    can(staff, "reports.publish") && report.status === "published" && Boolean(report.access_code_hash);
 
-  const [approvers, activeApprovalRequest, approvalHistory, versionHistory, finalDocument, notifications] = await Promise.all([
-    canEdit ? listApprovers() : Promise.resolve([]),
-    canDecideApproval || report.submitted_for_review ? getActiveApprovalRequest(report.id) : Promise.resolve(null),
-    getApprovalHistory(report.id),
-    getReportVersionHistory(report.id),
-    getLatestFinalDocument(report.id, staff.role),
-    listReportNotifications(report.id, staff.role),
-  ]);
+  const [approvers, activeApprovalRequest, approvalHistory, versionHistory, finalDocument, notifications, patient] =
+    await Promise.all([
+      canEdit ? listApprovers() : Promise.resolve([]),
+      canDecideApproval || report.submitted_for_review ? getActiveApprovalRequest(report.id) : Promise.resolve(null),
+      getApprovalHistory(report.id),
+      getReportVersionHistory(report.id),
+      getLatestFinalDocument(report.id, staff.role),
+      listReportNotifications(report.id, staff.role),
+      report.patient_id ? getPatientById(report.patient_id) : Promise.resolve(null),
+    ]);
 
   return (
     <AdminShell
@@ -127,12 +133,15 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         canDecideApproval={canDecideApproval}
         canReturnReviewed={canReturnReviewed}
         canPublish={canPublish}
+        canUnlockPublished={canUnlockPublished}
+        canResetAccessCode={canResetAccessCode}
         approvers={approvers}
         activeApprovalRequestId={activeApprovalRequest?.id ?? null}
         approvalHistory={approvalHistory}
         versionHistory={versionHistory}
         finalDocument={finalDocument}
         notifications={notifications}
+        patientPhone={patient?.phone ?? null}
       />
     </AdminShell>
   );

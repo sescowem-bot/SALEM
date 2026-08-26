@@ -2,7 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
-import { setFieldResult, setTableCellResult, returnForCorrection, publishReport } from "@/lib/data/labReports";
+import {
+  setFieldResult,
+  setTableCellResult,
+  returnForCorrection,
+  publishReport,
+  unlockPublishedReportForCorrection,
+  resetPatientAccessCode,
+  sendAccessCodeToPatientNow,
+} from "@/lib/data/labReports";
 import {
   submitReportForApproval,
   approveApprovalRequest,
@@ -258,4 +266,72 @@ export async function publishAction(_prev: ActionState, formData: FormData): Pro
   } catch (err) {
     return { error: friendlyError(err) };
   }
+}
+
+/**
+ * Reopens an already-published report for correction — see
+ * unlockPublishedReportForCorrection in lib/data/labReports.ts for the full
+ * rationale. A "reason" is required (not optional like a return-for-
+ * correction comment) since this is a more consequential action worth a
+ * paper trail explaining why an already-issued result is being reopened.
+ */
+export async function unlockPublishedReportAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const parsed = reportTransitionSchema.safeParse({
+    labReportId: formData.get("labReportId"),
+    comment: formData.get("comment") || "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid report." };
+  if (!parsed.data.comment) return { error: "Please state the reason for reopening this report." };
+
+  try {
+    await unlockPublishedReportForCorrection(parsed.data.labReportId, staff.role, staff.userId, parsed.data.comment);
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
+  revalidatePath("/admin/reports");
+  return { ok: true };
+}
+
+/**
+ * Reissues the patient access code for an already-published report. See
+ * resetPatientAccessCode in lib/data/labReports.ts — the old code is
+ * unrecoverable (only ever stored as a hash), so this is the only way to
+ * help a patient (or an admin) who lost it.
+ */
+export async function resetAccessCodeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const parsed = reportTransitionSchema.safeParse({ labReportId: formData.get("labReportId") });
+  if (!parsed.success) return { error: "Invalid report." };
+
+  try {
+    const { accessCodePlaintext } = await resetPatientAccessCode(parsed.data.labReportId, staff.role, staff.userId);
+    revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
+    return { ok: true, accessCode: accessCodePlaintext };
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+}
+
+/**
+ * Manual "send/resend now" — only callable with the exact code the admin
+ * is currently looking at in the reveal box (see sendAccessCodeToPatientNow
+ * in lib/data/labReports.ts, which re-verifies it against the stored hash
+ * before sending anything).
+ */
+export async function sendAccessCodeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const labReportId = String(formData.get("labReportId") ?? "");
+  const accessCode = String(formData.get("accessCode") ?? "");
+  if (!labReportId || !accessCode) return { error: "Missing report or access code." };
+
+  try {
+    await sendAccessCodeToPatientNow(labReportId, accessCode, staff.role, staff.userId);
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  return { ok: true };
 }
