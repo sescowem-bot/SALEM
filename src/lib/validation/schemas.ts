@@ -168,6 +168,54 @@ export const contactStatusSchema = z.object({
   status: z.enum(["new", "contacted", "scheduled", "completed", "cancelled"]),
 });
 
+// ---------------------------------------------------------------------------
+// Advanced 7 — Dynamic Lab Result & Report Builder
+// ---------------------------------------------------------------------------
+
+/** Adding an existing catalogue investigation to an already-created report. */
+export const addExistingTestSchema = z.object({
+  labReportId: z.string().uuid(),
+  testId: z.string().uuid("Choose an investigation"),
+});
+
+export const removeReportTestSchema = z.object({
+  labReportId: z.string().uuid(),
+  reportTestId: z.string().uuid(),
+});
+
+export const reorderReportTestSchema = z.object({
+  labReportId: z.string().uuid(),
+  reportTestId: z.string().uuid(),
+  direction: z.enum(["up", "down"]),
+});
+
+const customInvestigationFieldSchema = z.object({
+  label: z.string().trim().min(1, "Every parameter needs a name").max(200),
+  inputType: z.enum(["numeric", "text"]),
+  unit: z.string().trim().max(50).optional().or(z.literal("")),
+  referenceRange: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
+/**
+ * A custom investigation is either field_based (one or more named
+ * parameters, each with its own unit/reference range/flag — reuses
+ * test_templates + template_fields, same as a catalogue field-based test)
+ * or table_based (columns × rows, same as e.g. Widal — reuses
+ * template_table_columns + template_table_rows). Exactly one of
+ * fields/(columns+rows) is meaningful depending on structureType; the
+ * server action only reads the pair it needs.
+ */
+export const customInvestigationSchema = z.object({
+  labReportId: z.string().uuid(),
+  categoryId: z.string().uuid("Choose a category"),
+  name: z.string().trim().min(2, "Investigation name is required").max(200),
+  structureType: z.enum(["field_based", "table_based"]),
+  comment: z.string().trim().max(500).optional().or(z.literal("")),
+  fields: z.array(customInvestigationFieldSchema).max(30).optional().default([]),
+  columns: z.array(z.string().trim().min(1).max(100)).max(20).optional().default([]),
+  rows: z.array(z.string().trim().min(1).max(200)).max(50).optional().default([]),
+});
+
 export const serviceEditorSchema = z.object({
   testId: z.string().uuid().optional(),
   name: z.string().trim().min(2, "Service name is required").max(200),

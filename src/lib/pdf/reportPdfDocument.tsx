@@ -234,7 +234,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
             ) : (
               <View style={styles.table}>
                 <View style={styles.tableHeaderRow}>
-                  <Text style={[styles.th, { width: "28%" }]}>Antigen</Text>
+                  <Text style={[styles.th, { width: "28%" }]}>Parameter</Text>
                   {t.tableColumns.map((c) => (
                     <Text key={c} style={[styles.th, { width: `${72 / Math.max(t.tableColumns.length, 1)}%` }]}>
                       {c}

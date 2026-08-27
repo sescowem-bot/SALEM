@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database, ReportStatus } from "@/lib/supabase/database.types";
 import { getReferenceRangesForField } from "./testCatalog";
@@ -6,6 +7,7 @@ import { generateResultReference, generateAccessCode, verifyAccessCode } from ".
 import { hasPermission, permissionForReportTransition, type StaffRole } from "@/lib/auth/permissions";
 import { logAudit } from "./audit";
 import { dispatchReportNotification } from "./notifications";
+import { slugify } from "@/lib/utils/slug";
 
 type LabReport = Database["public"]["Tables"]["lab_reports"]["Row"];
 type LabReportInsert = Database["public"]["Tables"]["lab_reports"]["Insert"];
@@ -98,16 +100,39 @@ export async function addTestToReport(
   await assertReportIsEditable(labReportId);
 
   const supabase = getServiceRoleClient();
+
+  const { data: existing } = await supabase
+    .from("report_tests")
+    .select("id")
+    .eq("lab_report_id", labReportId)
+    .eq("test_id", testId)
+    .maybeSingle();
+  if (existing) {
+    throw new Error("That investigation is already on this report.");
+  }
+
+  // Append at the end — sort_order already existed on report_tests for
+  // reordering (see reorderReportTest below), but this insert never set it,
+  // so every test added this way landed at sort_order 0. Fixing that here
+  // is what makes "add investigation" + "reorder" behave sensibly together.
+  const { data: maxSort } = await supabase
+    .from("report_tests")
+    .select("sort_order")
+    .eq("lab_report_id", labReportId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("report_tests")
-    .insert({ lab_report_id: labReportId, test_id: testId, comment })
+    .insert({ lab_report_id: labReportId, test_id: testId, comment, sort_order: (maxSort?.sort_order ?? 0) + 1 })
     .select()
     .single();
 
   if (error) throw error;
 
   await logAudit({
-    action: "RESULT_CREATED",
+    action: "REPORT_TEST_ADDED",
     entityType: "report_tests",
     entityId: data.id,
     actorId,
@@ -116,6 +141,283 @@ export async function addTestToReport(
   });
 
   return data;
+}
+
+/**
+ * Removes one investigation from a report before it's been submitted for
+ * approval/published (assertReportIsEditable enforces this — the same guard
+ * every other draft-editing function in this file already uses). Cascades
+ * to result_field_values / result_table_cells via their existing
+ * `on delete cascade` FKs (Phase 2B), so no separate cleanup is needed here.
+ */
+export async function removeTestFromReport(
+  labReportId: string,
+  reportTestId: string,
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<void> {
+  if (!hasPermission(actorRole, "reports.edit_draft")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot edit a report.`);
+  }
+  await assertReportIsEditable(labReportId);
+
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("report_tests")
+    .delete()
+    .eq("id", reportTestId)
+    .eq("lab_report_id", labReportId)
+    .select("test_id")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error("That investigation is no longer on this report.");
+
+  await logAudit({
+    action: "REPORT_TEST_REMOVED",
+    entityType: "report_tests",
+    entityId: reportTestId,
+    actorId,
+    actorRole,
+    metadata: { labReportId, testId: data.test_id },
+  });
+}
+
+/**
+ * Moves an investigation up/down within its report by swapping sort_order
+ * with its nearest neighbour — same swap pattern as
+ * lib/data/testCatalog.ts reorderService, scoped to one report instead of
+ * one category.
+ */
+export async function reorderReportTest(
+  labReportId: string,
+  reportTestId: string,
+  direction: "up" | "down",
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<void> {
+  if (!hasPermission(actorRole, "reports.edit_draft")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot edit a report.`);
+  }
+  await assertReportIsEditable(labReportId);
+
+  const supabase = getServiceRoleClient();
+  const { data: siblings, error } = await supabase
+    .from("report_tests")
+    .select("id, sort_order")
+    .eq("lab_report_id", labReportId)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+
+  const list = siblings ?? [];
+  const index = list.findIndex((s) => s.id === reportTestId);
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (index === -1 || swapIndex < 0 || swapIndex >= list.length) return;
+
+  const current = list[index];
+  const neighbour = list[swapIndex];
+  const [{ error: e1 }, { error: e2 }] = await Promise.all([
+    supabase.from("report_tests").update({ sort_order: neighbour.sort_order }).eq("id", current.id),
+    supabase.from("report_tests").update({ sort_order: current.sort_order }).eq("id", neighbour.id),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+
+  await logAudit({
+    action: "REPORT_TEST_REORDERED",
+    entityType: "report_tests",
+    entityId: reportTestId,
+    actorId,
+    actorRole,
+    metadata: { labReportId, reordered: direction },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Custom (ad hoc, report-scoped) investigations
+// ---------------------------------------------------------------------------
+
+export interface CustomInvestigationFieldInput {
+  label: string;
+  inputType: "numeric" | "text";
+  unit?: string;
+  referenceRange?: string;
+}
+
+export interface CreateCustomInvestigationInput {
+  labReportId: string;
+  categoryId: string;
+  name: string;
+  structureType: "field_based" | "table_based";
+  comment?: string;
+  fields?: CustomInvestigationFieldInput[]; // used when structureType === "field_based"
+  columns?: string[]; // used when structureType === "table_based"
+  rows?: string[]; // used when structureType === "table_based"
+  actorRole: StaffRole;
+  actorId?: string;
+}
+
+/**
+ * Creates a brand-new investigation — a real `tests` row with its own
+ * `test_templates` (+ `template_fields` or `template_table_columns`/
+ * `template_table_rows`) row(s), exactly the structures a normal catalogue
+ * test uses — then adds it to the report via addTestToReport(). This is
+ * deliberately NOT a separate/duplicate result-storage system (per the
+ * task's instruction to reuse existing structures): once created, a custom
+ * investigation's result is entered, saved, versioned, PDF-rendered and
+ * displayed on /results through the exact same field/table code paths as
+ * any catalogue test — and it's `is_active: true` in a staff-chosen real
+ * category, so it's a genuine, reusable catalogue entry from the moment
+ * it's created, not a hidden one-off. `is_custom` on the `tests` row is
+ * metadata only, marking how it was created for anyone auditing later.
+ *
+ * `tests.name` keeps its normal global-uniqueness constraint (no schema
+ * workaround) — a duplicate name is treated as "you probably want the
+ * investigation that already exists" and reported back as a normal
+ * validation error rather than silently allowed to collide.
+ */
+export async function createCustomInvestigation(input: CreateCustomInvestigationInput): Promise<ReportTest> {
+  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
+    throw new Error(`Forbidden: role "${input.actorRole}" cannot edit a report.`);
+  }
+  await assertReportIsEditable(input.labReportId);
+
+  const name = input.name.trim();
+  if (!name) throw new Error("Investigation name is required.");
+  if (!input.categoryId) throw new Error("Choose a category for this investigation.");
+
+  const fields = (input.fields ?? []).filter((f) => f.label.trim().length > 0);
+  const columns = (input.columns ?? []).map((c) => c.trim()).filter(Boolean);
+  const rows = (input.rows ?? []).map((r) => r.trim()).filter(Boolean);
+
+  if (input.structureType === "field_based" && fields.length === 0) {
+    throw new Error("Add at least one result parameter.");
+  }
+  if (input.structureType === "table_based" && (columns.length === 0 || rows.length === 0)) {
+    throw new Error("A table-style investigation needs at least one column and one row.");
+  }
+
+  const supabase = getServiceRoleClient();
+  const suffix = randomUUID().slice(0, 8);
+
+  // test_templates.name only needs to be unique at the database level and
+  // is never rendered to a user (only the investigation's own `name` is) —
+  // the suffix just guarantees that.
+  const { data: template, error: templateError } = await supabase
+    .from("test_templates")
+    .insert({
+      name: `${name} (custom ${suffix})`,
+      structure_type: input.structureType,
+      is_active: true,
+    })
+    .select()
+    .single();
+  if (templateError) throw templateError;
+
+  let pendingReferenceRanges: { template_field_id: string; range_text: string }[] = [];
+
+  try {
+    if (input.structureType === "field_based") {
+      const fieldRows = fields.map((f, i) => ({
+        template_id: template.id,
+        field_key: `${slugify(f.label) || "param"}-${i}`,
+        label: f.label.trim(),
+        input_type: f.inputType,
+        unit: f.unit?.trim() || null,
+        sort_order: i,
+      }));
+      const { data: insertedFields, error: fieldsError } = await supabase
+        .from("template_fields")
+        .insert(fieldRows)
+        .select();
+      if (fieldsError) throw fieldsError;
+
+      pendingReferenceRanges = (insertedFields ?? [])
+        .map((field, i) => {
+          const rangeText = fields[i]?.referenceRange?.trim();
+          return rangeText ? { template_field_id: field.id, range_text: rangeText } : null;
+        })
+        .filter((v): v is { template_field_id: string; range_text: string } => v !== null);
+    } else {
+      const columnRows = columns.map((label, i) => ({
+        template_id: template.id,
+        column_key: `${slugify(label) || "col"}-${i}`,
+        column_label: label,
+        sort_order: i,
+      }));
+      const { error: colError } = await supabase.from("template_table_columns").insert(columnRows);
+      if (colError) throw colError;
+
+      const rowRows = rows.map((label, i) => ({
+        template_id: template.id,
+        row_key: `${slugify(label) || "row"}-${i}`,
+        row_label: label,
+        sort_order: i,
+      }));
+      const { error: rowError } = await supabase.from("template_table_rows").insert(rowRows);
+      if (rowError) throw rowError;
+    }
+  } catch (err) {
+    // The template row already committed — clean it up rather than leaving
+    // an orphaned, field-less template behind on a validation/insert failure.
+    await supabase.from("test_templates").delete().eq("id", template.id);
+    throw err;
+  }
+
+  const { data: maxSort } = await supabase
+    .from("tests")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: test, error: testError } = await supabase
+    .from("tests")
+    .insert({
+      category_id: input.categoryId,
+      template_id: template.id,
+      name,
+      slug: `${slugify(name) || "custom-investigation"}-${suffix}`,
+      is_active: true,
+      is_custom: true,
+      sort_order: (maxSort?.sort_order ?? 0) + 1,
+    })
+    .select()
+    .single();
+
+  if (testError) {
+    await supabase.from("test_templates").delete().eq("id", template.id);
+    if (testError.code === "23505") {
+      throw new Error(
+        `An investigation named "${name}" already exists in the catalogue — add it from the catalogue instead, or choose a different name.`
+      );
+    }
+    throw testError;
+  }
+
+  if (pendingReferenceRanges.length > 0) {
+    const { error: rrError } = await supabase.from("reference_ranges").insert(
+      pendingReferenceRanges.map((r) => ({
+        test_id: test.id,
+        template_field_id: r.template_field_id,
+        range_text: r.range_text,
+      }))
+    );
+    if (rrError) throw rrError;
+  }
+
+  const reportTest = await addTestToReport(input.labReportId, test.id, input.actorRole, input.comment, input.actorId);
+
+  await logAudit({
+    action: "CUSTOM_TEST_CREATED",
+    entityType: "tests",
+    entityId: test.id,
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    metadata: { custom: true, name, labReportId: input.labReportId, structureType: input.structureType },
+  });
+
+  return reportTest;
 }
 
 // ---------------------------------------------------------------------------

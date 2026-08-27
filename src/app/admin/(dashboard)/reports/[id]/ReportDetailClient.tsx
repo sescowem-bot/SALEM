@@ -19,6 +19,10 @@ import {
   KeyRound,
   Mail,
   MessageCircle,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  PlusCircle,
 } from "lucide-react";
 import {
   saveFieldResultAction,
@@ -33,6 +37,10 @@ import {
   unlockPublishedReportAction,
   resetAccessCodeAction,
   sendAccessCodeAction,
+  addExistingInvestigationAction,
+  removeInvestigationAction,
+  reorderInvestigationAction,
+  addCustomInvestigationAction,
   type ActionState,
 } from "./actions";
 import type { ReportTestViewModel } from "./page";
@@ -44,6 +52,8 @@ import { MailWarning, MailCheck, Clock3 } from "lucide-react";
 import { DirtyFieldsProvider, useDirtyFields } from "./DirtyFieldsContext";
 
 type LabReport = Database["public"]["Tables"]["lab_reports"]["Row"];
+type Test = Database["public"]["Tables"]["tests"]["Row"];
+type TestCategory = Database["public"]["Tables"]["test_categories"]["Row"];
 
 interface ApprovalHistoryRow {
   id: string;
@@ -138,6 +148,30 @@ function SelectField({
   );
 }
 
+function FlagSelect({ value, disabled }: { value: string; disabled: boolean }) {
+  // Same React 19 controlled-select requirement as SelectField above — an
+  // uncontrolled select snaps back to its first option after every action
+  // submission even though the save succeeded.
+  const [current, setCurrent] = useState(value);
+  useEffect(() => setCurrent(value), [value]);
+  return (
+    <select
+      name="flag"
+      value={current}
+      disabled={disabled}
+      onChange={(e) => setCurrent(e.target.value)}
+      className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-navy-deep outline-none focus:border-cyan"
+    >
+      <option value="">No flag</option>
+      <option value="normal">Normal</option>
+      <option value="high">High</option>
+      <option value="low">Low</option>
+      <option value="critical">Critical</option>
+      <option value="abnormal">Abnormal</option>
+    </select>
+  );
+}
+
 function FieldRow({
   reportTestId,
   testId,
@@ -196,6 +230,14 @@ function FieldRow({
       {field.unit ? <span className="text-xs text-muted-foreground sm:pb-2.5">{field.unit}</span> : <span />}
 
       {!disabled ? <MiniSubmit /> : <span />}
+
+      {/* Flag — result_field_values.flag already existed and setFieldResult already
+          accepted it, but nothing in this form ever sent it, so it was never
+          actually settable. Adding the control here (Advanced 7). */}
+      <label className="col-span-full mt-1 flex items-center gap-2 text-xs text-muted-foreground sm:col-span-1 sm:col-start-2">
+        Flag
+        <FlagSelect value={value?.flag ?? ""} disabled={disabled} />
+      </label>
 
       {state.error ? <p className="col-span-full text-xs text-destructive">{state.error}</p> : null}
     </form>
@@ -693,6 +735,347 @@ function StatusHistoryPanel({
   );
 }
 
+function AddExistingInvestigationForm({
+  labReportId,
+  availableTests,
+  testCategories,
+}: {
+  labReportId: string;
+  availableTests: Test[];
+  testCategories: TestCategory[];
+}) {
+  const [state, action] = useActionState(addExistingInvestigationAction, initial);
+
+  if (availableTests.length === 0) {
+    return <p className="text-xs text-muted-foreground">Every active catalogue investigation is already on this report.</p>;
+  }
+
+  const categoriesById = new Map(testCategories.map((c) => [c.id, c]));
+  const uncategorised = availableTests.filter((t) => !categoriesById.has(t.category_id));
+
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <label className="block text-sm font-medium text-navy-deep">
+        Add from catalogue
+        <select name="testId" required defaultValue="" className={fieldClass}>
+          <option value="" disabled>
+            Choose an investigation
+          </option>
+          {testCategories.map((cat) => {
+            const inCategory = availableTests.filter((t) => t.category_id === cat.id);
+            if (inCategory.length === 0) return null;
+            return (
+              <optgroup key={cat.id} label={cat.name}>
+                {inCategory.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          })}
+          {uncategorised.length > 0 ? (
+            <optgroup label="Other">
+              {uncategorised.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+        </select>
+      </label>
+      <MiniSubmit label="Add" />
+      {state.error ? <p className="w-full text-xs text-destructive">{state.error}</p> : null}
+    </form>
+  );
+}
+
+type CustomField = { label: string; inputType: "numeric" | "text"; unit: string; referenceRange: string };
+
+const emptyCustomField = (): CustomField => ({ label: "", inputType: "text", unit: "", referenceRange: "" });
+
+function CustomInvestigationForm({ labReportId, testCategories }: { labReportId: string; testCategories: TestCategory[] }) {
+  const [state, action] = useActionState(addCustomInvestigationAction, initial);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [structureType, setStructureType] = useState<"field_based" | "table_based">("field_based");
+  const [fields, setFields] = useState<CustomField[]>([emptyCustomField()]);
+  const [columns, setColumns] = useState<string[]>([""]);
+  const [rows, setRows] = useState<string[]>([""]);
+
+  useEffect(() => {
+    if (state.ok) {
+      setOpen(false);
+      setName("");
+      setCategoryId("");
+      setStructureType("field_based");
+      setFields([emptyCustomField()]);
+      setColumns([""]);
+      setRows([""]);
+    }
+  }, [state.ok]);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-xs font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
+      >
+        <PlusCircle className="h-3.5 w-3.5" /> Create custom investigation
+      </button>
+    );
+  }
+
+  return (
+    <form action={action} className="space-y-4 rounded-xl border border-border bg-secondary/40 p-4">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <input type="hidden" name="structureType" value={structureType} />
+      <input type="hidden" name="fieldsJson" value={JSON.stringify(fields.filter((f) => f.label.trim()))} />
+      <input type="hidden" name="columnsJson" value={JSON.stringify(columns.map((c) => c.trim()).filter(Boolean))} />
+      <input type="hidden" name="rowsJson" value={JSON.stringify(rows.map((r) => r.trim()).filter(Boolean))} />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="block text-sm font-medium text-navy-deep">
+          Investigation name
+          <input
+            className={fieldClass}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder="e.g. Serum Amylase"
+          />
+          {/* mirrored into the actual submitted field so React doesn't fight a name-attr'd controlled input */}
+          <input type="hidden" name="name" value={name} />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Category
+          <select
+            className={fieldClass}
+            name="categoryId"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            required
+          >
+            <option value="" disabled>
+              Choose a category
+            </option>
+            {testCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 max-w-[16rem] text-[0.65rem] text-muted-foreground">
+            This becomes a normal catalogue investigation once created, so it can be reused on future reports too.
+          </p>
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Structure
+          <select
+            className={fieldClass}
+            value={structureType}
+            onChange={(e) => setStructureType(e.target.value as "field_based" | "table_based")}
+          >
+            <option value="field_based">Single / multi-parameter</option>
+            <option value="table_based">Table (rows × columns)</option>
+          </select>
+        </label>
+      </div>
+
+      {structureType === "field_based" ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Parameters — one row per result line (e.g. HB, WBC, PCV)
+          </p>
+          {fields.map((f, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.2fr_100px_90px_1fr_auto] sm:items-center">
+              <input
+                placeholder="Parameter name"
+                className={fieldClass}
+                value={f.label}
+                onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+              />
+              <select
+                className={fieldClass}
+                value={f.inputType}
+                onChange={(e) =>
+                  setFields((prev) =>
+                    prev.map((x, j) => (j === i ? { ...x, inputType: e.target.value as "numeric" | "text" } : x))
+                  )
+                }
+              >
+                <option value="text">Text</option>
+                <option value="numeric">Numeric</option>
+              </select>
+              <input
+                placeholder="Unit"
+                className={fieldClass}
+                value={f.unit}
+                onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)))}
+              />
+              <input
+                placeholder="Reference range"
+                className={fieldClass}
+                value={f.referenceRange}
+                onChange={(e) =>
+                  setFields((prev) => prev.map((x, j) => (j === i ? { ...x, referenceRange: e.target.value } : x)))
+                }
+              />
+              <button
+                type="button"
+                onClick={() => setFields((prev) => prev.filter((_, j) => j !== i))}
+                disabled={fields.length === 1}
+                className="justify-self-start text-xs font-semibold text-destructive disabled:opacity-30"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setFields((prev) => [...prev, emptyCustomField()])}
+            className="text-xs font-semibold text-navy underline underline-offset-2"
+          >
+            + Add parameter
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Columns</p>
+            {columns.map((c, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  placeholder="Column label"
+                  className={fieldClass}
+                  value={c}
+                  onChange={(e) => setColumns((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                />
+                <button
+                  type="button"
+                  onClick={() => setColumns((prev) => prev.filter((_, j) => j !== i))}
+                  disabled={columns.length === 1}
+                  className="text-xs font-semibold text-destructive disabled:opacity-30"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setColumns((prev) => [...prev, ""])}
+              className="text-xs font-semibold text-navy underline underline-offset-2"
+            >
+              + Add column
+            </button>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rows</p>
+            {rows.map((r, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  placeholder="Row label"
+                  className={fieldClass}
+                  value={r}
+                  onChange={(e) => setRows((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                />
+                <button
+                  type="button"
+                  onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+                  disabled={rows.length === 1}
+                  className="text-xs font-semibold text-destructive disabled:opacity-30"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setRows((prev) => [...prev, ""])}
+              className="text-xs font-semibold text-navy underline underline-offset-2"
+            >
+              + Add row
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <MiniSubmit label="Create & add to report" />
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-xs font-semibold text-muted-foreground hover:text-navy"
+        >
+          Cancel
+        </button>
+      </div>
+      {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
+    </form>
+  );
+}
+
+function RemoveInvestigationButton({ labReportId, reportTestId }: { labReportId: string; reportTestId: string }) {
+  const [state, action] = useActionState(removeInvestigationAction, initial);
+  return (
+    <form action={action} className="flex items-center gap-2">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <input type="hidden" name="reportTestId" value={reportTestId} />
+      <button
+        type="submit"
+        className="inline-flex items-center gap-1 rounded-full border border-destructive/40 px-2.5 py-1 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/10"
+      >
+        <Trash2 className="h-3.5 w-3.5" /> Remove
+      </button>
+      {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
+    </form>
+  );
+}
+
+function ReorderInvestigationButtons({
+  labReportId,
+  reportTestId,
+  disableUp,
+  disableDown,
+}: {
+  labReportId: string;
+  reportTestId: string;
+  disableUp: boolean;
+  disableDown: boolean;
+}) {
+  const [, action] = useActionState(reorderInvestigationAction, initial);
+  return (
+    <form action={action} className="flex items-center gap-1">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <input type="hidden" name="reportTestId" value={reportTestId} />
+      <button
+        type="submit"
+        name="direction"
+        value="up"
+        disabled={disableUp}
+        aria-label="Move up"
+        className="rounded-full border border-border p-1 text-navy transition-colors hover:border-cyan disabled:opacity-30"
+      >
+        <ArrowUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="submit"
+        name="direction"
+        value="down"
+        disabled={disableDown}
+        aria-label="Move down"
+        className="rounded-full border border-border p-1 text-navy transition-colors hover:border-cyan disabled:opacity-30"
+      >
+        <ArrowDown className="h-3.5 w-3.5" />
+      </button>
+    </form>
+  );
+}
+
 export function ReportDetailClient({
   report,
   tests,
@@ -709,6 +1092,8 @@ export function ReportDetailClient({
   finalDocument,
   notifications,
   patientPhone,
+  availableTests,
+  testCategories,
 }: {
   report: LabReport;
   tests: ReportTestViewModel[];
@@ -725,6 +1110,8 @@ export function ReportDetailClient({
   finalDocument: FinalDocumentSummary | null;
   notifications: NotificationRow[];
   patientPhone: string | null;
+  availableTests: Test[];
+  testCategories: TestCategory[];
 }) {
   const canSubmit = canEdit && report.status === "draft" && !report.submitted_for_review;
   const pendingApprover =
@@ -832,11 +1219,37 @@ export function ReportDetailClient({
         )}
       </section>
 
-      {tests.map((t) => (
+      {canEdit ? (
+        <section className="surface-card p-6 sm:p-8">
+          <h2 className="text-base font-semibold text-navy-deep">Add an investigation</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Add a test from the catalogue, or define a one-off custom investigation for this report only.
+          </p>
+          <div className="mt-4 space-y-4">
+            <AddExistingInvestigationForm labReportId={report.id} availableTests={availableTests} testCategories={testCategories} />
+            <CustomInvestigationForm labReportId={report.id} testCategories={testCategories} />
+          </div>
+        </section>
+      ) : null}
+
+      {tests.map((t, index) => (
         <section key={t.reportTestId} className="surface-card p-6 sm:p-8">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 shrink-0 text-purple" />
-            <h2 className="text-base font-semibold text-navy-deep">{t.testName}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 shrink-0 text-purple" />
+              <h2 className="text-base font-semibold text-navy-deep">{t.testName}</h2>
+            </div>
+            {canEdit ? (
+              <div className="flex items-center gap-2">
+                <ReorderInvestigationButtons
+                  labReportId={report.id}
+                  reportTestId={t.reportTestId}
+                  disableUp={index === 0}
+                  disableDown={index === tests.length - 1}
+                />
+                <RemoveInvestigationButton labReportId={report.id} reportTestId={t.reportTestId} />
+              </div>
+            ) : null}
           </div>
 
           {t.structure.template.structure_type === "field_based" ? (
@@ -859,7 +1272,7 @@ export function ReportDetailClient({
                 <thead>
                   <tr>
                     <th className="pb-2 pr-3 text-left text-xs font-semibold uppercase text-muted-foreground">
-                      Antigen
+                      Parameter
                     </th>
                     {t.structure.tableColumns.map((col) => (
                       <th key={col.id} className="pb-2 pr-3 text-left text-xs font-semibold uppercase text-muted-foreground">

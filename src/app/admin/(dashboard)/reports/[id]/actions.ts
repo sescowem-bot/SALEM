@@ -10,6 +10,10 @@ import {
   unlockPublishedReportForCorrection,
   resetPatientAccessCode,
   sendAccessCodeToPatientNow,
+  addTestToReport,
+  removeTestFromReport,
+  reorderReportTest,
+  createCustomInvestigation,
 } from "@/lib/data/labReports";
 import {
   submitReportForApproval,
@@ -24,6 +28,10 @@ import {
   reportTransitionSchema,
   submitForApprovalSchema,
   approvalDecisionSchema,
+  addExistingTestSchema,
+  removeReportTestSchema,
+  reorderReportTestSchema,
+  customInvestigationSchema,
 } from "@/lib/validation/schemas";
 
 export interface ActionState {
@@ -333,5 +341,124 @@ export async function sendAccessCodeAction(_prev: ActionState, formData: FormDat
     return { error: friendlyError(err) };
   }
 
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Advanced 7 — Dynamic Lab Result & Report Builder
+// ---------------------------------------------------------------------------
+
+/** Adds an existing catalogue investigation to an already-created report. */
+export async function addExistingInvestigationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const parsed = addExistingTestSchema.safeParse({
+    labReportId: formData.get("labReportId"),
+    testId: formData.get("testId"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Choose an investigation." };
+
+  try {
+    await addTestToReport(parsed.data.labReportId, parsed.data.testId, staff.role, undefined, staff.userId);
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
+  return { ok: true };
+}
+
+export async function removeInvestigationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const parsed = removeReportTestSchema.safeParse({
+    labReportId: formData.get("labReportId"),
+    reportTestId: formData.get("reportTestId"),
+  });
+  if (!parsed.success) return { error: "Invalid investigation." };
+
+  try {
+    await removeTestFromReport(parsed.data.labReportId, parsed.data.reportTestId, staff.role, staff.userId);
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
+  return { ok: true };
+}
+
+export async function reorderInvestigationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const parsed = reorderReportTestSchema.safeParse({
+    labReportId: formData.get("labReportId"),
+    reportTestId: formData.get("reportTestId"),
+    direction: formData.get("direction"),
+  });
+  if (!parsed.success) return { error: "Invalid request." };
+
+  try {
+    await reorderReportTest(
+      parsed.data.labReportId,
+      parsed.data.reportTestId,
+      parsed.data.direction,
+      staff.role,
+      staff.userId
+    );
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
+  return { ok: true };
+}
+
+/**
+ * Creates a one-off investigation (single/multi-parameter or table-style)
+ * and adds it to this report. fields/columns/rows arrive as JSON strings
+ * (FormData has no native array-of-objects support) built client-side by
+ * CustomInvestigationForm in ReportDetailClient.tsx.
+ */
+export async function addCustomInvestigationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+
+  let fields: unknown = [];
+  let columns: unknown = [];
+  let rows: unknown = [];
+  try {
+    fields = JSON.parse(String(formData.get("fieldsJson") ?? "[]"));
+    columns = JSON.parse(String(formData.get("columnsJson") ?? "[]"));
+    rows = JSON.parse(String(formData.get("rowsJson") ?? "[]"));
+  } catch {
+    return { error: "Invalid investigation definition." };
+  }
+
+  const parsed = customInvestigationSchema.safeParse({
+    labReportId: formData.get("labReportId"),
+    categoryId: formData.get("categoryId"),
+    name: formData.get("name"),
+    structureType: formData.get("structureType"),
+    comment: formData.get("comment") || "",
+    fields,
+    columns,
+    rows,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid investigation." };
+
+  try {
+    await createCustomInvestigation({
+      labReportId: parsed.data.labReportId,
+      categoryId: parsed.data.categoryId,
+      name: parsed.data.name,
+      structureType: parsed.data.structureType,
+      comment: parsed.data.comment || undefined,
+      fields: parsed.data.fields,
+      columns: parsed.data.columns,
+      rows: parsed.data.rows,
+      actorRole: staff.role,
+      actorId: staff.userId,
+    });
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
   return { ok: true };
 }

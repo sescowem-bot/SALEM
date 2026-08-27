@@ -87,7 +87,13 @@ export type AuditAction =
   | "PATIENT_PDF_DOWNLOADED"
   // Troubleshooting follow-up — see
   // supabase/migrations/20260825090001_patient_access_code_reset_audit_action.sql
-  | "PATIENT_ACCESS_CODE_RESET";
+  | "PATIENT_ACCESS_CODE_RESET"
+  // Advanced 7 (Dynamic Lab Result & Report Builder) — see
+  // supabase/migrations/20260826090002_report_investigation_builder_audit_actions.sql
+  | "REPORT_TEST_ADDED"
+  | "REPORT_TEST_REMOVED"
+  | "REPORT_TEST_REORDERED"
+  | "CUSTOM_TEST_CREATED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type ServiceStatus = "draft" | "published" | "archived";
 export type WebsitePageKey = "homepage" | "about" | "contact" | "footer" | "seo";
@@ -259,6 +265,7 @@ export interface Database {
           content_status: ServiceStatus;
           published_at: string | null;
           published_by: string | null;
+          is_custom: boolean;
         };
         Insert: Partial<Database["public"]["Tables"]["tests"]["Row"]> & {
           category_id: string;

@@ -128,7 +128,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
               <table className="w-full border-collapse border border-border text-xs">
                 <thead>
                   <tr className="bg-secondary text-left uppercase text-muted-foreground">
-                    <th className="border border-border px-2 py-1.5">Antigen</th>
+                    <th className="border border-border px-2 py-1.5">Parameter</th>
                     {t.tableColumns.map((c) => (
                       <th key={c} className="border border-border px-2 py-1.5">{c}</th>
                     ))}

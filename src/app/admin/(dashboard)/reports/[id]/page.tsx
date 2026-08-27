@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/salem/StatusBadge";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getAdminNavItems } from "@/lib/auth/nav";
 import { getReportDetail, getReportVersionHistory } from "@/lib/data/labReports";
-import { getTestWithStructure, type TestWithStructure } from "@/lib/data/testCatalog";
+import { getTestWithStructure, listActiveTests, listTestCategories, type TestWithStructure } from "@/lib/data/testCatalog";
 import { getSignedReportPdfUrl } from "@/lib/data/storage";
 import { listApprovers, getActiveApprovalRequest, getApprovalHistory } from "@/lib/data/approvals";
 import { getLatestFinalDocument } from "@/lib/data/reportDocuments";
@@ -103,7 +103,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   const canResetAccessCode =
     can(staff, "reports.publish") && report.status === "published" && Boolean(report.access_code_hash);
 
-  const [approvers, activeApprovalRequest, approvalHistory, versionHistory, finalDocument, notifications, patient] =
+  const [approvers, activeApprovalRequest, approvalHistory, versionHistory, finalDocument, notifications, patient, catalogueTests, testCategories] =
     await Promise.all([
       canEdit ? listApprovers() : Promise.resolve([]),
       canDecideApproval || report.submitted_for_review ? getActiveApprovalRequest(report.id) : Promise.resolve(null),
@@ -112,7 +112,14 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
       getLatestFinalDocument(report.id, staff.role),
       listReportNotifications(report.id, staff.role),
       report.patient_id ? getPatientById(report.patient_id) : Promise.resolve(null),
+      canEdit ? listActiveTests() : Promise.resolve([]),
+      canEdit ? listTestCategories() : Promise.resolve([]),
     ]);
+
+  // Investigations already on this report shouldn't also show up in the
+  // "add from catalogue" picker.
+  const usedTestIds = new Set(testViewModels.map((t) => t.testId));
+  const availableTests = catalogueTests.filter((t) => !usedTestIds.has(t.id));
 
   return (
     <AdminShell
@@ -142,6 +149,8 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         finalDocument={finalDocument}
         notifications={notifications}
         patientPhone={patient?.phone ?? null}
+        availableTests={availableTests}
+        testCategories={testCategories}
       />
     </AdminShell>
   );
