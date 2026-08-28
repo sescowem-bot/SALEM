@@ -57,11 +57,11 @@ export type Permission =
   | "enquiries.manage"
   // Advanced 5 — managing signatories (linking a staff login to a stored
   // signature image used on final report PDFs). Deliberately its own
-  // permission rather than reusing staff.manage/settings.manage: it's
-  // super_admin-only today (same roles as both of those), but it gates a
-  // distinct action — attaching a signature to an identity — that
-  // shouldn't silently widen if staff.manage or settings.manage is ever
-  // extended to another role later.
+  // permission rather than reusing staff.manage — it's super_admin and
+  // admin today (Advanced 7.1: Admin was missing this and settings.manage,
+  // an oversight — see ROLE_PERMISSIONS.admin), gating a distinct action
+  // — attaching a signature to an identity — that shouldn't silently
+  // widen if staff.manage is ever extended to another role later.
   | "documents.manage";
 
 const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
@@ -85,8 +85,15 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "enquiries.manage",
     "documents.manage",
   ],
+  // Advanced 7.1 note: previously excluded `settings.manage` and
+  // `documents.manage`, which meant the Admin role could not see or use
+  // Website/CMS, Settings, or Signatories at all — despite the "Staff"
+  // nav link already special-casing Admin as able to view (just not
+  // manage) the staff directory, showing the intended split was always
+  // "near parity with Super Admin, minus staff/account administration."
+  // Only `staff.manage` (creating/deactivating logins, assigning roles)
+  // remains Super Admin-exclusive.
   admin: [
-    // Everything super_admin has except staff.manage and settings.manage.
     "patients.register",
     "patients.view",
     "patients.update",
@@ -101,7 +108,9 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "catalogue.manage",
     "analytics.view",
     "audit.view",
+    "settings.manage",
     "enquiries.manage",
+    "documents.manage",
   ],
   pathologist: ["patients.view", "reports.view", "reports.review", "reports.publish"],
   laboratory_staff: [

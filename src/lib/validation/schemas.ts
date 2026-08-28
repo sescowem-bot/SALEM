@@ -111,6 +111,22 @@ export const appointmentStatusSchema = z.object({
   requestId: z.string().uuid(),
   status: z.enum(["new", "contacted", "scheduled", "completed", "cancelled"]),
 });
+
+/** Admin reschedule + internal notes on an appointment request (Advanced 7 QA §1/§2). */
+export const appointmentRescheduleSchema = z.object({
+  requestId: z.string().uuid(),
+  rescheduledDate: z.string().date("Choose a valid date").optional().or(z.literal("")),
+  rescheduledTime: z.string().trim().max(50).optional().or(z.literal("")),
+  adminNotes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+/** Admin-set home collection payment status (Advanced 7 QA §3). */
+export const homeCollectionPaymentSchema = z.object({
+  requestId: z.string().uuid(),
+  paymentStatus: z.enum(["unpaid", "pending", "paid", "waived"]),
+  paymentAmountNgn: z.string().trim().max(20).optional().or(z.literal("")),
+  paymentNotes: z.string().trim().max(1000).optional().or(z.literal("")),
+});
 const STAFF_ROLE_VALUES = [
   "super_admin",
   "admin",
@@ -232,6 +248,8 @@ export const serviceEditorSchema = z.object({
   fullDescription: z.string().trim().max(5000).optional().or(z.literal("")),
   preparationInfo: z.string().trim().max(2000).optional().or(z.literal("")),
   requirements: z.string().trim().max(2000).optional().or(z.literal("")),
+  whatToAvoid: z.string().trim().max(2000).optional().or(z.literal("")),
+  importantNotes: z.string().trim().max(2000).optional().or(z.literal("")),
   turnaroundTime: z.string().trim().max(200).optional().or(z.literal("")),
   priceNgn: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? undefined : v),
@@ -269,6 +287,8 @@ export const siteSettingsSchema = z.object({
   socialTwitter: z.string().trim().url().optional().or(z.literal("")),
   socialYoutube: z.string().trim().url().optional().or(z.literal("")),
   patientEmailIncludesAccessCode: z.enum(["true", "false"]).default("false"),
+  bookingWindowDays: z.string().trim().max(4).optional().or(z.literal("")),
+  bookingMinNoticeHours: z.string().trim().max(4).optional().or(z.literal("")),
 });
 
 const optionalUrlOrPath = z

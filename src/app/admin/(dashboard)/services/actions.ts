@@ -31,6 +31,8 @@ function toEditableFields(parsed: {
   fullDescription?: string;
   preparationInfo?: string;
   requirements?: string;
+  whatToAvoid?: string;
+  importantNotes?: string;
   turnaroundTime?: string;
   priceNgn?: number;
   showPrice: "true" | "false";
@@ -50,6 +52,8 @@ function toEditableFields(parsed: {
     fullDescription: parsed.fullDescription || null,
     preparationInfo: parsed.preparationInfo || null,
     requirements: parsed.requirements || null,
+    whatToAvoid: parsed.whatToAvoid || null,
+    importantNotes: parsed.importantNotes || null,
     turnaroundTime: parsed.turnaroundTime || null,
     priceNgn: parsed.priceNgn == null ? null : Number(parsed.priceNgn),
     showPrice: parsed.showPrice === "true",
@@ -73,6 +77,8 @@ function readForm(formData: FormData) {
     fullDescription: formData.get("fullDescription") || "",
     preparationInfo: formData.get("preparationInfo") || "",
     requirements: formData.get("requirements") || "",
+    whatToAvoid: formData.get("whatToAvoid") || "",
+    importantNotes: formData.get("importantNotes") || "",
     turnaroundTime: formData.get("turnaroundTime") || "",
     priceNgn: (formData.get("priceNgn") as string) || "",
     showPrice: (formData.get("showPrice") as string) || "false",

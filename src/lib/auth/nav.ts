@@ -7,12 +7,10 @@ import { can, type CurrentStaff } from "./session";
  * page-level checks in each route + the RLS/permission checks in
  * lib/data/*), so this is a convenience, not the enforcement itself.
  *
- * Grouped into sections per Advanced 1 §1 (Operations / Services /
- * Communications / Administration). "Content / Website" from the ticket's
- * proposed IA collapses into a single Settings entry under Administration
- * for now — there is no CMS-backed homepage/services-content table yet
- * (see /admin/settings for the read-only foundation), so a separate
- * section with nothing behind most of its links would just be dead UI.
+ * Grouped into sections: Operations / Services / Communications /
+ * Website-CMS / Administration (Advanced 7.1). Settings is a standalone
+ * Administration entry, separate from the Website/CMS content pages —
+ * it's brand/org identity + booking rules, not page content.
  */
 export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   const sections: AdminNavSection[] = [
@@ -48,7 +46,7 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
 
   const services: AdminNavItem[] = [];
   if (can(staff, "catalogue.manage")) {
-    services.push({ href: "/admin/services", label: "Services" });
+    services.push({ href: "/admin/services", label: "Investigations & Services" });
   }
   if (services.length > 0) sections.push({ label: "Services", items: services });
 
@@ -57,25 +55,6 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
     communications.push({ href: "/admin/messages", label: "Contact messages" });
   }
   if (communications.length > 0) sections.push({ label: "Communications", items: communications });
-
-  const administration: AdminNavItem[] = [];
-  const canViewStaffDirectory = can(staff, "staff.manage") || staff.role === "admin";
-  if (canViewStaffDirectory) {
-    administration.push({ href: "/admin/staff", label: "Staff" });
-  }
-  if (can(staff, "staff.manage")) {
-    administration.push({ href: "/admin/roles", label: "Roles & permissions" });
-  }
-  if (can(staff, "audit.view")) {
-    administration.push({ href: "/admin/audit", label: "Audit logs" });
-  }
-  if (can(staff, "audit.view")) {
-    administration.push({ href: "/admin/notifications", label: "Notifications" });
-  }
-  if (can(staff, "documents.manage")) {
-    administration.push({ href: "/admin/signatories", label: "Report signatories" });
-  }
-  if (administration.length > 0) sections.push({ label: "Administration", items: administration });
 
   const website: AdminNavItem[] = [];
   if (can(staff, "settings.manage")) {
@@ -86,11 +65,37 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
       { href: "/admin/services", label: "Services" },
       { href: "/admin/website/contact", label: "Contact" },
       { href: "/admin/website/footer", label: "Footer" },
-      { href: "/admin/website/seo", label: "SEO" },
-      { href: "/admin/settings", label: "Brand / Settings" }
+      { href: "/admin/website/seo", label: "SEO" }
     );
   }
-  if (website.length > 0) sections.push({ label: "Website", items: website });
+  if (website.length > 0) sections.push({ label: "Website / CMS", items: website });
+
+  const administration: AdminNavItem[] = [];
+  const canViewStaffDirectory = can(staff, "staff.manage") || staff.role === "admin";
+  if (canViewStaffDirectory) {
+    administration.push({ href: "/admin/staff", label: "Staff" });
+  }
+  if (can(staff, "staff.manage")) {
+    administration.push({ href: "/admin/roles", label: "Roles & permissions" });
+  }
+  if (can(staff, "documents.manage")) {
+    administration.push({ href: "/admin/signatories", label: "Report signatories" });
+  }
+  if (can(staff, "audit.view")) {
+    administration.push({ href: "/admin/notifications", label: "Notifications" });
+  }
+  if (can(staff, "audit.view")) {
+    administration.push({ href: "/admin/audit", label: "Audit logs" });
+  }
+  // Standalone Settings entry, separate from the Website/CMS content
+  // pages above — this is brand/org identity + booking rules, not page
+  // content (see /admin/settings). Previously only reachable as a
+  // sub-link inside Website, and Website itself was invisible to Admin
+  // (see Advanced 7.1: settings.manage was missing from the Admin role).
+  if (can(staff, "settings.manage")) {
+    administration.push({ href: "/admin/settings", label: "Settings" });
+  }
+  if (administration.length > 0) sections.push({ label: "Administration", items: administration });
 
   return sections;
 }

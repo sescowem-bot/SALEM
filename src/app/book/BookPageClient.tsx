@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { CalendarCheck, MapPin, Home, ShieldCheck, Check } from "lucide-react";
+import { CalendarCheck, MapPin, Home, ShieldCheck, Check, Info } from "lucide-react";
 import { siteConfig } from "@/data/siteContent";
 import { APPOINTMENT_TIME_SLOTS } from "@/lib/bookingConstants";
 import { bookAppointmentAction, getSlotAvailabilityAction, type BookState } from "./actions";
@@ -46,8 +46,21 @@ function SubmitButton() {
   );
 }
 
-export function BookPageClient({ tests, preselectedTestName }: { tests: Test[]; preselectedTestName?: string }) {
-  const days = nextDays(6);
+export function BookPageClient({
+  tests,
+  preselectedTestName,
+  preselectedTest,
+  bookingWindowDays = 14,
+}: {
+  tests: Test[];
+  preselectedTestName?: string;
+  preselectedTest?: Test;
+  bookingWindowDays?: number;
+}) {
+  // Capped to 14 quick-pick day chips even on a longer booking window, so
+  // the strip stays usable — the admin-controlled window still governs how
+  // far out patients may ultimately be booked/rescheduled by staff.
+  const days = nextDays(Math.min(Math.max(bookingWindowDays, 1), 14));
   const [selectedDay, setSelectedDay] = useState(0);
   const [selectedTime, setSelectedTime] = useState(0);
   const [location, setLocation] = useState<"lab" | "home">("lab");
@@ -142,26 +155,40 @@ export function BookPageClient({ tests, preselectedTestName }: { tests: Test[]; 
               </h3>
               <div className="mt-4 flex flex-wrap gap-2.5">
                 {APPOINTMENT_TIME_SLOTS.map((t, i) => {
-                  const full = (slotCounts[t] ?? 0) >= 3;
+                  // Booked count is shown as a "how busy" indicator only —
+                  // never disabled. Multiple patients can request the same
+                  // date/time; the front desk coordinates actual capacity
+                  // when reviewing requests (Advanced 7 QA §2).
+                  const bookedCount = slotCounts[t] ?? 0;
+                  const busy = bookedCount >= 3;
                   return (
                     <button
                       key={t}
                       type="button"
-                      disabled={full}
                       onClick={() => setSelectedTime(i)}
-                      className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
-                        full
-                          ? "cursor-not-allowed border border-border text-muted-foreground/50 line-through"
-                          : i === selectedTime
-                            ? "bg-navy text-primary-foreground"
-                            : "border border-border text-navy hover:border-cyan hover:bg-accent"
+                      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                        i === selectedTime
+                          ? "bg-navy text-primary-foreground"
+                          : "border border-border text-navy hover:border-cyan hover:bg-accent"
                       }`}
                     >
                       {t}
+                      {busy ? (
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[0.65rem] font-semibold ${
+                            i === selectedTime ? "bg-white/20" : "bg-accent text-navy-deep"
+                          }`}
+                        >
+                          Popular
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                You can still request a &quot;Popular&quot; time slot — our front desk will confirm the exact time with you.
+              </p>
 
               <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-purple">
                 Where should we test you?
@@ -219,6 +246,38 @@ export function BookPageClient({ tests, preselectedTestName }: { tests: Test[]; 
                     ))}
                   </datalist>
                 </label>
+                {preselectedTest &&
+                (preselectedTest.preparation_info || preselectedTest.what_to_avoid || preselectedTest.important_notes) ? (
+                  <div className="sm:col-span-2 space-y-3 rounded-2xl border border-cyan/30 bg-accent/40 p-4">
+                    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-navy-deep">
+                      <Info className="h-4 w-4 shrink-0 text-navy" /> Before your {preselectedTest.name} appointment
+                    </p>
+                    {preselectedTest.preparation_info ? (
+                      <div>
+                        <p className="text-xs font-semibold text-navy-deep">Preparation</p>
+                        <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                          {preselectedTest.preparation_info}
+                        </p>
+                      </div>
+                    ) : null}
+                    {preselectedTest.what_to_avoid ? (
+                      <div>
+                        <p className="text-xs font-semibold text-navy-deep">What to do / avoid</p>
+                        <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                          {preselectedTest.what_to_avoid}
+                        </p>
+                      </div>
+                    ) : null}
+                    {preselectedTest.important_notes ? (
+                      <div>
+                        <p className="text-xs font-semibold text-navy-deep">Important notes</p>
+                        <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                          {preselectedTest.important_notes}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
                   Notes for the laboratory (optional)
                   <textarea

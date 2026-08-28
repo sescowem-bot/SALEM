@@ -111,6 +111,24 @@ export function SettingsEditorForm({ row }: { row: SiteSettingsRow }) {
         </label>
       </Section>
 
+      <Section
+        title="Booking rules"
+        description="Admin-controlled scheduling rules for the public appointment booking calendar."
+      >
+        <Field
+          label="Booking window (days ahead)"
+          name="bookingWindowDays"
+          type="number"
+          defaultValue={String(row.booking_window_days ?? 14)}
+        />
+        <Field
+          label="Minimum notice (hours)"
+          name="bookingMinNoticeHours"
+          type="number"
+          defaultValue={String(row.booking_min_notice_hours ?? 2)}
+        />
+      </Section>
+
       {state.error ? <p className="surface-card p-4 text-sm text-destructive">{state.error}</p> : null}
       <div className="flex items-center gap-3">
         <SaveBar />

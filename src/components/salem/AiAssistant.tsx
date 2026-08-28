@@ -24,7 +24,7 @@ export function AiAssistant() {
   return (
     <>
       {open ? (
-        <div className="fixed bottom-24 right-5 z-50 flex max-h-[32rem] w-[calc(100vw-2.5rem)] max-w-sm flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-lift sm:bottom-28 sm:right-8">
+        <div className="fixed bottom-[9.5rem] right-5 z-50 flex max-h-[32rem] w-[calc(100vw-2.5rem)] max-w-sm flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-lift sm:bottom-[10.5rem] sm:right-6">
           <div className="flex items-center justify-between gap-3 gradient-hero px-5 py-4">
             <div className="flex items-center gap-2.5 text-white">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15">
@@ -95,11 +95,19 @@ export function AiAssistant() {
         </div>
       ) : null}
 
+      {/*
+        Stacked directly above the WhatsApp button (same right edge) rather
+        than beside it. The WhatsApp button grows wider on sm+ screens once
+        its "Chat with us" label appears, which used to collide with this
+        button when they were positioned side by side (Advanced 7 QA §6) —
+        stacking vertically avoids any overlap regardless of either
+        button's width, on desktop, tablet, or mobile.
+      */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Open Salem Assistant"
-        className="fixed bottom-6 right-24 z-50 grid h-14 w-14 place-items-center rounded-full gradient-accent text-navy-deep shadow-lift transition-transform hover:scale-[1.06] sm:bottom-8 sm:right-28"
+        className="fixed bottom-24 right-5 z-40 grid h-14 w-14 place-items-center rounded-full gradient-accent text-navy-deep shadow-lift transition-transform hover:scale-[1.06] sm:bottom-28 sm:right-6"
       >
         <Sparkles className="h-6 w-6" />
       </button>

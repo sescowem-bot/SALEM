@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Clock, ArrowRight, ShieldCheck, Phone } from "lucide-react";
+import { CheckCircle2, Clock, ArrowRight, ShieldCheck, Phone, AlertTriangle, Info } from "lucide-react";
 import type { ServiceWithCategory } from "@/lib/data/testCatalog";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -28,6 +28,7 @@ export function ServiceDetailView({
   const ctaHref = service.cta_destination || `/book?testId=${service.id}`;
   const preparationItems = splitLines(service.preparation_info);
   const requirementItems = splitLines(service.requirements);
+  const avoidItems = splitLines(service.what_to_avoid);
 
   return (
     <div className="bg-background">
@@ -127,6 +128,28 @@ export function ServiceDetailView({
                     </li>
                   ))}
                 </ul>
+              </div>
+            ) : null}
+
+            {avoidItems.length > 0 ? (
+              <div>
+                <h2 className="text-xl font-semibold text-navy-deep">What to do / avoid</h2>
+                <ul className="mt-3 space-y-2">
+                  {avoidItems.map((line, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {service.important_notes ? (
+              <div className="rounded-2xl border border-cyan/30 bg-accent/40 p-5">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-navy-deep">
+                  <Info className="h-4 w-4 shrink-0 text-navy" /> Important notes
+                </h2>
+                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{service.important_notes}</p>
               </div>
             ) : null}
           </div>

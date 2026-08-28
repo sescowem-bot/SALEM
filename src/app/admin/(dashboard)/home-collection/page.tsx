@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/salem/StatusBadge";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getAdminNavItems } from "@/lib/auth/nav";
 import { listHomeCollectionRequests, listActivePhlebotomists } from "@/lib/data/homeCollection";
-import { HomeCollectionStatusForm, AssignPhlebotomistForm } from "./HomeCollectionForms";
+import { HomeCollectionStatusForm, AssignPhlebotomistForm, HomeCollectionPaymentForm } from "./HomeCollectionForms";
 
 export const metadata: Metadata = {
   title: "Home Collection | Salem Staff Area",
@@ -80,6 +80,14 @@ export default async function HomeCollectionPage() {
                   <AssignPhlebotomistForm requestId={r.id} phlebotomists={phlebotomists} assignedId={r.assigned_phlebotomist_id} />
                 ) : null}
                 <HomeCollectionStatusForm requestId={r.id} status={r.status} />
+                {canManage ? (
+                  <HomeCollectionPaymentForm
+                    requestId={r.id}
+                    paymentStatus={r.payment_status}
+                    paymentAmountNgn={r.payment_amount_ngn}
+                    paymentNotes={r.payment_notes}
+                  />
+                ) : null}
               </div>
             </div>
           ))}

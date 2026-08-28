@@ -47,7 +47,6 @@ export async function bookAppointmentAction(_prev: BookState, formData: FormData
 
   if (!outcome.ok) {
     if (outcome.reason === "rate_limited") return { error: "Too many attempts. Please wait a few minutes and try again." };
-    if (outcome.reason === "slot_full") return { error: "That time slot is fully booked. Please choose another." };
     return { error: "Something went wrong submitting your booking. Please try again or contact us." };
   }
 

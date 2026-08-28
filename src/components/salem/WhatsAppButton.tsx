@@ -15,7 +15,7 @@ export function FloatingWhatsApp() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with Salem Medicals on WhatsApp"
-      className="pulse-ring fixed bottom-6 right-5 z-50 flex items-center gap-3 rounded-full bg-whatsapp px-4 py-3.5 text-sm font-semibold text-white shadow-lift transition-transform hover:scale-[1.04] sm:bottom-8 sm:right-8"
+      className="pulse-ring fixed bottom-5 right-5 z-40 flex items-center gap-3 rounded-full bg-whatsapp px-4 py-3.5 text-sm font-semibold text-white shadow-lift transition-transform hover:scale-[1.04] sm:bottom-6 sm:right-6"
     >
       <WhatsAppIcon className="h-6 w-6 shrink-0" />
       <span className="hidden sm:inline">Chat with us</span>

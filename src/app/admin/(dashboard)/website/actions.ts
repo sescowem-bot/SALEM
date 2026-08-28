@@ -140,6 +140,8 @@ export async function updateSiteSettingsAction(_prev: ActionState, formData: For
     social_twitter: validated.data.socialTwitter || null,
     social_youtube: validated.data.socialYoutube || null,
     patient_email_includes_access_code: validated.data.patientEmailIncludesAccessCode === "true",
+    booking_window_days: validated.data.bookingWindowDays ? Number(validated.data.bookingWindowDays) : undefined,
+    booking_min_notice_hours: validated.data.bookingMinNoticeHours ? Number(validated.data.bookingMinNoticeHours) : undefined,
   };
 
   try {

@@ -82,6 +82,43 @@ export async function updateHomeCollectionStatus(
   });
 }
 
+/**
+ * Admin-controlled payment tracking. Deliberately just a status + optional
+ * free text — no payment gateway wired in and no single workflow assumed,
+ * per the requirement that payment be admin-controlled without hardcoding
+ * one path (cash on visit, bank transfer, waived, etc. are all just notes).
+ */
+export async function updateHomeCollectionPayment(
+  requestId: string,
+  input: { paymentStatus: "unpaid" | "pending" | "paid" | "waived"; paymentAmountNgn?: number | null; paymentNotes?: string },
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<void> {
+  if (!hasPermission(actorRole, "home_collection.manage")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot update payment for home collection requests.`);
+  }
+
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase
+    .from("home_collection_requests")
+    .update({
+      payment_status: input.paymentStatus,
+      payment_amount_ngn: input.paymentAmountNgn ?? null,
+      payment_notes: input.paymentNotes || null,
+    })
+    .eq("id", requestId);
+  if (error) throw error;
+
+  await logAudit({
+    action: "HOME_COLLECTION_PAYMENT_UPDATED",
+    entityType: "home_collection_requests",
+    entityId: requestId,
+    actorId,
+    actorRole,
+    metadata: { paymentStatus: input.paymentStatus },
+  });
+}
+
 export async function assignPhlebotomist(
   requestId: string,
   phlebotomistId: string,

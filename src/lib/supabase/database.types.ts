@@ -93,8 +93,11 @@ export type AuditAction =
   | "REPORT_TEST_ADDED"
   | "REPORT_TEST_REMOVED"
   | "REPORT_TEST_REORDERED"
-  | "CUSTOM_TEST_CREATED";
+  | "CUSTOM_TEST_CREATED"
+  | "APPOINTMENT_RESCHEDULED"
+  | "HOME_COLLECTION_PAYMENT_UPDATED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
+export type HomeCollectionPaymentStatus = "unpaid" | "pending" | "paid" | "waived";
 export type ServiceStatus = "draft" | "published" | "archived";
 export type WebsitePageKey = "homepage" | "about" | "contact" | "footer" | "seo";
 export type WebsiteContentStatus = "draft" | "published";
@@ -266,6 +269,8 @@ export interface Database {
           published_at: string | null;
           published_by: string | null;
           is_custom: boolean;
+          what_to_avoid: string | null;
+          important_notes: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["tests"]["Row"]> & {
           category_id: string;
@@ -583,6 +588,9 @@ export interface Database {
           status: IntakeStatus;
           created_at: string;
           booking_reference: string | null;
+          admin_notes: string | null;
+          rescheduled_date: string | null;
+          rescheduled_time: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["appointment_requests"]["Row"]> & {
           full_name: string;
@@ -605,6 +613,9 @@ export interface Database {
           created_at: string;
           assigned_phlebotomist_id: string | null;
           booking_reference: string | null;
+          payment_status: HomeCollectionPaymentStatus;
+          payment_amount_ngn: number | null;
+          payment_notes: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["home_collection_requests"]["Row"]> & {
           full_name: string;
@@ -723,6 +734,8 @@ export interface Database {
           social_youtube: string | null;
           updated_at: string;
           updated_by: string | null;
+          booking_window_days: number;
+          booking_min_notice_hours: number;
         };
         Insert: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;

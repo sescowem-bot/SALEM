@@ -49,6 +49,8 @@ export interface ResolvedSiteSettings {
   socialLinkedin: string | null;
   socialTwitter: string | null;
   socialYoutube: string | null;
+  bookingWindowDays: number;
+  bookingMinNoticeHours: number;
 }
 
 function toTelHref(phone: string): string {
@@ -94,6 +96,8 @@ function resolve(row: SiteSettingsRow | null): ResolvedSiteSettings {
     socialLinkedin: row?.social_linkedin ?? null,
     socialTwitter: row?.social_twitter ?? null,
     socialYoutube: row?.social_youtube ?? null,
+    bookingWindowDays: row?.booking_window_days ?? 14,
+    bookingMinNoticeHours: row?.booking_min_notice_hours ?? 2,
   };
 }
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, FileText } from "lucide-react";
+import { Search, FileText, Plus } from "lucide-react";
 import { AdminShell } from "@/components/salem/AdminShell";
 import { StatusBadge } from "@/components/salem/StatusBadge";
 import { requireStaff, can } from "@/lib/auth/session";
@@ -44,6 +44,7 @@ export default async function ReportsIndexPage({
 
   const activeStatus = (status as ReportStatus | "all" | undefined) ?? "all";
   const reports = await listAllReports(staff.role, { query: q, status: activeStatus });
+  const canCreate = can(staff, "reports.create_draft");
 
   return (
     <AdminShell
@@ -55,6 +56,16 @@ export default async function ReportsIndexPage({
       staffName={staff.fullName}
       staffRole={staff.role}
       navItems={navItems}
+      actions={
+        canCreate ? (
+          <Link
+            href="/admin/results-entry"
+            className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-navy-deep"
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" /> New report
+          </Link>
+        ) : undefined
+      }
     >
       <div className="surface-card mb-6 p-4 sm:p-5">
         <form className="flex flex-wrap items-center gap-3" action="/admin/reports">

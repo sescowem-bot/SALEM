@@ -4,7 +4,6 @@ import type { Database } from "@/lib/supabase/database.types";
 import { generateBookingReference } from "./security";
 import { hashIp, isFormRateLimited, recordFormAttempt } from "./rateLimit";
 import { logAudit } from "./audit";
-import { APPOINTMENT_TIME_SLOTS } from "@/lib/bookingConstants";
 
 /**
  * Public intake for appointment booking, home sample collection, and the
@@ -17,8 +16,6 @@ import { APPOINTMENT_TIME_SLOTS } from "@/lib/bookingConstants";
  * Action (see src/app/book/actions.ts, src/app/home-collection/actions.ts).
  */
 
-const MAX_BOOKINGS_PER_SLOT = 3;
-
 export { APPOINTMENT_TIME_SLOTS, HOME_COLLECTION_TIME_SLOTS } from "@/lib/bookingConstants";
 
 type AppointmentRequestInsert = Database["public"]["Tables"]["appointment_requests"]["Insert"];
@@ -27,9 +24,16 @@ type ContactSubmissionInsert = Database["public"]["Tables"]["contact_submissions
 
 export type SubmitOutcome<T = object> =
   | ({ ok: true } & T)
-  | { ok: false; reason: "rate_limited" | "slot_full" | "error" };
+  | { ok: false; reason: "rate_limited" | "error" };
 
-/** Booked (non-cancelled) count per time slot for a given date — used to grey out full slots in the UI. */
+/**
+ * Booked (non-cancelled) count per time slot for a given date — informational
+ * only. Shown in the UI as a "how busy is this slot" indicator (e.g. "3
+ * other patients selected this time"), never used to disable or reject a
+ * slot: patients must be able to submit multiple requests for the same
+ * date/time, and it's the front desk's job to coordinate actual capacity
+ * when reviewing requests (see Advanced 7 QA §2).
+ */
 export async function getBookedSlotCounts(date: string): Promise<Record<string, number>> {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
@@ -61,40 +65,36 @@ export async function submitAppointmentRequest(
   const supabase = getServiceRoleClient();
   const bookingReference = generateBookingReference("APT");
 
-  // Capacity check + insert happen atomically inside book_appointment_slot()
-  // (see supabase/migrations/20260820090001_book_appointment_slot_atomic.sql),
-  // serialized per date+time slot via a transaction-scoped advisory lock —
-  // closes the race where two concurrent requests could both pass a
-  // separate "is this slot full?" check before either row existed.
-  const { data, error } = await supabase.rpc("book_appointment_slot", {
-    p_full_name: input.full_name,
-    p_phone: input.phone,
-    p_email: input.email ?? null,
-    p_test_or_package: input.test_or_package ?? null,
-    p_preferred_date: input.preferred_date ?? "",
-    p_preferred_time: input.preferred_time ?? "",
-    p_location_type: input.location_type ?? null,
-    p_notes: input.notes ?? null,
-    p_booking_reference: bookingReference,
-    p_max_per_slot: MAX_BOOKINGS_PER_SLOT,
-  });
+  // Plain insert — same pattern as submitHomeCollectionRequest below.
+  //
+  // This used to go through a book_appointment_slot() RPC that hard-rejected
+  // a booking once 3 requests already existed for the same date+time
+  // (SLOT_FULL). That directly violated the requirement that patients must
+  // be able to submit multiple requests for the same date/time — the front
+  // desk, not the booking form, is who coordinates actual capacity — so the
+  // capacity gate is removed rather than reworked. It also removed a real
+  // failure surface: every booking depended on that RPC's signature staying
+  // in lockstep with this code, and any drift (or the migration simply not
+  // having been applied to a given environment) meant every single
+  // submission fell into the generic error branch below and showed
+  // "Something went wrong" with no way to tell why. A plain insert has no
+  // such dependency.
+  const { data, error } = await supabase
+    .from("appointment_requests")
+    .insert({ ...input, booking_reference: bookingReference })
+    .select("id")
+    .single();
 
   if (error) {
-    if (error.message.includes("SLOT_FULL")) {
-      await recordFormAttempt("appointment", ipHash, false);
-      return { ok: false, reason: "slot_full" };
-    }
     await recordFormAttempt("appointment", ipHash, false);
     return { ok: false, reason: "error" };
   }
-
-  const newId = data?.[0]?.id;
 
   await recordFormAttempt("appointment", ipHash, true);
   await logAudit({
     action: "BOOKING_CREATED",
     entityType: "appointment_requests",
-    entityId: newId,
+    entityId: data.id,
     metadata: { bookingReference },
   });
 

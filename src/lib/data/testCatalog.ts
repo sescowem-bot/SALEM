@@ -243,6 +243,8 @@ export interface ServiceEditableFields {
   fullDescription: string | null;
   preparationInfo: string | null;
   requirements: string | null;
+  whatToAvoid: string | null;
+  importantNotes: string | null;
   turnaroundTime: string | null;
   priceNgn: number | null;
   showPrice: boolean;
@@ -264,6 +266,8 @@ function toTestRow(input: ServiceEditableFields) {
     full_description: input.fullDescription,
     preparation_info: input.preparationInfo,
     requirements: input.requirements,
+    what_to_avoid: input.whatToAvoid,
+    important_notes: input.importantNotes,
     turnaround_time: input.turnaroundTime,
     price_ngn: input.priceNgn,
     show_price: input.showPrice,

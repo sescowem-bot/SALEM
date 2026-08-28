@@ -174,6 +174,30 @@ export function ServiceEditorForm({
           />
         </label>
         <label className="block text-sm font-medium text-navy-deep">
+          What to do / avoid
+          <textarea
+            name="whatToAvoid"
+            rows={3}
+            defaultValue={service?.what_to_avoid ?? ""}
+            placeholder="e.g. Avoid alcohol for 24 hours before the test. Do not brush your teeth before an oral sample."
+            className={textareaClass}
+          />
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Shown separately from Preparation on the service page and booking screen.
+          </span>
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Important notes
+          <textarea
+            name="importantNotes"
+            rows={3}
+            defaultValue={service?.important_notes ?? ""}
+            placeholder="e.g. Results may be delayed by one day around public holidays."
+            className={textareaClass}
+          />
+          <span className="mt-1 block text-xs text-muted-foreground">Rendered as a highlighted callout, not folded into the description.</span>
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
           Turnaround time
           <input name="turnaroundTime" defaultValue={service?.turnaround_time ?? ""} placeholder="e.g. 24 hours" className={fieldClass} />
         </label>

@@ -43,6 +43,7 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
   const instagramUrl = settings?.socialInstagram ?? siteConfig.social.instagramUrl;
   const ctaLabel = content?.ctaLabel || "Chat with us on WhatsApp";
   const mapEmbedUrl = content?.mapEmbedUrl;
+  const mapDirectionsUrl = content?.mapDirectionsUrl;
 
   const cards = [
     { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2] },
@@ -132,6 +133,16 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
                 </div>
               )}
             </div>
+            {mapDirectionsUrl ? (
+              <a
+                href={mapDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
+              >
+                <MapPin className="h-4 w-4 shrink-0" /> Get directions
+              </a>
+            ) : null}
 
             <div className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6">
               <span className="flex items-center gap-2 text-sm font-semibold text-destructive">

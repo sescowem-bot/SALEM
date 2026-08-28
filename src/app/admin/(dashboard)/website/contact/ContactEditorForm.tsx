@@ -44,7 +44,12 @@ export function ContactEditorForm({ content }: { content: ContactContent }) {
         <label className="block text-sm font-medium text-navy-deep">
           Map embed URL
           <input value={form.mapEmbedUrl ?? ""} onChange={(e) => set("mapEmbedUrl", e.target.value)} placeholder="https://www.google.com/maps/embed?..." className={fieldClass} />
-          <span className="mt-1 block text-xs text-muted-foreground">Leave blank if no map embed is configured yet.</span>
+          <span className="mt-1 block text-xs text-muted-foreground">Leave blank if no map embed is configured yet. Use the real, verified Salem Medical Laboratories location — never a placeholder.</span>
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          &quot;Get directions&quot; link
+          <input value={form.mapDirectionsUrl ?? ""} onChange={(e) => set("mapDirectionsUrl", e.target.value)} placeholder="https://maps.google.com/?q=..." className={fieldClass} />
+          <span className="mt-1 block text-xs text-muted-foreground">Optional. Shown as a &quot;Get directions&quot; button under the map — opens Google Maps directly.</span>
         </label>
         <label className="block text-sm font-medium text-navy-deep">
           CTA label

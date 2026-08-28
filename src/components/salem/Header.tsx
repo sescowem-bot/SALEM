@@ -78,7 +78,7 @@ export function Header({ settings }: { settings?: ResolvedSiteSettings }) {
           </Link>
 
           <div className="flex items-center gap-2">
-            <nav className="mr-2 hidden items-center gap-0.5 2xl:flex">
+            <nav className="mr-2 hidden items-center gap-0.5 lg:flex">
               {nav.map((item) => (
                 <Link
                   key={item.href}
@@ -110,7 +110,7 @@ export function Header({ settings }: { settings?: ResolvedSiteSettings }) {
               onClick={() => setOpen((v) => !v)}
               aria-label="Toggle navigation menu"
               aria-expanded={open}
-              className="ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border text-navy 2xl:hidden"
+              className="ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border text-navy lg:hidden"
             >
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -118,7 +118,7 @@ export function Header({ settings }: { settings?: ResolvedSiteSettings }) {
         </div>
 
         {open && (
-          <nav className="border-t border-border bg-background px-5 pb-5 pt-2 2xl:hidden">
+          <nav className="border-t border-border bg-background px-5 pb-5 pt-2 lg:hidden">
             {nav.map((item) => (
               <Link
                 key={item.href}

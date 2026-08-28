@@ -7,6 +7,7 @@ import { ArrowLeft, LogOut, Menu, X } from "lucide-react";
 import { SalemLogo } from "./Logo";
 import { signOutAction } from "@/app/admin/login/actions";
 import { ROLE_LABELS, type StaffRole } from "@/lib/auth/permissions";
+import { useAdminLogoUrl } from "@/lib/auth/adminBrandingContext";
 
 export interface AdminNavItem {
   href: string;
@@ -69,6 +70,7 @@ export function AdminShell({
   staffName,
   staffRole,
   navItems,
+  actions,
 }: {
   children: ReactNode;
   eyebrow: string;
@@ -79,10 +81,13 @@ export function AdminShell({
   staffName?: string;
   staffRole?: StaffRole;
   navItems?: AdminNavSection[];
+  /** Optional primary action(s) (e.g. a "+ New report" button), rendered next to the page title. */
+  actions?: ReactNode;
 }) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const sections = navItems ?? [];
+  const logoUrl = useAdminLogoUrl();
 
   return (
     <div className="min-h-screen bg-secondary lg:flex">
@@ -91,7 +96,7 @@ export function AdminShell({
         <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
           <div className="border-b border-border px-5 py-5">
             <Link href="/admin">
-              <SalemLogo />
+              <SalemLogo logoUrl={logoUrl} />
             </Link>
             <span className="mt-3 inline-flex rounded-full bg-accent px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-navy">
               Staff Area
@@ -126,7 +131,7 @@ export function AdminShell({
           <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-card shadow-soft">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <Link href="/admin" onClick={() => setMobileNavOpen(false)}>
-                <SalemLogo />
+                <SalemLogo logoUrl={logoUrl} />
               </Link>
               <button
                 aria-label="Close menu"
@@ -155,7 +160,7 @@ export function AdminShell({
                 </button>
               ) : (
                 <Link href="/">
-                  <SalemLogo />
+                  <SalemLogo logoUrl={logoUrl} />
                 </Link>
               )}
             </div>
@@ -193,10 +198,13 @@ export function AdminShell({
             <ArrowLeft className="h-4 w-4 shrink-0" /> {backLabel}
           </Link>
 
-          <div className="mt-4 max-w-2xl">
-            <span className="text-xs font-semibold uppercase tracking-[0.22em] text-purple">{eyebrow}</span>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-navy-deep sm:text-3xl">{title}</h1>
-            {lead ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">{lead}</p> : null}
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <span className="text-xs font-semibold uppercase tracking-[0.22em] text-purple">{eyebrow}</span>
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-navy-deep sm:text-3xl">{title}</h1>
+              {lead ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">{lead}</p> : null}
+            </div>
+            {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
           </div>
 
           <div className="mt-8">{children}</div>

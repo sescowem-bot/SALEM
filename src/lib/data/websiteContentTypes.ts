@@ -41,6 +41,7 @@ export interface ContactContent {
   pageHeading?: string;
   introduction?: string;
   mapEmbedUrl?: string;
+  mapDirectionsUrl?: string;
   ctaLabel?: string;
 }
 
