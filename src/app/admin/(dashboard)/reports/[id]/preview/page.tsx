@@ -37,7 +37,14 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
   const { org, report, tests, approval } = data;
 
   return (
-    <div className="min-h-screen bg-secondary/40 print:bg-white">
+    <>
+      <style>{`
+        @page { size: A4; margin: 0; }
+        @media print {
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+        }
+      `}</style>
+      <div className="min-h-screen bg-secondary/40 print:bg-white">
       <div className="print:hidden">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
           <Link href={`/admin/reports/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:underline">
@@ -47,10 +54,10 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div className="mx-auto max-w-4xl bg-white p-8 shadow-soft print:shadow-none sm:p-12">
+      <div className="mx-auto w-[210mm] min-h-[297mm] max-w-[calc(100vw-2rem)] bg-white p-[15mm] shadow-soft print:w-[210mm] print:min-h-[297mm] print:max-w-none print:p-[15mm] print:shadow-none">
         {org.letterheadDataUri ? (
           // eslint-disable-next-line @next/next/no-img-element -- data URI, arbitrary source
-          <img src={org.letterheadDataUri} alt={`${org.orgName} letterhead`} className="mb-4 max-h-24 w-full object-contain" />
+          <img src={org.letterheadDataUri} alt={`${org.orgName} letterhead`} className="mb-5 block h-auto w-full object-contain" />
         ) : (
           <div className="mb-4 border-b-2 border-navy pb-3">
             <p className="text-xl font-bold text-navy-deep">{org.orgName}</p>
@@ -183,6 +190,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
