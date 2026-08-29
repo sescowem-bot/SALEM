@@ -1,5 +1,4 @@
 import "server-only";
-import { randomUUID } from "crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
@@ -314,7 +313,6 @@ export async function createService(
 
   return data;
 }
-
 // ---------------------------------------------------------------------------
 // New-investigation template building — Advanced 7's "Create custom
 // investigation" (lib/data/labReports.ts createCustomInvestigation()) lets a
@@ -573,11 +571,11 @@ export { slugify };
 export async function listPublishedServices(): Promise<ServiceWithCategory[]> {
   const supabase = getServiceRoleClient();
   const [{ data: tests, error: testsError }, { data: categories, error: catError }] = await Promise.all([
-    // content_status governs the draft/published/archived publishing
-    // lifecycle; is_active is the separate "temporarily unavailable"
-    // toggle in the service editor (the "Active" checkbox). Both are
-    // required for public visibility — a published-but-deactivated test
-    // must not appear on the public site or in the booking list.
+    // Advanced 8 §4 fix: content_status governs the draft/published/archived
+    // publishing lifecycle; is_active is the separate "temporarily
+    // unavailable" toggle in the editor form (`isActive` checkbox). Both
+    // are required for public visibility — a published-but-deactivated
+    // test previously still showed up here and on /book.
     supabase.from("tests").select("*").eq("content_status", "published").eq("is_active", true).order("sort_order", { ascending: true }),
     supabase.from("test_categories").select("*").eq("is_active", true),
   ]);

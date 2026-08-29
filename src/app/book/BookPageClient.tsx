@@ -88,10 +88,10 @@ export function BookPageClient({
   };
 
   const [selectedDay, setSelectedDayState] = useState(0);
-  // Lazy initializer — runs once at mount, not inside an effect — so
-  // today's default selection is never a slot that's already past the
-  // notice cutoff.
-  const [selectedTime, setSelectedTime] = useState(() => firstBookableTimeIndex(0));
+  // Start with a stable SSR-safe value. The mount effect below corrects
+  // today's selection if the first slot is already inside the notice window;
+  // this avoids a time-dependent server/client hydration mismatch.
+  const [selectedTime, setSelectedTime] = useState(0);
   const [location, setLocation] = useState<"lab" | "home">("lab");
   const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
   const [, startTransition] = useTransition();
@@ -109,6 +109,10 @@ export function BookPageClient({
   }
 
   useEffect(() => {
+    if (isPastNotice(selectedDay, selectedTime)) {
+      setSelectedTime(firstBookableTimeIndex(selectedDay));
+    }
+
     startTransition(async () => {
       const availability = await getSlotAvailabilityAction(days[selectedDay].iso);
       const counts: Record<string, number> = {};
