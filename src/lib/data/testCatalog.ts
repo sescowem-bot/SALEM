@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
