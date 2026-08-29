@@ -38,8 +38,6 @@ export async function generateMetadata(): Promise<Metadata> {
       default: title,
       template: `%s | ${orgName}`,
     },
-    metadataBase: new URL(PUBLIC_SITE_ORIGIN),
-    alternates: { canonical: PUBLIC_SITE_ORIGIN },
     description,
     openGraph: {
       title: orgName,
@@ -61,8 +59,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let settings: Awaited<ReturnType<typeof getSiteSettings>> | null = null;
-  try { settings = await getSiteSettings(); } catch { /* public pages still render */ }
-  const sameAs = [settings?.socialInstagram, settings?.socialFacebook, settings?.socialLinkedin, settings?.socialTwitter, settings?.socialYoutube].filter(Boolean);
+  try { settings = await getSiteSettings(); } catch { /* keep public shell resilient */ }
+  const sameAs = [settings?.socialFacebook, settings?.socialInstagram, settings?.socialLinkedin, settings?.socialTwitter, settings?.socialYoutube].filter(Boolean);
   const schema = {
     "@context": "https://schema.org",
     "@type": "MedicalLaboratory",
@@ -71,10 +69,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     url: PUBLIC_SITE_ORIGIN,
     telephone: settings?.phonePrimary,
     email: settings?.emailPrimary,
-    address: { "@type": "PostalAddress", addressLocality: settings?.city || "Lagos", addressRegion: settings?.state || undefined, addressCountry: "NG" },
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: [settings?.addressLine1, settings?.addressLine2].filter(Boolean).join(", ") || undefined,
+      addressLocality: settings?.city || "Lagos",
+      addressRegion: settings?.state || undefined,
+      addressCountry: "NG",
+    },
     sameAs,
   };
-
   return (
     <html lang="en">
       <head>

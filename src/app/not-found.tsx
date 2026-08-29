@@ -1,5 +1,5 @@
-import Link from "next/link";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SiteLayout } from "@/components/salem/SiteLayout";
 
 export const metadata: Metadata = {

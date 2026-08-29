@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { ContactPageClient } from "./ContactPageClient";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
 import { getSiteSettings } from "@/lib/data/siteSettings";
 import type { ContactContent, SeoContent } from "@/lib/data/websiteContentTypes";
+import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export default async function ContactPage() {
     getSiteSettings(),
   ]);
 
-  const sameAs = [settings.socialInstagram, settings.socialFacebook, settings.socialLinkedin, settings.socialTwitter, settings.socialYoutube].filter(Boolean);
+  const sameAs = [settings.socialFacebook, settings.socialInstagram, settings.socialLinkedin, settings.socialTwitter, settings.socialYoutube].filter(Boolean);
   const localSchema = {
     "@context": "https://schema.org",
     "@type": "MedicalClinic",
@@ -31,7 +31,13 @@ export default async function ContactPage() {
     url: "https://salemmedicals.com/contact",
     telephone: settings.phonePrimary,
     email: settings.emailPrimary,
-    address: { "@type": "PostalAddress", addressLocality: settings.city || "Lagos", addressRegion: settings.state || undefined, addressCountry: "NG" },
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: [settings.addressLine1, settings.addressLine2].filter(Boolean).join(", ") || undefined,
+      addressLocality: settings.city || "Lagos",
+      addressRegion: settings.state || undefined,
+      addressCountry: "NG",
+    },
     sameAs,
   };
 

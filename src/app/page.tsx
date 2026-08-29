@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 import { SiteLayout } from "@/components/salem/SiteLayout";
 import { Hero } from "@/components/salem/Hero";
 import { AboutPreview } from "@/components/salem/AboutPreview";
@@ -13,6 +12,7 @@ import { getSiteSettings } from "@/lib/data/siteSettings";
 import { listPublishedServices } from "@/lib/data/testCatalog";
 import { getServiceImagePublicUrl } from "@/lib/data/storage";
 import type { HomepageContent, SeoContent } from "@/lib/data/websiteContentTypes";
+import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 

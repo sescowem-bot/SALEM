@@ -8,7 +8,7 @@ import { BookPageClient } from "./BookPageClient";
 const description =
   "Book a laboratory test at Salem Medical Laboratories — choose your test, date, walk-in or home collection, and confirm.";
 
-export const metadata: Metadata = publicMetadata({ title: "Book a Laboratory Test | Salem Medical Laboratories", description: "Book a laboratory investigation with Salem Medical Laboratories.", pathname: "/book", noIndex: false });
+export const metadata: Metadata = publicMetadata({ title: "Book a Test | Salem Medical Laboratories", description: "Book a laboratory test at Salem Medical Laboratories — choose your test, date, walk-in or home collection, and confirm.", pathname: "/book", noIndex: false });
 
 export default async function BookPage({
   searchParams,

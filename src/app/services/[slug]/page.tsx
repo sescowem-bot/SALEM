@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { publicMetadata, getSeoContent, getSiteSeoImage } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { SiteLayout } from "@/components/salem/SiteLayout";
 import { ServiceDetailView } from "@/components/salem/ServiceDetailView";
 import { getPublishedServiceBySlug, listRelatedPublishedServices } from "@/lib/data/testCatalog";
 import { getServiceImagePublicUrl } from "@/lib/data/storage";
+import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +27,12 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   const related = await listRelatedPublishedServices(service.category_id, service.id);
   const heroImageUrl = service.hero_image_path ? getServiceImagePublicUrl(service.hero_image_path) : null;
 
+  const serviceDescription = service.seo_description || service.public_description || `${service.name} at Salem Medical Laboratories.`;
   const schema = {
     "@context": "https://schema.org",
     "@type": "MedicalTest",
     name: service.name,
-    description,
+    description: serviceDescription,
     url: `https://salemmedicals.com/services/${service.slug}`,
     provider: { "@type": "MedicalLaboratory", name: "Salem Medical Laboratories", url: "https://salemmedicals.com" },
   };
@@ -40,7 +41,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <SiteLayout>
-      <ServiceDetailView service={service} heroImageUrl={heroImageUrl} related={related} />
+        <ServiceDetailView service={service} heroImageUrl={heroImageUrl} related={related} />
       </SiteLayout>
     </>
   );

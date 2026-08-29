@@ -18,8 +18,10 @@ Font.registerHyphenationCallback((word) => [word]);
 
 const styles = StyleSheet.create({
   page: { paddingTop: 24, paddingBottom: 48, paddingHorizontal: 36, fontSize: 9.5, fontFamily: "Helvetica", color: "#1a2b4a" },
-  letterheadContent: { paddingTop: 175, paddingBottom: 105, paddingHorizontal: 36 },
+  // Keep the uploaded letterhead proportional and large enough to behave like
+  // the A4 report header. Do not cap it at a tiny thumbnail height.
   letterheadImage: { position: "absolute", top: 0, left: 0, width: 595.28, height: 841.89, objectFit: "fill" },
+  letterheadContent: { paddingTop: 175, paddingBottom: 105, paddingHorizontal: 36 },
   letterheadTextBlock: { borderBottomWidth: 2, borderBottomColor: "#0f2a52", paddingBottom: 8, marginBottom: 10 },
   orgName: { fontSize: 16, fontWeight: 700, color: "#0f2a52" },
   orgTagline: { fontSize: 8, color: "#5b6b85", marginTop: 2 },

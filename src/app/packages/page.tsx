@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 
-export const metadata: Metadata = publicMetadata({ title: "Health Packages | Salem Medical Laboratories", description: "Explore health screening packages from Salem Medical Laboratories.", pathname: "/packages", noIndex: false });
+export const metadata: Metadata = publicMetadata({ title: "Health Packages | Salem Medical Laboratories", description: "Curated health screening packages from Salem Medical Laboratories.", pathname: "/packages", noIndex: false });
 
 const packages = [
   {

@@ -11,7 +11,7 @@ import { HomeCollectionFormClient } from "./HomeCollectionFormClient";
 const description =
   "Book a home visit and have a Salem phlebotomist collect your sample safely and comfortably at home.";
 
-export const metadata: Metadata = publicMetadata({ title: "Home Sample Collection | Salem Medical Laboratories", description: "Book a Salem Medical Laboratories home sample collection visit.", pathname: "/home-collection", noIndex: false });
+export const metadata: Metadata = publicMetadata({ title: "Home Sample Collection | Salem Medical Laboratories", description: "Book a home visit and have a Salem phlebotomist collect your sample safely and comfortably at home.", pathname: "/home-collection", noIndex: false });
 
 const steps = [
   {

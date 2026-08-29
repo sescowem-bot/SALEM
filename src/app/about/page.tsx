@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 import Link from "next/link";
 import Image from "next/image";
 import { Target, Eye, HeartHandshake, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
 import type { AboutContent, SeoContent } from "@/lib/data/websiteContentTypes";
+import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 

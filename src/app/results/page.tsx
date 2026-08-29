@@ -6,7 +6,7 @@ import { ResultsPageClient } from "./ResultsPageClient";
 const description =
   "Securely access your Salem laboratory report using your lab reference number and one-time access code.";
 
-export const metadata: Metadata = publicMetadata({ title: "Check Laboratory Results | Salem Medical Laboratories", description: "Securely access your Salem Medical Laboratories result using your report reference and access code.", pathname: "/results", noIndex: true });
+export const metadata: Metadata = publicMetadata({ title: "Access Your Results | Salem Medical Laboratories", description: "Securely access your Salem laboratory report using your lab reference number and one-time access code.", pathname: "/results", noIndex: true });
 
 export default function ResultsPage() {
   return (

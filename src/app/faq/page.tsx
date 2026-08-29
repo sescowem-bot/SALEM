@@ -14,7 +14,7 @@ import { siteConfig } from "@/data/siteContent";
 const description =
   "Answers to common questions about booking a test, home sample collection, preparing for tests, and accessing your Salem laboratory results.";
 
-export const metadata: Metadata = publicMetadata({ title: "Frequently Asked Questions | Salem Medical Laboratories", description: "Answers about Salem Medical Laboratories tests, bookings, results and services.", pathname: "/faq", noIndex: false });
+export const metadata: Metadata = publicMetadata({ title: "FAQs | Salem Medical Laboratories", description: "Answers to common questions about booking a test, home sample collection, preparing for tests, and accessing your Salem laboratory results.", pathname: "/faq", noIndex: false });
 
 const groups = [
   {
