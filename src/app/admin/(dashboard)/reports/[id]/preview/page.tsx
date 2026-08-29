@@ -194,6 +194,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
         </div>
         </div>
       </div>
+      </div>
     </>
   );
 }
