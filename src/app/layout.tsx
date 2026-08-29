@@ -59,7 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let settings: Awaited<ReturnType<typeof getSiteSettings>> | null = null;
   try { settings = await getSiteSettings(); } catch { /* public pages still render */ }
   const sameAs = [settings?.socialInstagram, settings?.socialFacebook, settings?.socialLinkedin, settings?.socialTwitter, settings?.socialYoutube].filter(Boolean);
