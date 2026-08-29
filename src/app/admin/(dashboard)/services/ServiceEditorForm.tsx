@@ -29,6 +29,167 @@ function Section({ number, title, description, children }: { number: number; tit
   );
 }
 
+type CustomField = { label: string; inputType: "numeric" | "text"; unit: string; referenceRange: string };
+const emptyCustomField = (): CustomField => ({ label: "", inputType: "text", unit: "", referenceRange: "" });
+
+/**
+ * Inline "parameters/result fields" builder for a brand-new test/
+ * investigation created from the admin catalogue. Same field_based /
+ * table_based shape and same UX as the "Create custom investigation"
+ * builder in reports/[id]/ReportDetailClient.tsx — reused here rather than
+ * reinvented, since a new test/investigation is exactly the same kind of
+ * structure a scientist can already define ad hoc on a report.
+ */
+function ResultStructureBuilder({
+  structureType,
+  onStructureTypeChange,
+  fields,
+  setFields,
+  columns,
+  setColumns,
+  rows,
+  setRows,
+}: {
+  structureType: "field_based" | "table_based";
+  onStructureTypeChange: (v: "field_based" | "table_based") => void;
+  fields: CustomField[];
+  setFields: React.Dispatch<React.SetStateAction<CustomField[]>>;
+  columns: string[];
+  setColumns: React.Dispatch<React.SetStateAction<string[]>>;
+  rows: string[];
+  setRows: React.Dispatch<React.SetStateAction<string[]>>;
+}) {
+  return (
+    <div className="space-y-4 rounded-xl border border-border bg-secondary/40 p-4">
+      <label className="block text-sm font-medium text-navy-deep">
+        Structure
+        <select
+          className={fieldClass}
+          value={structureType}
+          onChange={(e) => onStructureTypeChange(e.target.value as "field_based" | "table_based")}
+        >
+          <option value="field_based">Single / multi-parameter</option>
+          <option value="table_based">Table (rows × columns)</option>
+        </select>
+      </label>
+
+      {structureType === "field_based" ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Parameters — one row per result line (e.g. HB, WBC, PCV)
+          </p>
+          {fields.map((f, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.2fr_100px_90px_1fr_auto] sm:items-center">
+              <input
+                placeholder="Parameter name"
+                className={fieldClass}
+                value={f.label}
+                onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+              />
+              <select
+                className={fieldClass}
+                value={f.inputType}
+                onChange={(e) =>
+                  setFields((prev) => prev.map((x, j) => (j === i ? { ...x, inputType: e.target.value as "numeric" | "text" } : x)))
+                }
+              >
+                <option value="text">Text</option>
+                <option value="numeric">Numeric</option>
+              </select>
+              <input
+                placeholder="Unit"
+                className={fieldClass}
+                value={f.unit}
+                onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)))}
+              />
+              <input
+                placeholder="Reference range"
+                className={fieldClass}
+                value={f.referenceRange}
+                onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, referenceRange: e.target.value } : x)))}
+              />
+              <button
+                type="button"
+                onClick={() => setFields((prev) => prev.filter((_, j) => j !== i))}
+                disabled={fields.length === 1}
+                className="justify-self-start text-xs font-semibold text-destructive disabled:opacity-30"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setFields((prev) => [...prev, emptyCustomField()])}
+            className="text-xs font-semibold text-navy underline underline-offset-2"
+          >
+            + Add parameter
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Columns</p>
+            {columns.map((c, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  placeholder="Column label"
+                  className={fieldClass}
+                  value={c}
+                  onChange={(e) => setColumns((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                />
+                <button
+                  type="button"
+                  onClick={() => setColumns((prev) => prev.filter((_, j) => j !== i))}
+                  disabled={columns.length === 1}
+                  className="text-xs font-semibold text-destructive disabled:opacity-30"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setColumns((prev) => [...prev, ""])}
+              className="text-xs font-semibold text-navy underline underline-offset-2"
+            >
+              + Add column
+            </button>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rows</p>
+            {rows.map((r, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  placeholder="Row label"
+                  className={fieldClass}
+                  value={r}
+                  onChange={(e) => setRows((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                />
+                <button
+                  type="button"
+                  onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+                  disabled={rows.length === 1}
+                  className="text-xs font-semibold text-destructive disabled:opacity-30"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setRows((prev) => [...prev, ""])}
+              className="text-xs font-semibold text-navy underline underline-offset-2"
+            >
+              + Add row
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SaveBar() {
   const { pending } = useFormStatus();
   return (
@@ -62,6 +223,16 @@ export function ServiceEditorForm({
   const [slug, setSlug] = useState(service?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(mode === "edit");
 
+  // "Create new result template" — only offered when adding a brand-new
+  // test/investigation (mode === "create"). Editing an existing service
+  // keeps the plain existing-template dropdown, unchanged, so an
+  // in-progress report's structure is never affected by an edit.
+  const [templateMode, setTemplateMode] = useState<"existing" | "new">("existing");
+  const [structureType, setStructureType] = useState<"field_based" | "table_based">("field_based");
+  const [fields, setFields] = useState<CustomField[]>([emptyCustomField()]);
+  const [columns, setColumns] = useState<string[]>([""]);
+  const [rows, setRows] = useState<string[]>([""]);
+
   function handleNameChange(value: string) {
     setName(value);
     if (!slugTouched) setSlug(slugify(value));
@@ -70,10 +241,19 @@ export function ServiceEditorForm({
   return (
     <form action={formAction} className="space-y-5">
       {service ? <input type="hidden" name="testId" value={service.id} /> : null}
+      {mode === "create" ? (
+        <>
+          <input type="hidden" name="templateMode" value={templateMode} />
+          <input type="hidden" name="newTemplateStructureType" value={structureType} />
+          <input type="hidden" name="newTemplateFieldsJson" value={JSON.stringify(fields.filter((f) => f.label.trim()))} />
+          <input type="hidden" name="newTemplateColumnsJson" value={JSON.stringify(columns.map((c) => c.trim()).filter(Boolean))} />
+          <input type="hidden" name="newTemplateRowsJson" value={JSON.stringify(rows.map((r) => r.trim()).filter(Boolean))} />
+        </>
+      ) : null}
 
-      <Section number={1} title="Basic information">
+      <Section number={1} title={mode === "create" ? "New test / investigation" : "Basic information"} description={mode === "create" ? "Creates a new investigation in the catalogue — connected to a category and a result structure." : undefined}>
         <label className="block text-sm font-medium text-navy-deep">
-          Service name
+          {mode === "create" ? "Test / investigation name" : "Service name"}
           <input
             name="name"
             required
@@ -110,21 +290,77 @@ export function ServiceEditorForm({
               ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-navy-deep">
-            Result template
-            <select name="templateId" required defaultValue={service?.template_id ?? ""} className={fieldClass}>
-              <option value="" disabled>
-                Choose a template
-              </option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+
+          {mode === "create" ? (
+            <div className="block text-sm font-medium text-navy-deep">
+              Result / parameter structure
+              <div className="mt-1.5 flex gap-4 text-xs font-normal text-muted-foreground">
+                <label className="inline-flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    checked={templateMode === "existing"}
+                    onChange={() => setTemplateMode("existing")}
+                    className="h-3.5 w-3.5"
+                  />
+                  Use an existing template
+                </label>
+                <label className="inline-flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    checked={templateMode === "new"}
+                    onChange={() => setTemplateMode("new")}
+                    className="h-3.5 w-3.5"
+                  />
+                  Define new parameters/result fields
+                </label>
+              </div>
+              {templateMode === "existing" ? (
+                <select name="templateId" required defaultValue="" className={fieldClass}>
+                  <option value="" disabled>
+                    Choose a template
+                  </option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Build the result structure below — its own result template is created together with this investigation.
+                </p>
+              )}
+            </div>
+          ) : (
+            <label className="block text-sm font-medium text-navy-deep">
+              Result template
+              <select name="templateId" required defaultValue={service?.template_id ?? ""} className={fieldClass}>
+                <option value="" disabled>
+                  Choose a template
                 </option>
-              ))}
-            </select>
-            <span className="mt-1 block text-xs text-muted-foreground">Which result-entry template this service produces a report from.</span>
-          </label>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-muted-foreground">Which result-entry template this service produces a report from.</span>
+            </label>
+          )}
         </div>
+
+        {mode === "create" && templateMode === "new" ? (
+          <ResultStructureBuilder
+            structureType={structureType}
+            onStructureTypeChange={setStructureType}
+            fields={fields}
+            setFields={setFields}
+            columns={columns}
+            setColumns={setColumns}
+            rows={rows}
+            setRows={setRows}
+          />
+        ) : null}
       </Section>
 
       <Section number={2} title="Service description">
@@ -223,7 +459,7 @@ export function ServiceEditorForm({
             </label>
             <label className="inline-flex items-center gap-2 text-sm font-medium text-navy-deep">
               <input type="checkbox" name="isActive" value="true" defaultChecked={service?.is_active ?? true} className="h-4 w-4 rounded border-border" />
-              Active (bookable / used for result entry)
+              Active — available for patient booking &amp; result entry
             </label>
             <label className="inline-flex items-center gap-2 text-sm font-medium text-navy-deep">
               <input type="checkbox" name="featured" value="true" defaultChecked={service?.featured ?? false} className="h-4 w-4 rounded border-border" />

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
 import {
   createService,
+  createServiceWithNewTemplate,
   updateService,
   publishService,
   unpublishService,
@@ -25,7 +26,7 @@ export interface ActionState {
 function toEditableFields(parsed: {
   name: string;
   categoryId: string;
-  templateId: string;
+  templateId?: string;
   slug: string;
   publicDescription?: string;
   fullDescription?: string;
@@ -46,7 +47,7 @@ function toEditableFields(parsed: {
   return {
     name: parsed.name,
     categoryId: parsed.categoryId,
-    templateId: parsed.templateId,
+    templateId: parsed.templateId ?? "",
     slug: parsed.slug,
     publicDescription: parsed.publicDescription || null,
     fullDescription: parsed.fullDescription || null,
@@ -66,12 +67,31 @@ function toEditableFields(parsed: {
   };
 }
 
+/**
+ * newTemplate{Fields,Columns,Rows}Json arrive as JSON strings (FormData has
+ * no native array-of-objects support) built client-side by the "create new
+ * result template" builder in ServiceEditorForm.tsx — same pattern as
+ * addCustomInvestigationAction in reports/[id]/actions.ts.
+ */
+function parseJsonArray(raw: FormDataEntryValue | null): unknown {
+  try {
+    return JSON.parse(String(raw ?? "[]"));
+  } catch {
+    return [];
+  }
+}
+
 function readForm(formData: FormData) {
   return {
     testId: (formData.get("testId") as string) || undefined,
     name: formData.get("name"),
     categoryId: formData.get("categoryId"),
-    templateId: formData.get("templateId"),
+    templateId: formData.get("templateId") || "",
+    templateMode: (formData.get("templateMode") as string) || "existing",
+    newTemplateStructureType: formData.get("newTemplateStructureType") || undefined,
+    newTemplateFields: parseJsonArray(formData.get("newTemplateFieldsJson")),
+    newTemplateColumns: parseJsonArray(formData.get("newTemplateColumnsJson")),
+    newTemplateRows: parseJsonArray(formData.get("newTemplateRowsJson")),
     slug: formData.get("slug"),
     publicDescription: formData.get("publicDescription") || "",
     fullDescription: formData.get("fullDescription") || "",
@@ -101,7 +121,22 @@ export async function createServiceAction(_prev: ActionState, formData: FormData
     if (await isServiceSlugTaken(parsed.data.slug, undefined, staff.role)) {
       return { error: "That slug is already in use by another service." };
     }
-    const created = await createService(toEditableFields(parsed.data), staff.role, staff.userId);
+    const editableFields = toEditableFields(parsed.data);
+    const created =
+      parsed.data.templateMode === "new"
+        ? await createServiceWithNewTemplate(
+            editableFields,
+            {
+              name: parsed.data.name,
+              structureType: parsed.data.newTemplateStructureType!,
+              fields: parsed.data.newTemplateFields,
+              columns: parsed.data.newTemplateColumns,
+              rows: parsed.data.newTemplateRows,
+            },
+            staff.role,
+            staff.userId
+          )
+        : await createService(editableFields, staff.role, staff.userId);
     newId = created.id;
   } catch (err) {
     if (err instanceof Error && err.message.startsWith("Forbidden")) {

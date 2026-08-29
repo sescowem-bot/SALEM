@@ -28,6 +28,15 @@ function nextDays(count: number) {
   return out;
 }
 
+/** "9:00 AM" / "1:00 PM" -> minutes since midnight, for same-day notice-window comparisons. */
+function parseSlotMinutes(slot: string): number {
+  const match = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return 0;
+  let hours = Number(match[1]) % 12;
+  if (/PM/i.test(match[3])) hours += 12;
+  return hours * 60 + Number(match[2]);
+}
+
 const fieldClass =
   "mt-2 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-navy-deep outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan focus:bg-card";
 
@@ -51,23 +60,53 @@ export function BookPageClient({
   preselectedTestName,
   preselectedTest,
   bookingWindowDays = 14,
+  bookingMinNoticeHours = 2,
 }: {
   tests: Test[];
   preselectedTestName?: string;
   preselectedTest?: Test;
   bookingWindowDays?: number;
+  bookingMinNoticeHours?: number;
 }) {
-  // Capped to 14 quick-pick day chips even on a longer booking window, so
-  // the strip stays usable — the admin-controlled window still governs how
-  // far out patients may ultimately be booked/rescheduled by staff.
   const days = nextDays(Math.min(Math.max(bookingWindowDays, 1), 14));
-  const [selectedDay, setSelectedDay] = useState(0);
-  const [selectedTime, setSelectedTime] = useState(0);
+
+  // Admin-controlled minimum notice (Advanced 7 QA §2 / Advanced 8 §1):
+  // only meaningful for "today" — any other day in the window is already
+  // hours out. A slot earlier than "now + notice hours" is not
+  // selectable; this is a legitimate "already in the past / too soon to
+  // staff" restriction, unlike the capacity-based rejection removed
+  // earlier, which blocked a slot simply because another patient had
+  // already picked it.
+  const isPastNotice = (dayIndex: number, timeIndex: number) => {
+    if (days[dayIndex]?.iso !== days[0].iso) return false;
+    const cutoffMinutes = new Date().getHours() * 60 + new Date().getMinutes() + bookingMinNoticeHours * 60;
+    return parseSlotMinutes(APPOINTMENT_TIME_SLOTS[timeIndex]) < cutoffMinutes;
+  };
+  const firstBookableTimeIndex = (dayIndex: number) => {
+    const idx = APPOINTMENT_TIME_SLOTS.findIndex((_, i) => !isPastNotice(dayIndex, i));
+    return idx === -1 ? 0 : idx;
+  };
+
+  const [selectedDay, setSelectedDayState] = useState(0);
+  // Lazy initializer — runs once at mount, not inside an effect — so
+  // today's default selection is never a slot that's already past the
+  // notice cutoff.
+  const [selectedTime, setSelectedTime] = useState(() => firstBookableTimeIndex(0));
   const [location, setLocation] = useState<"lab" | "home">("lab");
   const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
   const [, startTransition] = useTransition();
 
   const [state, formAction] = useActionState(bookAppointmentAction, initialState);
+
+  // Changing day is a user event, not a mount effect — safe to also
+  // correct the time selection here directly, rather than in a
+  // useEffect, if the previously-selected time would now be in the past.
+  function setSelectedDay(dayIndex: number) {
+    setSelectedDayState(dayIndex);
+    if (isPastNotice(dayIndex, selectedTime)) {
+      setSelectedTime(firstBookableTimeIndex(dayIndex));
+    }
+  }
 
   useEffect(() => {
     startTransition(async () => {
@@ -161,19 +200,28 @@ export function BookPageClient({
                   // when reviewing requests (Advanced 7 QA §2).
                   const bookedCount = slotCounts[t] ?? 0;
                   const busy = bookedCount >= 3;
+                  // Unlike the capacity indicator above, a slot inside the
+                  // admin-configured minimum-notice window genuinely isn't
+                  // bookable (there isn't enough lead time to staff it), so
+                  // this one IS disabled — a legitimate scheduling-rule
+                  // restriction, not a same-slot conflict rejection.
+                  const tooSoon = isPastNotice(selectedDay, i);
                   return (
                     <button
                       key={t}
                       type="button"
+                      disabled={tooSoon}
                       onClick={() => setSelectedTime(i)}
                       className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
-                        i === selectedTime
-                          ? "bg-navy text-primary-foreground"
-                          : "border border-border text-navy hover:border-cyan hover:bg-accent"
+                        tooSoon
+                          ? "cursor-not-allowed border border-border text-muted-foreground/50 line-through"
+                          : i === selectedTime
+                            ? "bg-navy text-primary-foreground"
+                            : "border border-border text-navy hover:border-cyan hover:bg-accent"
                       }`}
                     >
                       {t}
-                      {busy ? (
+                      {!tooSoon && busy ? (
                         <span
                           className={`rounded-full px-1.5 py-0.5 text-[0.65rem] font-semibold ${
                             i === selectedTime ? "bg-white/20" : "bg-accent text-navy-deep"
@@ -188,6 +236,7 @@ export function BookPageClient({
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
                 You can still request a &quot;Popular&quot; time slot — our front desk will confirm the exact time with you.
+                {bookingMinNoticeHours > 0 ? ` Same-day bookings need at least ${bookingMinNoticeHours} hour${bookingMinNoticeHours === 1 ? "" : "s"}' notice.` : ""}
               </p>
 
               <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-purple">

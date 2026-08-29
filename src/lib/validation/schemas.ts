@@ -232,37 +232,63 @@ export const customInvestigationSchema = z.object({
   rows: z.array(z.string().trim().min(1).max(200)).max(50).optional().default([]),
 });
 
-export const serviceEditorSchema = z.object({
-  testId: z.string().uuid().optional(),
-  name: z.string().trim().min(2, "Service name is required").max(200),
-  categoryId: z.string().uuid("Choose a category"),
-  templateId: z.string().uuid("Choose a result template"),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(2, "Slug is required")
-    .max(200)
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens only"),
-  publicDescription: z.string().trim().max(500).optional().or(z.literal("")),
-  fullDescription: z.string().trim().max(5000).optional().or(z.literal("")),
-  preparationInfo: z.string().trim().max(2000).optional().or(z.literal("")),
-  requirements: z.string().trim().max(2000).optional().or(z.literal("")),
-  whatToAvoid: z.string().trim().max(2000).optional().or(z.literal("")),
-  importantNotes: z.string().trim().max(2000).optional().or(z.literal("")),
-  turnaroundTime: z.string().trim().max(200).optional().or(z.literal("")),
-  priceNgn: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : v),
-    z.coerce.number().nonnegative().optional()
-  ),
-  showPrice: z.enum(["true", "false"]).default("false"),
-  featured: z.enum(["true", "false"]).default("false"),
-  ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
-  ctaDestination: z.string().trim().max(300).optional().or(z.literal("")),
-  seoTitle: z.string().trim().max(70).optional().or(z.literal("")),
-  seoDescription: z.string().trim().max(160).optional().or(z.literal("")),
-  isActive: z.enum(["true", "false"]).default("true"),
-});
+/**
+ * Result template for a service is either an existing test_templates row
+ * (templateMode "existing", the only mode available when editing) or a
+ * brand-new one defined inline (templateMode "new", create-only) — same
+ * field/column/row shape as customInvestigationSchema above, reusing the
+ * same "parameters/result fields" concept rather than a second schema for
+ * a second structure system.
+ */
+export const serviceEditorSchema = z
+  .object({
+    testId: z.string().uuid().optional(),
+    name: z.string().trim().min(2, "Service name is required").max(200),
+    categoryId: z.string().uuid("Choose a category"),
+    templateId: z.string().uuid().optional().or(z.literal("")),
+    templateMode: z.enum(["existing", "new"]).default("existing"),
+    newTemplateStructureType: z.enum(["field_based", "table_based"]).optional(),
+    newTemplateFields: z.array(customInvestigationFieldSchema).max(30).optional().default([]),
+    newTemplateColumns: z.array(z.string().trim().min(1).max(100)).max(20).optional().default([]),
+    newTemplateRows: z.array(z.string().trim().min(1).max(200)).max(50).optional().default([]),
+    slug: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(2, "Slug is required")
+      .max(200)
+      .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens only"),
+    publicDescription: z.string().trim().max(500).optional().or(z.literal("")),
+    fullDescription: z.string().trim().max(5000).optional().or(z.literal("")),
+    preparationInfo: z.string().trim().max(2000).optional().or(z.literal("")),
+    requirements: z.string().trim().max(2000).optional().or(z.literal("")),
+    whatToAvoid: z.string().trim().max(2000).optional().or(z.literal("")),
+    importantNotes: z.string().trim().max(2000).optional().or(z.literal("")),
+    turnaroundTime: z.string().trim().max(200).optional().or(z.literal("")),
+    priceNgn: z.preprocess(
+      (v) => (v === "" || v === null || v === undefined ? undefined : v),
+      z.coerce.number().nonnegative().optional()
+    ),
+    showPrice: z.enum(["true", "false"]).default("false"),
+    featured: z.enum(["true", "false"]).default("false"),
+    ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+    ctaDestination: z.string().trim().max(300).optional().or(z.literal("")),
+    seoTitle: z.string().trim().max(70).optional().or(z.literal("")),
+    seoDescription: z.string().trim().max(160).optional().or(z.literal("")),
+    isActive: z.enum(["true", "false"]).default("true"),
+  })
+  .superRefine((val, ctx) => {
+    if (val.templateMode === "existing" && !val.templateId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Choose a result template", path: ["templateId"] });
+    }
+    if (val.templateMode === "new" && !val.newTemplateStructureType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose a structure for the new result template",
+        path: ["newTemplateStructureType"],
+      });
+    }
+  });
 
 export const siteSettingsSchema = z.object({
   orgName: z.string().trim().max(200).optional().or(z.literal("")),

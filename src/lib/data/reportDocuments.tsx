@@ -116,9 +116,14 @@ async function buildReportPdfData(input: {
     };
   }
 
-  // Dedicated print letterhead takes priority; fall back to the web logo so
-  // a lab that hasn't uploaded a letterhead yet still gets a branded PDF.
-  const letterheadStoragePath = siteSettings.letterheadPath ?? siteSettings.logoPath;
+  // Only a dedicated print letterhead is used as the document image — the
+  // website logo is never substituted for it (Advanced 8 §3: "Do not
+  // replace it with our website branding"). If no letterhead has been
+  // uploaded yet, ReportPdfDocument's clean text-based header (org name,
+  // address, contact) is used instead of an image, which is still a
+  // proper letterhead built from verified org info — not marketing
+  // branding — until the real letterhead file is uploaded in Settings.
+  const letterheadStoragePath = siteSettings.letterheadPath;
   const letterheadDataUri = letterheadStoragePath ? await getSiteMediaDataUri(letterheadStoragePath) : null;
 
   return {

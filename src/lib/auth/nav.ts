@@ -62,7 +62,6 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
       { href: "/admin/website", label: "Overview" },
       { href: "/admin/website/homepage", label: "Homepage" },
       { href: "/admin/website/about", label: "About" },
-      { href: "/admin/services", label: "Services" },
       { href: "/admin/website/contact", label: "Contact" },
       { href: "/admin/website/footer", label: "Footer" },
       { href: "/admin/website/seo", label: "SEO" }

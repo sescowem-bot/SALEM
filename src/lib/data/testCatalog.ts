@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
@@ -314,6 +315,137 @@ export async function createService(
   return data;
 }
 
+// ---------------------------------------------------------------------------
+// New-investigation template building — Advanced 7's "Create custom
+// investigation" (lib/data/labReports.ts createCustomInvestigation()) lets a
+// scientist define a brand-new field-based or table-based result structure
+// inline while building a report. Admin creating a new test/investigation
+// from the catalogue needs the exact same capability (parameters/result
+// fields defined at creation time), so these two functions reuse that same
+// test_templates/template_fields/template_table_* shape rather than
+// introducing any second, parallel structure system.
+// ---------------------------------------------------------------------------
+
+export interface NewTemplateFieldInput {
+  label: string;
+  inputType: "numeric" | "text";
+  unit?: string;
+}
+
+export interface NewTemplateStructureInput {
+  name: string;
+  structureType: "field_based" | "table_based";
+  fields?: NewTemplateFieldInput[];
+  columns?: string[];
+  rows?: string[];
+}
+
+export async function createTemplateStructure(
+  input: NewTemplateStructureInput,
+  actorRole: StaffRole
+): Promise<TestTemplate> {
+  requireCatalogueManage(actorRole);
+  const supabase = getServiceRoleClient();
+
+  const fields = (input.fields ?? []).filter((f) => f.label.trim().length > 0);
+  const columns = (input.columns ?? []).map((c) => c.trim()).filter(Boolean);
+  const rows = (input.rows ?? []).map((r) => r.trim()).filter(Boolean);
+
+  if (input.structureType === "field_based" && fields.length === 0) {
+    throw new Error("Add at least one result parameter.");
+  }
+  if (input.structureType === "table_based" && (columns.length === 0 || rows.length === 0)) {
+    throw new Error("A table-style investigation needs at least one column and one row.");
+  }
+
+  // test_templates.name is unique but is never shown to a patient (only the
+  // investigation's own `name` on `tests` is) — if it collides with an
+  // existing template name (e.g. the new test shares a name with a template
+  // created some other way) disambiguate once with a short suffix rather
+  // than failing the whole create.
+  let template: TestTemplate | null = null;
+  let attemptName = input.name.trim();
+  for (let attempt = 0; attempt < 2 && !template; attempt++) {
+    const { data, error } = await supabase
+      .from("test_templates")
+      .insert({ name: attemptName, structure_type: input.structureType, is_active: true })
+      .select()
+      .single();
+    if (error) {
+      if (error.code === "23505" && attempt === 0) {
+        attemptName = `${input.name.trim()} (${randomUUID().slice(0, 8)})`;
+        continue;
+      }
+      throw error;
+    }
+    template = data;
+  }
+  if (!template) throw new Error("Could not create the result template.");
+  const createdTemplate = template;
+
+  try {
+    if (input.structureType === "field_based") {
+      const fieldRows = fields.map((f, i) => ({
+        template_id: createdTemplate.id,
+        field_key: `${slugify(f.label) || "param"}-${i}`,
+        label: f.label.trim(),
+        input_type: f.inputType,
+        unit: f.unit?.trim() || null,
+        sort_order: i,
+      }));
+      const { error: fieldsError } = await supabase.from("template_fields").insert(fieldRows);
+      if (fieldsError) throw fieldsError;
+    } else {
+      const columnRows = columns.map((label, i) => ({
+        template_id: createdTemplate.id,
+        column_key: `${slugify(label) || "col"}-${i}`,
+        column_label: label,
+        sort_order: i,
+      }));
+      const { error: colError } = await supabase.from("template_table_columns").insert(columnRows);
+      if (colError) throw colError;
+
+      const rowRows = rows.map((label, i) => ({
+        template_id: createdTemplate.id,
+        row_key: `${slugify(label) || "row"}-${i}`,
+        row_label: label,
+        sort_order: i,
+      }));
+      const { error: rowError } = await supabase.from("template_table_rows").insert(rowRows);
+      if (rowError) throw rowError;
+    }
+  } catch (err) {
+    // Roll back the orphaned, field-less template on a partial failure —
+    // same pattern as createCustomInvestigation().
+    await supabase.from("test_templates").delete().eq("id", createdTemplate.id);
+    throw err;
+  }
+
+  return createdTemplate;
+}
+
+/**
+ * "Add service" (= add test/investigation) with a brand-new result template
+ * defined inline, instead of picking an existing one. Rolls back the
+ * template if the service insert fails (e.g. a slug/name collision) so no
+ * orphaned template is left behind.
+ */
+export async function createServiceWithNewTemplate(
+  serviceInput: Omit<ServiceEditableFields, "templateId">,
+  templateInput: NewTemplateStructureInput,
+  actorRole: StaffRole,
+  actorId?: string
+): Promise<Test> {
+  const template = await createTemplateStructure(templateInput, actorRole);
+  try {
+    return await createService({ ...serviceInput, templateId: template.id }, actorRole, actorId);
+  } catch (err) {
+    const supabase = getServiceRoleClient();
+    await supabase.from("test_templates").delete().eq("id", template.id);
+    throw err;
+  }
+}
+
 export async function updateService(
   testId: string,
   input: ServiceEditableFields,
@@ -441,7 +573,12 @@ export { slugify };
 export async function listPublishedServices(): Promise<ServiceWithCategory[]> {
   const supabase = getServiceRoleClient();
   const [{ data: tests, error: testsError }, { data: categories, error: catError }] = await Promise.all([
-    supabase.from("tests").select("*").eq("content_status", "published").order("sort_order", { ascending: true }),
+    // content_status governs the draft/published/archived publishing
+    // lifecycle; is_active is the separate "temporarily unavailable"
+    // toggle in the service editor (the "Active" checkbox). Both are
+    // required for public visibility — a published-but-deactivated test
+    // must not appear on the public site or in the booking list.
+    supabase.from("tests").select("*").eq("content_status", "published").eq("is_active", true).order("sort_order", { ascending: true }),
     supabase.from("test_categories").select("*").eq("is_active", true),
   ]);
   if (testsError) throw testsError;
@@ -458,6 +595,7 @@ export async function getPublishedServiceBySlug(slug: string): Promise<ServiceWi
     .select("*")
     .eq("slug", slug)
     .eq("content_status", "published")
+    .eq("is_active", true)
     .maybeSingle();
   if (error) throw error;
   if (!test) return null;
@@ -473,6 +611,7 @@ export async function listRelatedPublishedServices(categoryId: string, excludeId
     .select("*")
     .eq("category_id", categoryId)
     .eq("content_status", "published")
+    .eq("is_active", true)
     .neq("id", excludeId)
     .order("sort_order", { ascending: true })
     .limit(limit);
