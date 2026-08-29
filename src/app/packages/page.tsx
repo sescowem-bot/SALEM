@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
+import { publicMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 
-export const metadata: Metadata = {
-  title: "Health Packages | Salem Medical Laboratories",
-  description:
-  "Curated health screening packages from Salem Medical Laboratories — basic, executive, women's health, men's health, corporate and preventive screening.",
-};
+export const metadata: Metadata = publicMetadata({ title: "Health Packages | Salem Medical Laboratories", description: "Explore health screening packages from Salem Medical Laboratories.", pathname: "/packages", noIndex: false });
 
 const packages = [
   {

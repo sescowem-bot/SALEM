@@ -18,9 +18,8 @@ Font.registerHyphenationCallback((word) => [word]);
 
 const styles = StyleSheet.create({
   page: { paddingTop: 24, paddingBottom: 48, paddingHorizontal: 36, fontSize: 9.5, fontFamily: "Helvetica", color: "#1a2b4a" },
-  // Keep the uploaded letterhead proportional and large enough to behave like
-  // the A4 report header. Do not cap it at a tiny thumbnail height.
-  letterheadImage: { width: "100%", height: 118, objectFit: "contain", marginBottom: 10 },
+  letterheadContent: { paddingTop: 175, paddingBottom: 105, paddingHorizontal: 36 },
+  letterheadImage: { position: "absolute", top: 0, left: 0, width: 595.28, height: 841.89, objectFit: "fill" },
   letterheadTextBlock: { borderBottomWidth: 2, borderBottomColor: "#0f2a52", paddingBottom: 8, marginBottom: 10 },
   orgName: { fontSize: 16, fontWeight: 700, color: "#0f2a52" },
   orgTagline: { fontSize: 8, color: "#5b6b85", marginTop: 2 },
@@ -157,7 +156,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
 
   return (
     <Document title={`${report.labNumber} — ${report.patientName}`}>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={org.letterheadDataUri ? { ...styles.page, padding: 0 } : styles.page}>
         {org.letterheadDataUri ? (
           // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image, not a DOM <img>
           <Image src={org.letterheadDataUri} style={styles.letterheadImage} />
@@ -173,6 +172,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
           </View>
         )}
 
+        <View style={org.letterheadDataUri ? styles.letterheadContent : undefined}>
         <View style={styles.reportTitleRow}>
           <Text style={styles.reportTitle}>{isFinal ? "Laboratory Report" : "Laboratory Report — Internal Preview"}</Text>
           {/* Internal workflow status (draft/reviewed/published/archived) is
@@ -300,6 +300,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
           </View>
         </View>
 
+        </View>
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
             {org.orgName} · Lab {report.labNumber} · {isFinal ? "Official laboratory report" : "Internal preview — not a final document"}

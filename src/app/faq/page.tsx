@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import {
@@ -13,12 +14,7 @@ import { siteConfig } from "@/data/siteContent";
 const description =
   "Answers to common questions about booking a test, home sample collection, preparing for tests, and accessing your Salem laboratory results.";
 
-export const metadata: Metadata = {
-  title: "FAQs | Salem Medical Laboratories",
-  description,
-  openGraph: { title: "FAQs | Salem Medical Laboratories", description, type: "website" },
-  twitter: { card: "summary_large_image", title: "FAQs | Salem Medical Laboratories", description },
-};
+export const metadata: Metadata = publicMetadata({ title: "Frequently Asked Questions | Salem Medical Laboratories", description: "Answers about Salem Medical Laboratories tests, bookings, results and services.", pathname: "/faq", noIndex: false });
 
 const groups = [
   {

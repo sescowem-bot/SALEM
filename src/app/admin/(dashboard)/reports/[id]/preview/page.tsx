@@ -54,12 +54,17 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div className="mx-auto w-[210mm] min-h-[297mm] max-w-[calc(100vw-2rem)] bg-white p-[15mm] shadow-soft print:w-[210mm] print:min-h-[297mm] print:max-w-none print:p-[15mm] print:shadow-none">
+      <div className="relative mx-auto min-h-[297mm] w-[210mm] max-w-[calc(100vw-2rem)] bg-white shadow-soft print:w-[210mm] print:min-h-[297mm] print:max-w-none print:shadow-none">
         {org.letterheadDataUri ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data URI, arbitrary source
-          <img src={org.letterheadDataUri} alt={`${org.orgName} letterhead`} className="mb-5 block h-auto w-full object-contain" />
+          <>
+            {/* The uploaded asset is a complete A4 stationery sheet, not a logo.
+                Keep it as a full-page background so report content is printed on
+                the letterhead rather than underneath it. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- data URI */}
+            <img src={org.letterheadDataUri} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 h-full w-full object-fill" />
+          </>
         ) : (
-          <div className="mb-4 border-b-2 border-navy pb-3">
+          <div className="relative z-10 mx-[15mm] pt-[15mm] border-b-2 border-navy pb-3">
             <p className="text-xl font-bold text-navy-deep">{org.orgName}</p>
             {org.tagline ? <p className="text-xs text-muted-foreground">{org.tagline}</p> : null}
             <p className="mt-1 text-[0.7rem] text-muted-foreground">
@@ -71,6 +76,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           </div>
         )}
 
+        <div className={org.letterheadDataUri ? "relative z-10 px-[15mm] pt-[62mm] pb-[35mm]" : "relative z-10 mx-[15mm] pb-[35mm]"}>
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-sm font-bold uppercase tracking-wide text-navy-deep">
             {data.isFinal ? "Laboratory Report — Approved" : "Laboratory Report — Preview"}
@@ -188,6 +194,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           ) : (
             <p className="text-xs italic text-muted-foreground">Pending authorized approval — not yet signed.</p>
           )}
+        </div>
         </div>
       </div>
       </div>

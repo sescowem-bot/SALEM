@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { ContactPageClient } from "./ContactPageClient";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
@@ -13,12 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const description =
     seo.contactDescription ||
     "Reach Salem Medical Laboratories — address, phone, WhatsApp, email, opening hours and urgent result enquiries.";
-  return {
-    title,
-    description,
-    openGraph: { title, description, type: "website" },
-    twitter: { card: "summary_large_image", title, description },
-  };
+  return publicMetadata({ title, description, pathname: "/contact", image: await getSiteSeoImage() });
 }
 
 export default async function ContactPage() {
@@ -27,14 +23,29 @@ export default async function ContactPage() {
     getSiteSettings(),
   ]);
 
+  const sameAs = [settings.socialInstagram, settings.socialFacebook, settings.socialLinkedin, settings.socialTwitter, settings.socialYoutube].filter(Boolean);
+  const localSchema = {
+    "@context": "https://schema.org",
+    "@type": "MedicalClinic",
+    name: settings.orgName,
+    url: "https://salemmedicals.com/contact",
+    telephone: settings.phonePrimary,
+    email: settings.emailPrimary,
+    address: { "@type": "PostalAddress", addressLocality: settings.city || "Lagos", addressRegion: settings.state || undefined, addressCountry: "NG" },
+    sameAs,
+  };
+
   return (
-    <SiteLayout>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localSchema) }} />
+      <SiteLayout>
       <PageHeader
         eyebrow="Contact & Location"
         title={content.pageHeading || "We're close by, and easy to reach."}
         lead={content.introduction || "Call, message or walk in. A real person answers — no phone trees."}
       />
-      <ContactPageClient content={content} settings={settings} />
-    </SiteLayout>
+        <ContactPageClient content={content} settings={settings} />
+      </SiteLayout>
+    </>
   );
 }

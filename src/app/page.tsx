@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 import { SiteLayout } from "@/components/salem/SiteLayout";
 import { Hero } from "@/components/salem/Hero";
 import { AboutPreview } from "@/components/salem/AboutPreview";
@@ -20,11 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = seo.homepageTitle || seo.defaultTitle || "Salem Medical Laboratories | Accurate Diagnostics, Better Health";
   const description =
     seo.homepageDescription || seo.defaultDescription || "Medical diagnostic laboratory offering accurate, timely testing with compassionate care.";
-  return {
-    title,
-    description,
-    robots: seo.robotsIndex === false ? { index: false, follow: false } : undefined,
-  };
+  return publicMetadata({ title, description, pathname: "/", image: await getSiteSeoImage(), noIndex: seo.robotsIndex === false });
 }
 
 export default async function HomePage() {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 import Link from "next/link";
 import Image from "next/image";
 import { Target, Eye, HeartHandshake, ClipboardCheck, ShieldCheck } from "lucide-react";
@@ -17,12 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const description =
     seo.aboutDescription ||
     "Salem Medical Laboratories is a diagnostic laboratory built on scientific precision, documented quality assurance and human care.";
-  return {
-    title,
-    description,
-    openGraph: { title, description, type: "website" },
-    twitter: { card: "summary_large_image", title, description },
-  };
+  return publicMetadata({ title, description, pathname: "/about", image: await getSiteSeoImage() });
 }
 
 export default async function AboutPage() {

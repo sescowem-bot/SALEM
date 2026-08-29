@@ -3,20 +3,13 @@ import { SiteLayout } from "@/components/salem/SiteLayout";
 import { listTestCategories, listPublishedServices } from "@/lib/data/testCatalog";
 import { getServiceImagePublicUrl } from "@/lib/data/storage";
 import { ServicesPageClient } from "./ServicesPageClient";
+import { publicMetadata, getSeoContent, getSiteSeoImage } from "@/lib/seo";
 
-const description =
-  "Explore Salem Medical Laboratories' diagnostic catalogue — haematology, clinical chemistry, microbiology, immunology, serology, molecular diagnostics and histopathology.";
-
-export const metadata: Metadata = {
-  title: "Laboratory Services | Salem Medical Laboratories",
-  description,
-  openGraph: { title: "Laboratory Services | Salem Medical Laboratories", description, type: "website" },
-  twitter: {
-    card: "summary_large_image",
-    title: "Laboratory Services | Salem Medical Laboratories",
-    description,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeoContent();
+  const description = seo.servicesDescription || "Explore Salem Medical Laboratories' diagnostic laboratory services and investigations.";
+  return publicMetadata({ title: seo.servicesTitle || "Laboratory Services | Salem Medical Laboratories", description, pathname: "/services", image: await getSiteSeoImage() });
+}
 
 /**
  * Build-fix: this page reads live, published-only service content from
