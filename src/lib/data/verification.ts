@@ -4,6 +4,7 @@ import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import { verifyAccessCode } from "./security";
 import { getSignedReportPdfUrl, downloadReportPdfBytes } from "./storage";
 import { logAudit } from "./audit";
+import { renderCurrentFinalReportPdfBuffer } from "./reportDocuments";
 
 const MAX_ATTEMPTS_PER_WINDOW = 5;
 const WINDOW_MINUTES = 15;
@@ -27,6 +28,7 @@ type AccessOutcome =
         specimen: string | null;
         date_collected: string | null;
         date_reported: string | null;
+        status: string;
         published_at: string | null;
         current_version_number: number;
       };
@@ -257,12 +259,7 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
       dateReported: report.date_reported,
       publishedAt: report.published_at,
       documentVersion: report.current_version_number,
-      // A published result is downloadable through the protected
-      // /results/download route. The route re-verifies the reference/code
-      // and can render the current official PDF on demand, so the client
-      // must not hide the download control merely because an older stored
-      // final-document row is missing.
-      hasFinalPdf: report.status === "published" && Boolean(approvedRequest?.id || finalDoc?.storage_path),
+      hasFinalPdf: Boolean(finalDoc?.storage_path || approvedRequest?.id),
       tests,
     },
   };

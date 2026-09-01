@@ -154,7 +154,7 @@ function DownloadPdfButton() {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-navy-deep disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+      className="inline-flex shrink-0 items-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02] disabled:opacity-60"
     >
       <Download className="h-4 w-4 shrink-0" /> {pending ? "Preparing…" : "Download PDF"}
     </button>
@@ -181,7 +181,7 @@ function DownloadPdfForm({ reference, code }: { reference: string; code: string 
 function ReportPreview({ result, reference, code }: { result: PublishedResultDto; reference: string; code: string }) {
   return (
     <article className="surface-card overflow-hidden">
-      <div className="flex flex-col gap-5 border-b border-border bg-secondary p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 border-b border-border bg-secondary p-6 sm:flex-row sm:items-start sm:justify-between sm:p-8">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple">
             Salem Medical Laboratories
