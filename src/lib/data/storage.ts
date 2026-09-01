@@ -481,7 +481,17 @@ export async function getSiteMediaDataUri(storagePath: string): Promise<string |
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.storage.from(SITE_MEDIA_BUCKET).download(storagePath);
   if (error) return null;
+
   const buffer = Buffer.from(await data.arrayBuffer());
-  const contentType = data.type || "image/png";
+  const extension = storagePath.split(".").pop()?.toLowerCase();
+  const extensionMime: Record<string, string> = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    gif: "image/gif",
+    svg: "image/svg+xml",
+  };
+  const contentType = extensionMime[extension ?? ""] ?? (data.type?.startsWith("image/") ? data.type : "image/png");
   return `data:${contentType};base64,${buffer.toString("base64")}`;
 }

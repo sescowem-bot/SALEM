@@ -148,12 +148,24 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
   // (Advanced 5's report_final_documents), matched to this exact published
   // version, never a freshly generated or independent document.
   const supabase = getServiceRoleClient();
-  const { data: finalDoc } = await supabase
-    .from("report_final_documents")
-    .select("storage_path")
-    .eq("lab_report_id", report.id)
-    .eq("version_number", report.current_version_number)
-    .maybeSingle();
+  const [{ data: finalDoc }, { data: approvedRequest }] = await Promise.all([
+    supabase
+      .from("report_final_documents")
+      .select("storage_path")
+      .eq("lab_report_id", report.id)
+      .eq("version_number", report.current_version_number)
+      .maybeSingle(),
+    supabase
+      .from("approval_requests")
+      .select("id")
+      .eq("lab_report_id", report.id)
+      .eq("status", "approved")
+      .not("decided_by", "is", null)
+      .not("decided_at", "is", null)
+      .order("decided_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const { data: reportTests, error: rtError } = await supabase
     .from("report_tests")
@@ -245,7 +257,12 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
       dateReported: report.date_reported,
       publishedAt: report.published_at,
       documentVersion: report.current_version_number,
-      hasFinalPdf: Boolean(finalDoc?.storage_path),
+      // A published result is downloadable through the protected
+      // /results/download route. The route re-verifies the reference/code
+      // and can render the current official PDF on demand, so the client
+      // must not hide the download control merely because an older stored
+      // final-document row is missing.
+      hasFinalPdf: report.status === "published" && Boolean(approvedRequest?.id || finalDoc?.storage_path),
       tests,
     },
   };
@@ -276,11 +293,21 @@ export async function downloadPatientFinalPdf(input: VerifyResultInput): Promise
     .eq("version_number", report.current_version_number)
     .maybeSingle();
 
-  if (!finalDoc?.storage_path) {
+  // Prefer a fresh render using the current official letterhead/signatory.
+  // This also allows a published report to remain downloadable if the
+  // original storage write failed during approval generation.
+  let currentBuffer: Buffer | null = null;
+  try {
+    currentBuffer = await renderCurrentFinalReportPdfBuffer(report.id);
+  } catch (error) {
+    console.error("[verification] current final PDF render failed", report.id, error);
+  }
+
+  if (!currentBuffer && !finalDoc?.storage_path) {
     return { ok: false, reason: "no_final_document" };
   }
 
-  const buffer = await downloadReportPdfBytes(finalDoc.storage_path);
+  const buffer = currentBuffer ?? (await downloadReportPdfBytes(finalDoc!.storage_path));
 
   await logAudit({
     action: "PATIENT_PDF_DOWNLOADED",

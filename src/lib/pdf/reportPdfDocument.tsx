@@ -161,7 +161,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
       <Page size="A4" style={org.letterheadDataUri ? { ...styles.page, padding: 0 } : styles.page}>
         {org.letterheadDataUri ? (
           // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image, not a DOM <img>
-          <Image src={org.letterheadDataUri} style={styles.letterheadImage} />
+          <Image src={org.letterheadDataUri} style={styles.letterheadImage} fixed />
         ) : (
           <View style={styles.letterheadTextBlock}>
             <Text style={styles.orgName}>{org.orgName}</Text>
@@ -269,7 +269,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
           </View>
         ) : null}
 
-        <View style={styles.signatureBlock} wrap={false}>
+        {!org.letterheadDataUri ? <View style={styles.signatureBlock} wrap={false}>
           <View style={styles.signatureColumn}>
             {approval && approval.isAuthorizedSignatory ? (
               <>
@@ -300,7 +300,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
               <Text style={styles.pendingNotice}>Pending authorized approval — not yet signed.</Text>
             )}
           </View>
-        </View>
+        </View> : null}
 
         </View>
         <View style={styles.footer} fixed>

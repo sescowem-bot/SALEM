@@ -245,6 +245,55 @@ export async function generateFinalReportPdf(input: {
  * download route to stream directly, so the browser only ever sees our own
  * domain and a professional filename.
  */
+
+/**
+ * Render the current official report on demand for download. This is used
+ * when a final document was generated before a letterhead was uploaded or
+ * changed. It uses the latest approved request/signatory and the current
+ * site letterhead, so an already-published report never downloads a stale
+ * stationery version.
+ */
+export async function renderCurrentFinalReportPdfBuffer(labReportId: string): Promise<Buffer | null> {
+  const supabase = getServiceRoleClient();
+  const { data: report } = await supabase
+    .from("lab_reports")
+    .select("id, status, current_version_number")
+    .eq("id", labReportId)
+    .maybeSingle();
+  if (!report || report.status === "draft" || report.status === "archived") return null;
+
+  const { data: approval } = await supabase
+    .from("approval_requests")
+    .select("id, decided_by, decided_at")
+    .eq("lab_report_id", labReportId)
+    .eq("status", "approved")
+    .not("decided_by", "is", null)
+    .not("decided_at", "is", null)
+    .order("decided_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!approval?.decided_by || !approval.decided_at) return null;
+
+  const { data: approver } = await supabase
+    .from("staff_profiles")
+    .select("full_name")
+    .eq("id", approval.decided_by)
+    .maybeSingle();
+
+  const data = await buildReportPdfData({
+    labReportId,
+    approvalInfo: {
+      approverStaffId: approval.decided_by,
+      approverName: approver?.full_name ?? "Authorized approver",
+      decidedAt: approval.decided_at,
+    },
+    isFinal: true,
+  });
+
+  return renderToBuffer(<ReportPdfDocument data={data} />);
+}
+
 export async function getFinalDocumentForDownload(
   labReportId: string,
   actorRole: StaffRole
