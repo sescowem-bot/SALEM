@@ -381,6 +381,7 @@ export const seoContentSchema = z.object({
   defaultTitle: z.string().trim().max(70).optional().or(z.literal("")),
   defaultDescription: z.string().trim().max(160).optional().or(z.literal("")),
   robotsIndex: z.boolean().optional(),
+  googleSiteVerification: z.string().trim().max(200).optional().or(z.literal("")),
   orgDescription: z.string().trim().max(500).optional().or(z.literal("")),
   homepageTitle: z.string().trim().max(70).optional().or(z.literal("")),
   homepageDescription: z.string().trim().max(160).optional().or(z.literal("")),

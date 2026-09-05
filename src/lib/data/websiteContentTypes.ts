@@ -54,6 +54,7 @@ export interface SeoContent {
   defaultTitle?: string;
   defaultDescription?: string;
   robotsIndex?: boolean;
+  googleSiteVerification?: string;
   orgDescription?: string;
   homepageTitle?: string;
   homepageDescription?: string;

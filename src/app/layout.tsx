@@ -3,7 +3,7 @@ import "./globals.css";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
 import { getSiteSettings } from "@/lib/data/siteSettings";
 import type { SeoContent } from "@/lib/data/websiteContentTypes";
-import { PUBLIC_SITE_ORIGIN } from "@/lib/seo";
+import { PUBLIC_SITE_ORIGIN, SEO_FALLBACKS } from "@/lib/seo";
 
 const fallbackDescription =
   "Salem Medical Laboratories offers blood tests, microbiology, molecular diagnostics, home sample collection and secure e-copy results.";
@@ -29,11 +29,12 @@ export async function generateMetadata(): Promise<Metadata> {
     // Fall through to static defaults below — never let a CMS/DB hiccup break metadata.
   }
 
-  const title = seo.defaultTitle || "Salem Medical Laboratories | Pathology & Diagnostics";
-  const description = seo.defaultDescription || seo.orgDescription || settings?.description || fallbackDescription;
+  const title = seo.defaultTitle || SEO_FALLBACKS.defaultTitle;
+  const description = seo.defaultDescription || seo.orgDescription || settings?.description || SEO_FALLBACKS.defaultDescription;
   const orgName = settings?.orgName || "Salem Medical Laboratories";
 
   return {
+    metadataBase: new URL(PUBLIC_SITE_ORIGIN),
     title: {
       default: title,
       template: `%s | ${orgName}`,
@@ -53,7 +54,8 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: settings?.faviconUrl || "/favicon.ico",
     },
-    robots: seo.robotsIndex === false ? { index: false, follow: false } : undefined,
+    robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
+    verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
   };
 }
 
