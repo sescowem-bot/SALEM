@@ -3,6 +3,7 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { FloatingWhatsApp } from "./WhatsAppButton";
 import { AiAssistant } from "./AiAssistant";
+import { AnalyticsTracker } from "./AnalyticsTracker";
 import { getSiteSettings } from "@/lib/data/siteSettings";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
 import type { FooterContent } from "@/lib/data/websiteContentTypes";
@@ -20,6 +21,7 @@ export async function SiteLayout({ children }: { children: ReactNode }) {
       <Footer settings={settings} content={footerContent} />
       <FloatingWhatsApp />
       <AiAssistant />
+      <AnalyticsTracker />
     </div>
   );
 }

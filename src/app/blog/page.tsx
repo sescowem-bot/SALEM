@@ -1,0 +1,8 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
+import { listPublishedArticles } from "@/lib/data/seoArticles";
+import { publicMetadata } from "@/lib/seo";
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = publicMetadata({ title: "Health & Laboratory Information | Salem Medical Laboratories", description: "Practical information about laboratory tests, preparation, screening and home sample collection from Salem Medical Laboratories.", pathname: "/blog" });
+export default async function BlogPage() { const articles = await listPublishedArticles(); return <SiteLayout><PageHeader eyebrow="Health information" title="Laboratory & health information" lead="Clear, practical information to help you understand common laboratory tests and prepare for testing."/><section className="mx-auto max-w-7xl px-5 py-14 sm:px-6"><div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{articles.map(a => <article key={a.id} className="surface-card p-6"><p className="text-xs font-semibold uppercase tracking-wide text-cyan">Salem Medical Laboratories</p><h2 className="mt-3 text-xl font-semibold text-navy-deep">{a.title}</h2>{a.excerpt ? <p className="mt-3 text-sm leading-6 text-muted-foreground">{a.excerpt}</p> : null}<Link href={`/blog/${a.slug}`} className="mt-5 inline-flex text-sm font-semibold text-purple">Read article →</Link></article>)}</div>{articles.length === 0 ? <div className="surface-card p-8 text-sm text-muted-foreground">New health information articles will appear here soon.</div> : null}</section></SiteLayout>; }

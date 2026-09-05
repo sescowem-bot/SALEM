@@ -23,6 +23,9 @@ const RECOMMENDED: SeoContent = {
   contactTitle: "Contact Salem Medical Laboratories",
   contactDescription: "Reach Salem Medical Laboratories for laboratory enquiries, bookings, location and result support.",
   robotsIndex: true,
+  googleAnalyticsId: "",
+  seoKeywords: "medical laboratory Lagos, diagnostic laboratory Lagos, blood tests Lagos, genotype test Lagos",
+  organizationAreaServed: "Lagos, Ogun, Nigeria",
 };
 
 function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
@@ -168,6 +171,15 @@ export function SeoEditorForm({ content }: { content: SeoContent }) {
           <p className="mt-1 text-lg font-medium text-[#1a0dab]">{form.homepageTitle || RECOMMENDED.homepageTitle}</p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{form.homepageDescription || RECOMMENDED.homepageDescription}</p>
         </div>
+      </Section>
+
+      <Section title="Analytics & local search signals" description="Google Analytics 4 measures website traffic. Search Console remains the source of truth for Google Search queries, impressions, clicks and average position.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-medium text-navy-deep">Google Analytics 4 Measurement ID <input value={form.googleAnalyticsId ?? ""} onChange={(e) => set("googleAnalyticsId", e.target.value)} placeholder="G-XXXXXXXXXX" className={fieldClass} /><span className="mt-1 block text-xs font-normal text-muted-foreground">Optional. Create a GA4 web data stream and paste only its Measurement ID.</span></label>
+          <label className="block text-sm font-medium text-navy-deep">Service area <input value={form.organizationAreaServed ?? ""} onChange={(e) => set("organizationAreaServed", e.target.value)} placeholder="Lagos, Ogun, Nigeria" className={fieldClass} /></label>
+        </div>
+        <label className="block text-sm font-medium text-navy-deep">Search topic keywords <textarea rows={3} value={form.seoKeywords ?? ""} onChange={(e) => set("seoKeywords", e.target.value)} placeholder="Comma-separated topics, not keyword stuffing" className={fieldClass + " resize-y"}/></label>
+        <Status ok>Admin SEO Performance now tracks first-party page views and traffic sources. Google Search Console must still be used for ranking positions and search queries.</Status>
       </Section>
 
       <Section title="What should NOT be indexed" description="Private and transactional pages are intentionally excluded from search. Patient result access remains noindex, while public service and information pages remain indexable.">

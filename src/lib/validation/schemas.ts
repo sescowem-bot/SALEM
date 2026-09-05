@@ -391,6 +391,9 @@ export const seoContentSchema = z.object({
   servicesDescription: z.string().trim().max(160).optional().or(z.literal("")),
   contactTitle: z.string().trim().max(70).optional().or(z.literal("")),
   contactDescription: z.string().trim().max(160).optional().or(z.literal("")),
+  googleAnalyticsId: z.string().trim().max(40).optional().or(z.literal("")),
+  seoKeywords: z.string().trim().max(500).optional().or(z.literal("")),
+  organizationAreaServed: z.string().trim().max(200).optional().or(z.literal("")),
 });
 
 export const verifyResultSchema = z.object({

@@ -1,0 +1,8 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
+import { getPublishedArticleBySlug } from "@/lib/data/seoArticles";
+import { publicMetadata, canonical } from "@/lib/seo";
+export const dynamic = "force-dynamic";
+export async function generateMetadata({ params }: { params: Promise<{slug:string}> }): Promise<Metadata> { const {slug}=await params; const a=await getPublishedArticleBySlug(slug); if(!a) return {title:"Article not found | Salem Medical Laboratories",robots:{index:false,follow:false}}; return publicMetadata({title:a.seo_title||a.title,description:a.seo_description||a.excerpt||`Health and laboratory information from Salem Medical Laboratories.`,pathname:`/blog/${a.slug}`,image:a.featured_image_url}); }
+export default async function ArticlePage({params}:{params:Promise<{slug:string}>}) { const {slug}=await params; const a=await getPublishedArticleBySlug(slug); if(!a) notFound(); const schema={"@context":"https://schema.org","@type":"Article",headline:a.title,description:a.seo_description||a.excerpt||undefined,url:canonical(`/blog/${a.slug}`),datePublished:a.published_at,dateModified:a.updated_at,author:{"@type":"Organization",name:"Salem Medical Laboratories",url:canonical("/")}}; return <SiteLayout><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/><PageHeader eyebrow="Health information" title={a.title} lead={a.excerpt||undefined}/><article className="mx-auto max-w-4xl px-5 py-14 sm:px-6"><div className="surface-card p-7 sm:p-10"><div className="whitespace-pre-line text-base leading-8 text-navy-deep">{a.content}</div></div></article></SiteLayout>; }

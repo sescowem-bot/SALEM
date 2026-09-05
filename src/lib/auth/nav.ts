@@ -65,7 +65,8 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
       { href: "/admin/services", label: "Services" },
       { href: "/admin/website/contact", label: "Contact" },
       { href: "/admin/website/footer", label: "Footer" },
-      { href: "/admin/website/seo", label: "SEO" }
+      { href: "/admin/website/seo", label: "SEO" },
+      { href: "/admin/seo-performance", label: "SEO Performance" }
     );
   }
   if (website.length > 0) sections.push({ label: "Website / CMS", items: website });

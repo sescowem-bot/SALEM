@@ -64,4 +64,7 @@ export interface SeoContent {
   servicesDescription?: string;
   contactTitle?: string;
   contactDescription?: string;
+  googleAnalyticsId?: string;
+  seoKeywords?: string;
+  organizationAreaServed?: string;
 }

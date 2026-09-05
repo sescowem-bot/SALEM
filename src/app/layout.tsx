@@ -52,6 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let settings: Awaited<ReturnType<typeof getSiteSettings>> | null = null;
+  const seo = await getSeoContent();
   try { settings = await getSiteSettings(); } catch { /* keep public shell resilient */ }
   const sameAs = [settings?.socialFacebook, settings?.socialInstagram, settings?.socialLinkedin, settings?.socialTwitter, settings?.socialYoutube].filter(Boolean);
   const schema = {
@@ -95,6 +96,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="antialiased">
+        {seo.googleAnalyticsId ? (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(seo.googleAnalyticsId || "")}`} />
+            <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};gtag("js",new Date());gtag("config",${JSON.stringify(seo.googleAnalyticsId)},{anonymize_ip:true});` }} />
+          </>
+        ) : null}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
         {children}
