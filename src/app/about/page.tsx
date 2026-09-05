@@ -5,20 +5,20 @@ import { Target, Eye, HeartHandshake, ClipboardCheck, ShieldCheck } from "lucide
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
 import type { AboutContent, SeoContent } from "@/lib/data/websiteContentTypes";
-import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
+import { publicMetadata, getSeoContent, getSiteSeoImage, canonical } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [about, seo] = await Promise.all([
     getPublishedPageContent<AboutContent>("about"),
-    getPublishedPageContent<SeoContent>("seo"),
+    getSeoContent(),
   ]);
   const title = seo.aboutTitle || about.pageTitle || "About Salem Medical Laboratories";
   const description =
     seo.aboutDescription ||
     "Salem Medical Laboratories is a diagnostic laboratory built on scientific precision, documented quality assurance and human care.";
-  return publicMetadata({ title, description, pathname: "/about", image: await getSiteSeoImage() });
+  return publicMetadata({ title, description, pathname: "/about", image: await getSiteSeoImage(), noIndex: seo.robotsIndex === false });
 }
 
 export default async function AboutPage() {

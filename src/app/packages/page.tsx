@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
-import { publicMetadata } from "@/lib/seo";
+import { publicMetadata, getSeoContent, getSiteSeoImage } from "@/lib/seo";
 import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 
-export const metadata: Metadata = publicMetadata({ title: "Health Packages | Salem Medical Laboratories", description: "Curated health screening packages from Salem Medical Laboratories.", pathname: "/packages", noIndex: false });
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeoContent();
+  return publicMetadata({ title: "Health Packages | Salem Medical Laboratories", description: "Curated health screening packages from Salem Medical Laboratories.", pathname: "/packages", image: await getSiteSeoImage(), noIndex: seo.robotsIndex === false });
+}
+
 
 const packages = [
   {

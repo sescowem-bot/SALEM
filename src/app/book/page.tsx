@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { publicMetadata } from "@/lib/seo";
+import { publicMetadata, getSeoContent, getSiteSeoImage } from "@/lib/seo";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { listPublishedServices } from "@/lib/data/testCatalog";
 import { getSiteSettings } from "@/lib/data/siteSettings";
@@ -8,7 +8,11 @@ import { BookPageClient } from "./BookPageClient";
 const description =
   "Book a laboratory test at Salem Medical Laboratories — choose your test, date, walk-in or home collection, and confirm.";
 
-export const metadata: Metadata = publicMetadata({ title: "Book a Test | Salem Medical Laboratories", description: "Book a laboratory test at Salem Medical Laboratories — choose your test, date, walk-in or home collection, and confirm.", pathname: "/book", noIndex: false });
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeoContent();
+  return publicMetadata({ title: "Book a Test | Salem Medical Laboratories", description: "Book a laboratory test at Salem Medical Laboratories — choose your test, date, walk-in or home collection, and confirm.", pathname: "/book", image: await getSiteSeoImage(), noIndex: seo.robotsIndex === false });
+}
+
 
 export default async function BookPage({
   searchParams,

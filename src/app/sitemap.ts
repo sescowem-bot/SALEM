@@ -5,11 +5,19 @@ import { canonical } from "@/lib/seo";
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
   const staticRoutes = ["/", "/about", "/services", "/contact", "/book", "/faq", "/packages", "/home-collection"];
-  const services = await listPublishedServices();
+  let services: Awaited<ReturnType<typeof listPublishedServices>> = [];
+  try {
+    services = await listPublishedServices();
+  } catch {
+    // Never make the sitemap unavailable because the catalogue is temporarily offline.
+  }
+
   return [
-    ...staticRoutes.map((path) => ({ url: canonical(path), lastModified: now })),
-    ...services.map((service) => ({ url: canonical(`/services/${service.slug}`), lastModified: now })),
+    ...staticRoutes.map((path) => ({ url: canonical(path) })),
+    ...services.map((service) => ({
+      url: canonical(`/services/${service.slug}`),
+      lastModified: service.updated_at ? new Date(service.updated_at) : undefined,
+    })),
   ];
 }

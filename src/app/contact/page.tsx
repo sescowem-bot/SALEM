@@ -4,17 +4,17 @@ import { ContactPageClient } from "./ContactPageClient";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
 import { getSiteSettings } from "@/lib/data/siteSettings";
 import type { ContactContent, SeoContent } from "@/lib/data/websiteContentTypes";
-import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
+import { publicMetadata, getSeoContent, getSiteSeoImage, canonical } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const seo = await getPublishedPageContent<SeoContent>("seo");
+  const seo = await getSeoContent();
   const title = seo.contactTitle || "Contact Salem Medical Laboratories";
   const description =
     seo.contactDescription ||
     "Reach Salem Medical Laboratories — address, phone, WhatsApp, email, opening hours and urgent result enquiries.";
-  return publicMetadata({ title, description, pathname: "/contact", image: await getSiteSeoImage() });
+  return publicMetadata({ title, description, pathname: "/contact", image: await getSiteSeoImage(), noIndex: seo.robotsIndex === false });
 }
 
 export default async function ContactPage() {
@@ -26,19 +26,21 @@ export default async function ContactPage() {
   const sameAs = [settings.socialFacebook, settings.socialInstagram, settings.socialLinkedin, settings.socialTwitter, settings.socialYoutube].filter(Boolean);
   const localSchema = {
     "@context": "https://schema.org",
-    "@type": "MedicalClinic",
+    "@type": ["LocalBusiness", "DiagnosticLab"],
     name: settings.orgName,
-    url: "https://salemmedicals.com/contact",
+    url: canonical("/contact"),
     telephone: settings.phonePrimary,
     email: settings.emailPrimary,
     address: {
       "@type": "PostalAddress",
-      streetAddress: [settings.addressLine1, settings.addressLine2].filter(Boolean).join(", ") || undefined,
-      addressLocality: settings.city || "Lagos",
+      streetAddress: settings.city || settings.state ? [settings.addressLine1, settings.addressLine2].filter(Boolean).join(", ") || undefined : undefined,
+      addressLocality: settings.city || undefined,
       addressRegion: settings.state || undefined,
       addressCountry: "NG",
     },
     sameAs,
+    medicalSpecialty: "https://schema.org/LaboratoryScience",
+    areaServed: ["Lagos", "Ogun", "Nigeria"],
   };
 
   return (

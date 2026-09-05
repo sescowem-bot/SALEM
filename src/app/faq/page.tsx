@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { publicMetadata } from "@/lib/seo";
+import { publicMetadata, getSeoContent, getSiteSeoImage } from "@/lib/seo";
 import Link from "next/link";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import {
@@ -10,11 +10,16 @@ import {
 } from "@/components/ui/accordion";
 import { WhatsAppIcon } from "@/components/salem/WhatsAppButton";
 import { siteConfig } from "@/data/siteContent";
+import { canonical } from "@/lib/seo";
 
 const description =
   "Answers to common questions about booking a test, home sample collection, preparing for tests, and accessing your Salem laboratory results.";
 
-export const metadata: Metadata = publicMetadata({ title: "FAQs | Salem Medical Laboratories", description: "Answers to common questions about booking a test, home sample collection, preparing for tests, and accessing your Salem laboratory results.", pathname: "/faq", noIndex: false });
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeoContent();
+  return publicMetadata({ title: "FAQs | Salem Medical Laboratories", description: "Answers to common questions about booking a test, home sample collection, preparing for tests, and accessing your Salem laboratory results.", pathname: "/faq", image: await getSiteSeoImage(), noIndex: seo.robotsIndex === false });
+}
+
 
 const groups = [
   {
@@ -80,8 +85,21 @@ const groups = [
 ];
 
 export default function FaqPage() {
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: groups.flatMap((group) => group.items).map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+    url: canonical("/faq"),
+  };
+
   return (
-    <SiteLayout>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <SiteLayout>
       <PageHeader
         eyebrow="Frequently Asked Questions"
         title="Answers before you even have to ask."
@@ -134,6 +152,7 @@ export default function FaqPage() {
           </div>
         </div>
       </section>
-    </SiteLayout>
+      </SiteLayout>
+    </>
   );
 }

@@ -6,7 +6,7 @@ import { ExternalLink, CheckCircle2, AlertTriangle, Globe2, FileText, ShieldChec
 import { saveWebsiteDraftAction, type ActionState } from "../actions";
 import type { SeoContent } from "@/lib/data/websiteContentTypes";
 
-const SITE_ORIGIN = "https://salemmedicals.com";
+const SITE_ORIGIN = "https://www.salemmedicals.com";
 const fieldClass =
   "mt-1.5 w-full rounded-lg border border-border bg-secondary px-3.5 py-2.5 text-sm text-navy-deep outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan focus:bg-card";
 
@@ -164,7 +164,7 @@ export function SeoEditorForm({ content }: { content: SeoContent }) {
 
       <Section title="Google snippet preview" description="A visual approximation only. Google may rewrite titles and descriptions based on the query and page content.">
         <div className="max-w-2xl rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-xs text-muted-foreground">salemmedicals.com</p>
+          <p className="text-xs text-muted-foreground">www.salemmedicals.com</p>
           <p className="mt-1 text-lg font-medium text-[#1a0dab]">{form.homepageTitle || RECOMMENDED.homepageTitle}</p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{form.homepageDescription || RECOMMENDED.homepageDescription}</p>
         </div>

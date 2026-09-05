@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { getPublishedPageContent } from "@/lib/data/websitePages";
 import { getSiteSettings } from "@/lib/data/siteSettings";
-import type { SeoContent } from "@/lib/data/websiteContentTypes";
-import { PUBLIC_SITE_ORIGIN, SEO_FALLBACKS } from "@/lib/seo";
+import { PUBLIC_SITE_ORIGIN, SEO_FALLBACKS, getSeoContent, canonical } from "@/lib/seo";
 
 const fallbackDescription =
   "Salem Medical Laboratories offers blood tests, microbiology, molecular diagnostics, home sample collection and secure e-copy results.";
@@ -21,12 +19,12 @@ const fallbackDescription =
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  let seo: SeoContent = {};
+  const seo = await getSeoContent();
   let settings: Awaited<ReturnType<typeof getSiteSettings>> | null = null;
   try {
-    [seo, settings] = await Promise.all([getPublishedPageContent<SeoContent>("seo"), getSiteSettings()]);
+    settings = await getSiteSettings();
   } catch {
-    // Fall through to static defaults below — never let a CMS/DB hiccup break metadata.
+    // Keep metadata generation resilient if site settings are temporarily unavailable.
   }
 
   const title = seo.defaultTitle || SEO_FALLBACKS.defaultTitle;
@@ -35,25 +33,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase: new URL(PUBLIC_SITE_ORIGIN),
-    title: {
-      default: title,
-      template: `%s | ${orgName}`,
-    },
+    title: { default: title, template: `%s | ${orgName}` },
     description,
+    alternates: { canonical: canonical("/") },
     openGraph: {
       title: orgName,
       description,
       type: "website",
+      url: canonical("/"),
       images: settings?.ogImageUrl ? [settings.ogImageUrl] : undefined,
     },
-    twitter: {
-      card: "summary_large_image",
-      title: orgName,
-      description,
-    },
-    icons: {
-      icon: settings?.faviconUrl || "/favicon.ico",
-    },
+    twitter: { card: "summary_large_image", title: orgName, description },
+    icons: { icon: settings?.faviconUrl || "/favicon.ico" },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
   };
@@ -65,20 +56,32 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const sameAs = [settings?.socialFacebook, settings?.socialInstagram, settings?.socialLinkedin, settings?.socialTwitter, settings?.socialYoutube].filter(Boolean);
   const schema = {
     "@context": "https://schema.org",
-    "@type": "MedicalLaboratory",
+    "@type": ["LocalBusiness", "DiagnosticLab"],
     name: settings?.orgName || "Salem Medical Laboratories",
     description: settings?.description || fallbackDescription,
-    url: PUBLIC_SITE_ORIGIN,
+    url: canonical("/"),
+    image: settings?.logoUrl || settings?.ogImageUrl || undefined,
+    logo: settings?.logoUrl || undefined,
     telephone: settings?.phonePrimary,
     email: settings?.emailPrimary,
     address: {
       "@type": "PostalAddress",
-      streetAddress: [settings?.addressLine1, settings?.addressLine2].filter(Boolean).join(", ") || undefined,
-      addressLocality: settings?.city || "Lagos",
+      streetAddress: settings?.city || settings?.state ? [settings?.addressLine1, settings?.addressLine2].filter(Boolean).join(", ") || undefined : undefined,
+      addressLocality: settings?.city || undefined,
       addressRegion: settings?.state || undefined,
       addressCountry: "NG",
     },
     sameAs,
+    medicalSpecialty: "https://schema.org/LaboratoryScience",
+    areaServed: ["Lagos", "Ogun", "Nigeria"],
+  };
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: settings?.orgName || "Salem Medical Laboratories",
+    url: canonical("/"),
+    description: settings?.description || fallbackDescription,
+    publisher: { "@type": ["LocalBusiness", "DiagnosticLab"], name: settings?.orgName || "Salem Medical Laboratories", url: canonical("/") },
   };
   return (
     <html lang="en">
@@ -93,6 +96,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="antialiased">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
         {children}
       </body>
     </html>

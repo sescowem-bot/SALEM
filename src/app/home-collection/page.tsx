@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { publicMetadata } from "@/lib/seo";
+import { publicMetadata, getSeoContent, getSiteSeoImage } from "@/lib/seo";
 import Link from "next/link";
 import Image from "next/image";
 import { Check, ShieldCheck, Syringe, ClipboardList, MapPin, PhoneCall } from "lucide-react";
@@ -11,7 +11,11 @@ import { HomeCollectionFormClient } from "./HomeCollectionFormClient";
 const description =
   "Book a home visit and have a Salem phlebotomist collect your sample safely and comfortably at home.";
 
-export const metadata: Metadata = publicMetadata({ title: "Home Sample Collection | Salem Medical Laboratories", description: "Book a home visit and have a Salem phlebotomist collect your sample safely and comfortably at home.", pathname: "/home-collection", noIndex: false });
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeoContent();
+  return publicMetadata({ title: "Home Sample Collection | Salem Medical Laboratories", description: "Book a home visit and have a Salem phlebotomist collect your sample safely and comfortably at home.", pathname: "/home-collection", image: await getSiteSeoImage(), noIndex: seo.robotsIndex === false });
+}
+
 
 const steps = [
   {

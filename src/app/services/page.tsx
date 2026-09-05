@@ -8,7 +8,7 @@ import { publicMetadata, getSeoContent, getSiteSeoImage } from "@/lib/seo";
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getSeoContent();
   const description = seo.servicesDescription || "Explore Salem Medical Laboratories' diagnostic laboratory services and investigations.";
-  return publicMetadata({ title: seo.servicesTitle || "Laboratory Services | Salem Medical Laboratories", description, pathname: "/services", image: await getSiteSeoImage() });
+  return publicMetadata({ title: seo.servicesTitle || "Laboratory Services | Salem Medical Laboratories", description, pathname: "/services", image: await getSiteSeoImage(), noIndex: seo.robotsIndex === false });
 }
 
 /**

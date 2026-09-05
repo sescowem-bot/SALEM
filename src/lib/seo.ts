@@ -3,7 +3,24 @@ import { getPublishedPageContent } from "@/lib/data/websitePages";
 import { getSiteSettings } from "@/lib/data/siteSettings";
 import type { SeoContent } from "@/lib/data/websiteContentTypes";
 
-export const PUBLIC_SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_URL || "https://salemmedicals.com").replace(/\/$/, "");
+const configuredSiteOrigin = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.salemmedicals.com").replace(/\/$/, "");
+
+// Vercel permanently redirects the apex domain to www. Keep every SEO URL
+// on the final production origin so the sitemap, canonicals, OG URLs and
+// structured data never point Google at redirecting URLs.
+export const PUBLIC_SITE_ORIGIN = (() => {
+  try {
+    const parsedOrigin = new URL(configuredSiteOrigin);
+    if (parsedOrigin.hostname === "salemmedicals.com") parsedOrigin.hostname = "www.salemmedicals.com";
+    parsedOrigin.pathname = "";
+    parsedOrigin.search = "";
+    parsedOrigin.hash = "";
+    parsedOrigin.protocol = "https:";
+    return parsedOrigin.toString().replace(/\/$/, "");
+  } catch {
+    return "https://www.salemmedicals.com";
+  }
+})();
 
 export function canonical(pathname: string): string {
   const clean = pathname === "/" ? "/" : `/${pathname.replace(/^\/+|\/+$/g, "")}`;
@@ -11,17 +28,17 @@ export function canonical(pathname: string): string {
 }
 
 export const SEO_FALLBACKS: Required<Pick<SeoContent, "defaultTitle" | "defaultDescription" | "orgDescription" | "homepageTitle" | "homepageDescription" | "aboutTitle" | "aboutDescription" | "servicesTitle" | "servicesDescription" | "contactTitle" | "contactDescription">> = {
-  defaultTitle: "Salem Medical Laboratories | Pathology & Diagnostics",
-  defaultDescription: "Salem Medical Laboratories provides accurate medical laboratory testing, diagnostics and home sample collection in Nigeria.",
+  defaultTitle: "Salem Medical Laboratories | Medical Laboratory & Diagnostics",
+  defaultDescription: "Salem Medical Laboratories provides medical laboratory testing, diagnostic investigations and home sample collection in Lagos and Ogun, Nigeria.",
   orgDescription: "Salem Medical Laboratories provides diagnostic laboratory testing with a focus on accurate results, quality assurance and patient care.",
-  homepageTitle: "Salem Medical Laboratories | Accurate Diagnostics, Better Health",
-  homepageDescription: "Medical diagnostic laboratory offering accurate, timely testing with compassionate care.",
+  homepageTitle: "Salem Medical Laboratories | Medical Diagnostics in Lagos & Ogun",
+  homepageDescription: "Medical laboratory testing and diagnostic services with accurate, timely results and home sample collection in Lagos and Ogun.",
   aboutTitle: "About Salem Medical Laboratories",
-  aboutDescription: "Learn about Salem Medical Laboratories, our diagnostic services, quality approach and commitment to patient care.",
+  aboutDescription: "Learn about Salem Medical Laboratories, our diagnostic services, quality approach and commitment to patient care in Nigeria.",
   servicesTitle: "Laboratory Services | Salem Medical Laboratories",
-  servicesDescription: "Explore Salem Medical Laboratories' diagnostic laboratory services and investigations.",
+  servicesDescription: "Explore medical laboratory tests and diagnostic investigations available from Salem Medical Laboratories.",
   contactTitle: "Contact Salem Medical Laboratories",
-  contactDescription: "Reach Salem Medical Laboratories for laboratory enquiries, bookings, location and result support.",
+  contactDescription: "Contact Salem Medical Laboratories for diagnostic test enquiries, bookings, home collection and result support.",
 };
 
 export async function getSeoContent(): Promise<SeoContent> {
