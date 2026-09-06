@@ -10,7 +10,7 @@ import { BookingCta, Contact } from "@/components/salem/BookingContact";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
 import { getSiteSettings } from "@/lib/data/siteSettings";
 import { listPublishedServices } from "@/lib/data/testCatalog";
-import { getServiceImagePublicUrl, getSiteMediaPublicUrl } from "@/lib/data/storage";
+import { getServiceImagePublicUrl } from "@/lib/data/storage";
 import type { HomepageContent, SeoContent } from "@/lib/data/websiteContentTypes";
 import { publicMetadata, getSiteSeoImage } from "@/lib/seo";
 
@@ -43,7 +43,7 @@ export default async function HomePage() {
 
   return (
     <SiteLayout>
-      <Hero content={content} heroImageUrl={content.heroImagePath ? getSiteMediaPublicUrl(content.heroImagePath) : null} />
+      <Hero content={content} />
       <AboutPreview content={content} />
       <Services heading={content.servicesHeading} description={content.servicesDescription} featuredServices={featuredServices} />
       <Trust content={content} />

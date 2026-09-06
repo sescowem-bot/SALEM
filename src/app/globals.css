@@ -208,3 +208,52 @@
 @utility animate-accordion-up {
   animation: accordion-up 0.2s ease-out;
 }
+
+
+/* Responsive hardening — prevent intrinsic content from forcing page-wide overflow.
+   Tables and other intentionally wide data views keep their own overflow-x-auto wrappers. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #patient-report,
+  #patient-report * {
+    visibility: visible !important;
+  }
+
+  #patient-report {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+}

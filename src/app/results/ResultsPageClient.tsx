@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { ShieldCheck, Download, Lock, KeyRound, FileCheck2, Mail, FileText } from "lucide-react";
+import { ShieldCheck, Download, Printer, Lock, KeyRound, FileCheck2, Mail, FileText } from "lucide-react";
 import { siteConfig } from "@/data/siteContent";
 import { verifyResultAction, type VerifyState } from "./actions";
 import type { PublishedResultDto } from "@/lib/data/verification";
@@ -30,6 +30,18 @@ const fieldClass =
   "mt-2 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-navy-deep outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan focus:bg-card";
 
 const initialState: VerifyState = {};
+
+function PrintResultButton() {
+  return (
+    <button
+      type="button"
+      onClick={() => window.print()}
+      className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
+    >
+      <Printer className="h-4 w-4 shrink-0" /> Print view
+    </button>
+  );
+}
 
 function UnlockButton() {
   const { pending } = useFormStatus();
@@ -180,19 +192,27 @@ function DownloadPdfForm({ reference, code }: { reference: string; code: string 
 
 function ReportPreview({ result, reference, code }: { result: PublishedResultDto; reference: string; code: string }) {
   return (
-    <article className="surface-card overflow-hidden">
+    <article id="patient-report" className="surface-card overflow-hidden">
       <div className="flex flex-col gap-4 border-b border-border bg-secondary p-6 sm:flex-row sm:items-start sm:justify-between sm:p-8">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple">
             Salem Medical Laboratories
           </p>
           <h2 className="mt-2 text-xl font-semibold text-navy-deep sm:text-2xl">{result.patientName}</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
             Lab number {result.labNumber} &middot; Reference {result.resultReference}
             {result.dateReported ? <> &middot; Reported {result.dateReported}</> : null}
           </p>
+          <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+            <span><b className="text-navy-deep">Specimen:</b> {result.specimen || "—"}</span>
+            <span><b className="text-navy-deep">Collected:</b> {result.dateCollected || "—"}</span>
+            <span><b className="text-navy-deep">Request:</b> {result.request || "—"}</span>
+          </div>
         </div>
-        <DownloadPdfForm reference={reference} code={code} />
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+          <PrintResultButton />
+          <DownloadPdfForm reference={reference} code={code} />
+        </div>
       </div>
 
       <div className="space-y-6 p-6 sm:p-8">
@@ -201,7 +221,8 @@ function ReportPreview({ result, reference, code }: { result: PublishedResultDto
             <div className="bg-secondary px-4 py-2.5 text-sm font-semibold text-navy-deep">{test.testName}</div>
 
             {test.fields.length > 0 ? (
-              <table className="w-full min-w-[420px] border-collapse text-sm">
+              <div className="overflow-x-auto">
+              <table className="min-w-[620px] w-full border-collapse text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="px-4 py-2 font-semibold">Investigation</th>
@@ -221,6 +242,7 @@ function ReportPreview({ result, reference, code }: { result: PublishedResultDto
                   ))}
                 </tbody>
               </table>
+              </div>
             ) : null}
 
             {test.table.length > 0 ? (

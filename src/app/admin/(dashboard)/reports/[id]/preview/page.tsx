@@ -83,7 +83,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           </span>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border border-border p-4 text-sm sm:grid-cols-3">
+        <div className="mb-6 grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg border border-border p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {[
             ["Patient name", report.patientName],
             ["Sex", report.patientSex ?? "—"],
@@ -106,10 +106,11 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
         </div>
 
         {tests.map((t, i) => (
-          <div key={i} className="mb-6 break-inside-avoid">
+          <div key={i} className="mb-6">
             <h2 className="mb-2 border-b border-navy-deep pb-1 text-sm font-bold text-navy-deep">{t.testName}</h2>
             {t.structureType === "field_based" ? (
-              <table className="w-full border-collapse border border-border text-xs">
+              <div className="overflow-x-auto rounded-lg">
+              <table className="min-w-[620px] w-full border-collapse border border-border text-xs">
                 <thead>
                   <tr className="bg-secondary text-left uppercase text-muted-foreground">
                     <th className="border border-border px-2 py-1.5">Parameter</th>
@@ -134,8 +135,10 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
                   })}
                 </tbody>
               </table>
+              </div>
             ) : (
-              <table className="w-full border-collapse border border-border text-xs">
+              <div className="overflow-x-auto rounded-lg">
+              <table className="min-w-[520px] w-full border-collapse border border-border text-xs">
                 <thead>
                   <tr className="bg-secondary text-left uppercase text-muted-foreground">
                     <th className="border border-border px-2 py-1.5">Parameter</th>
@@ -157,6 +160,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
             {t.comment ? <p className="mt-1.5 text-xs italic text-muted-foreground">Comment: {t.comment}</p> : null}
           </div>
@@ -169,6 +173,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           </div>
         ) : null}
 
+        {!org.letterheadDataUri ? (
         <div className="mt-10 flex justify-start break-inside-avoid">
           {approval ? (
             <div>
@@ -192,6 +197,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
             <p className="text-xs italic text-muted-foreground">Pending authorized approval — not yet signed.</p>
           )}
         </div>
+        ) : null}
         </div>
       </div>
       </div>

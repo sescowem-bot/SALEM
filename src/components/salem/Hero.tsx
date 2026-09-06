@@ -6,7 +6,7 @@ import type { HomepageContent } from "@/lib/data/websiteContentTypes";
 
 const heroLab = "/images/hero-lab.jpg";
 
-export function Hero({ content, heroImageUrl }: { content?: HomepageContent; heroImageUrl?: string | null }) {
+export function Hero({ content }: { content?: HomepageContent }) {
   const eyebrow = content?.heroEyebrow || "Medical Diagnostic Laboratory";
   const headline = content?.heroHeadline;
   const description = content?.heroDescription ||
@@ -65,7 +65,7 @@ export function Hero({ content, heroImageUrl }: { content?: HomepageContent; her
         <div className="relative min-w-0">
           <div className="relative overflow-hidden rounded-[2rem] border border-white/15 shadow-lift">
             <Image
-              src={heroImageUrl || heroLab}
+              src={heroLab}
               alt="Scientist at Salem Medical Laboratories operating a modern diagnostic analyser"
               width={1600}
               height={1104}

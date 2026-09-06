@@ -336,7 +336,6 @@ export const homepageContentSchema = z.object({
   heroSecondaryCtaLabel: z.string().trim().max(60).optional().or(z.literal("")),
   heroSecondaryCtaHref: optionalUrlOrPath,
   heroTrustStatement: z.string().trim().max(200).optional().or(z.literal("")),
-  heroImagePath: z.string().trim().max(1000).optional().or(z.literal("")),
   aboutPreviewHeading: z.string().trim().max(150).optional().or(z.literal("")),
   aboutPreviewDescription: z.string().trim().max(500).optional().or(z.literal("")),
   aboutPreviewCtaLabel: z.string().trim().max(60).optional().or(z.literal("")),

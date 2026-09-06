@@ -264,27 +264,6 @@ export default async function AdminHome() {
             </SectionCard>
           ) : null}
 
-          {perm.canAudit ? (
-            <SectionCard
-              title="Recent audit activity"
-              viewAllHref="/admin/audit"
-              isEmpty={stats.recentAudit.length === 0}
-              emptyLabel="No audit activity recorded yet."
-            >
-              <ul className="divide-y divide-border">
-                {stats.recentAudit.map((entry) => (
-                  <li key={entry.id} className="py-2.5 first:pt-0 last:pb-0">
-                    <span className="block text-sm font-medium text-navy-deep">
-                      {entry.action.replaceAll("_", " ")}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {entry.entity_type} · {new Date(entry.created_at).toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </SectionCard>
-          ) : null}
         </div>
       </div>
     </AdminShell>

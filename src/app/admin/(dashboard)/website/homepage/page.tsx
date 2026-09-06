@@ -5,8 +5,6 @@ import { getAdminNavItems } from "@/lib/auth/nav";
 import { getWebsitePage } from "@/lib/data/websitePages";
 import { WebsiteContentPublishBar } from "../WebsiteContentPublishBar";
 import { HomepageEditorForm } from "./HomepageEditorForm";
-import { HomepageHeroUploader } from "./HomepageHeroUploader";
-import { getSiteMediaPublicUrl } from "@/lib/data/storage";
 import type { HomepageContent } from "@/lib/data/websiteContentTypes";
 
 export const dynamic = "force-dynamic";
@@ -42,10 +40,6 @@ export default async function HomepageCmsPage() {
       navItems={navItems}
     >
       <div className="space-y-6">
-        <HomepageHeroUploader
-          currentUrl={typeof page.draft_content.heroImagePath === "string" ? getSiteMediaPublicUrl(page.draft_content.heroImagePath) : null}
-          hasCurrent={typeof page.draft_content.heroImagePath === "string" && page.draft_content.heroImagePath.length > 0}
-        />
         <WebsiteContentPublishBar pageKey="homepage" status={page.status} updatedAt={page.updated_at} publishedAt={page.published_at} />
         <HomepageEditorForm content={(page.draft_content as HomepageContent) ?? {}} />
       </div>

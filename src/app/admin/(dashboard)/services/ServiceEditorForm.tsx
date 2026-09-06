@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { ImagePlus, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createServiceAction, updateServiceAction, type ActionState } from "./actions";
 import { slugify } from "@/lib/utils/slug";
@@ -79,7 +79,7 @@ function ResultStructureBuilder({
             Parameters — one row per result line (e.g. HB, WBC, PCV)
           </p>
           {fields.map((f, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.2fr_100px_90px_1fr_auto] sm:items-center">
+            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1.2fr_100px_90px_1fr_auto] sm:items-center">
               <input
                 placeholder="Parameter name"
                 className={fieldClass}
@@ -232,6 +232,7 @@ export function ServiceEditorForm({
   const [fields, setFields] = useState<CustomField[]>([emptyCustomField()]);
   const [columns, setColumns] = useState<string[]>([""]);
   const [rows, setRows] = useState<string[]>([""]);
+  const [serviceImagePreview, setServiceImagePreview] = useState<string | null>(null);
 
   function handleNameChange(value: string) {
     setName(value);
@@ -363,7 +364,33 @@ export function ServiceEditorForm({
         ) : null}
       </Section>
 
-      <Section number={2} title="Service description">
+      {mode === "create" ? (
+        <Section number={2} title="Service image" description="Optional now — you can also add or replace the image after the service is created.">
+          <label className="block cursor-pointer rounded-2xl border border-dashed border-border bg-secondary/60 p-5 text-center transition-colors hover:border-cyan hover:bg-background">
+            <input
+              name="serviceImage"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) { setServiceImagePreview(null); return; }
+                setServiceImagePreview(URL.createObjectURL(file));
+              }}
+            />
+            {serviceImagePreview ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local pre-upload preview.
+              <img src={serviceImagePreview} alt="Selected service preview" className="mx-auto aspect-[4/3] max-h-56 w-full max-w-sm rounded-xl object-cover" />
+            ) : (
+              <ImagePlus className="mx-auto h-7 w-7 text-purple" />
+            )}
+            <span className="mt-2 block text-sm font-semibold text-navy-deep">Choose service image</span>
+            <span className="mt-1 block text-xs text-muted-foreground">JPEG, PNG or WebP · maximum 5MB</span>
+          </label>
+        </Section>
+      ) : null}
+
+      <Section number={mode === "create" ? 3 : 2} title="Service description">
         <label className="block text-sm font-medium text-navy-deep">
           Short description
           <textarea
@@ -388,7 +415,7 @@ export function ServiceEditorForm({
         </label>
       </Section>
 
-      <Section number={3} title="Patient information / preparation">
+      <Section number={mode === "create" ? 4 : 3} title="Patient information / preparation">
         <label className="block text-sm font-medium text-navy-deep">
           Preparation
           <textarea
@@ -439,7 +466,7 @@ export function ServiceEditorForm({
         </label>
       </Section>
 
-      <Section number={4} title="Pricing & availability">
+      <Section number={mode === "create" ? 5 : 4} title="Pricing & availability">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-navy-deep">
             Price (₦)
@@ -469,7 +496,7 @@ export function ServiceEditorForm({
         </div>
       </Section>
 
-      <Section number={5} title="Call to action" description="Defaults to the standard booking flow if left blank.">
+      <Section number={mode === "create" ? 6 : 5} title="Call to action" description="Defaults to the standard booking flow if left blank.">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-navy-deep">
             CTA label
@@ -482,7 +509,7 @@ export function ServiceEditorForm({
         </div>
       </Section>
 
-      <Section number={6} title="SEO">
+      <Section number={mode === "create" ? 8 : 6} title="SEO">
         <label className="block text-sm font-medium text-navy-deep">
           SEO title
           <input name="seoTitle" maxLength={70} defaultValue={service?.seo_title ?? ""} className={fieldClass} />

@@ -115,6 +115,11 @@ export async function createServiceAction(_prev: ActionState, formData: FormData
   const staff = await requireStaff();
   const parsed = serviceEditorSchema.safeParse(readForm(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid service details." };
+  const serviceImage = formData.get("serviceImage");
+  if (serviceImage instanceof File && serviceImage.size > 0) {
+    if (!serviceImage.type.startsWith("image/")) return { error: "Service image must be a JPG, PNG, or WebP image." };
+    if (serviceImage.size > 5 * 1024 * 1024) return { error: "Service image is too large. The limit is 5MB." };
+  }
 
   let newId: string;
   try {
@@ -138,6 +143,17 @@ export async function createServiceAction(_prev: ActionState, formData: FormData
           )
         : await createService(editableFields, staff.role, staff.userId);
     newId = created.id;
+    if (serviceImage instanceof File && serviceImage.size > 0) {
+      await uploadServiceImage({
+        testId: newId,
+        file: serviceImage,
+        fileName: serviceImage.name,
+        contentType: serviceImage.type,
+        size: serviceImage.size,
+        actorRole: staff.role,
+        actorId: staff.userId,
+      });
+    }
   } catch (err) {
     if (err instanceof Error && err.message.startsWith("Forbidden")) {
       return { error: "You do not have permission to manage services." };

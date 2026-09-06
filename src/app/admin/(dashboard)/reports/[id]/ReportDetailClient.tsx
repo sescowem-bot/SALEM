@@ -598,7 +598,7 @@ function ApproverSelect({
         required
         value={approverId}
         onChange={(e) => setApproverId(e.target.value)}
-        className="w-64 rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-navy-deep outline-none focus:border-cyan"
+        className="w-full max-w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-navy-deep outline-none focus:border-cyan sm:w-64"
       >
         <option value="" disabled>
           Choose an approver
@@ -646,7 +646,7 @@ function ApprovalDecisionButtons({ labReportId, requestId }: { labReportId: stri
           onChange={(e) => setRejectComment(e.target.value)}
           placeholder="Reason for rejecting (optional)"
           rows={1}
-          className="w-56 rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan"
+          className="w-full max-w-full rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan sm:w-56"
         />
         <button
           type="submit"
@@ -666,7 +666,7 @@ function ApprovalDecisionButtons({ labReportId, requestId }: { labReportId: stri
           onChange={(e) => setReturnComment(e.target.value)}
           placeholder="Reason for returning (optional)"
           rows={1}
-          className="w-56 rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan"
+          className="w-full max-w-full rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan sm:w-56"
         />
         <button
           type="submit"
@@ -892,7 +892,7 @@ function CustomInvestigationForm({ labReportId, testCategories }: { labReportId:
             Parameters — one row per result line (e.g. HB, WBC, PCV)
           </p>
           {fields.map((f, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1.2fr_100px_90px_1fr_auto] sm:items-center">
+            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1.2fr_100px_90px_1fr_auto] sm:items-center">
               <input
                 placeholder="Parameter name"
                 className={fieldClass}
@@ -1374,7 +1374,7 @@ function ReturnForCorrectionForm({ labReportId }: { labReportId: string }) {
         name="comment"
         placeholder="Reason for returning (optional)"
         rows={1}
-        className="w-56 rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan"
+        className="w-full max-w-full rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan sm:w-56"
       />
       <button
         type="submit"

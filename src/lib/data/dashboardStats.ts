@@ -7,7 +7,6 @@ import { countPatients, listPatients } from "./patients";
 import { countUnreadContactMessages, listContactSubmissions } from "./communications";
 import { listActiveTests } from "./testCatalog";
 import { countActiveStaff } from "./staff";
-import { listAuditLogs } from "./audit";
 
 /**
  * Single aggregation point for the admin Overview dashboard (Advanced 1
@@ -26,7 +25,6 @@ export async function getDashboardStats(staff: CurrentStaff) {
   const canEnquiries = can(staff, "enquiries.manage");
   const canCatalogue = can(staff, "catalogue.manage");
   const canStaff = can(staff, "staff.manage") || staff.role === "admin";
-  const canAudit = can(staff, "audit.view");
 
   const [
     draftReports,
@@ -40,7 +38,6 @@ export async function getDashboardStats(staff: CurrentStaff) {
     recentMessages,
     activeTests,
     activeStaffCount,
-    recentAudit,
   ] = await Promise.all([
     canReports ? listDraftReports() : Promise.resolve([]),
     canReview ? listReviewQueue() : Promise.resolve([]),
@@ -53,7 +50,6 @@ export async function getDashboardStats(staff: CurrentStaff) {
     canEnquiries ? listContactSubmissions(staff.role) : Promise.resolve([]),
     canCatalogue ? listActiveTests() : Promise.resolve([]),
     canStaff ? countActiveStaff(staff.role) : Promise.resolve(0),
-    canAudit ? listAuditLogs({ limit: 8 }) : Promise.resolve([]),
   ]);
 
   return {
@@ -66,7 +62,6 @@ export async function getDashboardStats(staff: CurrentStaff) {
       canEnquiries,
       canCatalogue,
       canStaff,
-      canAudit,
     },
     draftReportsCount: draftReports.length,
     reviewQueueCount: reviewQueue.length,
@@ -83,6 +78,5 @@ export async function getDashboardStats(staff: CurrentStaff) {
     recentMessages: recentMessages.slice(0, 5),
     activeServicesCount: activeTests.length,
     activeStaffCount,
-    recentAudit,
   };
 }

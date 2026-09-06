@@ -60,7 +60,7 @@ export function AppointmentRescheduleForm({
       className="mt-2 w-full max-w-sm space-y-2 rounded-xl border border-border bg-secondary/60 p-3"
     >
       <input type="hidden" name="requestId" value={requestId} />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="block text-[0.65rem] font-medium text-muted-foreground">
           New date
           <input

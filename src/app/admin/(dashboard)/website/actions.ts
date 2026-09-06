@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
-import { getWebsitePage, saveDraftContent, publishPageContent, unpublishPageContent } from "@/lib/data/websitePages";
+import { saveDraftContent, publishPageContent, unpublishPageContent } from "@/lib/data/websitePages";
 import { updateSiteSettings, type SiteSettingsInput } from "@/lib/data/siteSettings";
-import { uploadSiteMedia, removeSiteMediaSlot, removeSiteMediaPath, type SiteMediaSlot } from "@/lib/data/storage";
+import { uploadSiteMedia, removeSiteMediaSlot, type SiteMediaSlot } from "@/lib/data/storage";
 import {
   homepageContentSchema,
   aboutContentSchema,
@@ -107,64 +107,6 @@ export async function unpublishWebsiteContentAction(_prev: ActionState, formData
 
   revalidatePath(`/admin/website/${pageKey}`);
   revalidatePath(PUBLIC_PATH_BY_PAGE[pageKey]);
-  return { ok: true };
-}
-
-
-export async function uploadHomepageHeroAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
-  const file = formData.get("file") as File | null;
-  if (!file || file.size === 0) return { error: "Choose a homepage image to upload." };
-
-  try {
-    const page = await getWebsitePage("homepage", staff.role);
-    const currentPath = typeof page.draft_content.heroImagePath === "string" ? page.draft_content.heroImagePath : null;
-    const path = await uploadSiteMedia({
-      slot: "pageHero",
-      pathHint: "homepage/hero",
-      file,
-      fileName: file.name,
-      contentType: file.type,
-      size: file.size,
-      actorRole: staff.role,
-      actorId: staff.userId,
-    });
-    await saveDraftContent(
-      "homepage",
-      { ...page.draft_content, heroImagePath: path },
-      staff.role,
-      staff.userId,
-    );
-    if (currentPath && currentPath !== path) {
-      // The old hero is intentionally retained when the storage provider does
-      // not expose a page-level delete operation. Replacing the image is safe;
-      // future media-library cleanup can remove orphaned assets explicitly.
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Could not upload homepage image." };
-  }
-
-  revalidatePath("/admin/website/homepage");
-  revalidatePath("/admin/website/preview/homepage");
-  revalidatePath("/");
-  return { ok: true };
-}
-
-export async function removeHomepageHeroAction(_prev: ActionState, _formData: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
-  try {
-    const page = await getWebsitePage("homepage", staff.role);
-    const currentPath = typeof page.draft_content.heroImagePath === "string" ? page.draft_content.heroImagePath : null;
-    const next = { ...page.draft_content };
-    delete next.heroImagePath;
-    await saveDraftContent("homepage", next, staff.role, staff.userId);
-    if (currentPath) await removeSiteMediaPath(currentPath, staff.role, staff.userId);
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Could not remove homepage image." };
-  }
-  revalidatePath("/admin/website/homepage");
-  revalidatePath("/admin/website/preview/homepage");
-  revalidatePath("/");
   return { ok: true };
 }
 

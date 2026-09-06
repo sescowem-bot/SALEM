@@ -17,7 +17,7 @@ import { requireStaff, can } from "@/lib/auth/session";
 import { getWebsitePage } from "@/lib/data/websitePages";
 import { getSiteSettings } from "@/lib/data/siteSettings";
 import { listPublishedServices } from "@/lib/data/testCatalog";
-import { getServiceImagePublicUrl, getSiteMediaPublicUrl } from "@/lib/data/storage";
+import { getServiceImagePublicUrl } from "@/lib/data/storage";
 import type {
   HomepageContent,
   AboutContent,
@@ -90,7 +90,7 @@ async function PreviewBody({
       }));
     return (
       <>
-        <Hero content={content} heroImageUrl={content.heroImagePath ? getSiteMediaPublicUrl(content.heroImagePath) : null} />
+        <Hero content={content} />
         <AboutPreview content={content} />
         <Services heading={content.servicesHeading} description={content.servicesDescription} featuredServices={featuredServices} />
         <Trust content={content} />
