@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { siteConfig } from "@/data/siteContent";
 import type { HomepageContent } from "@/lib/data/websiteContentTypes";
+import { getSiteMediaPublicUrl } from "@/lib/data/storage";
 
 const heroLab = "/images/hero-lab.jpg";
 
@@ -65,7 +66,7 @@ export function Hero({ content }: { content?: HomepageContent }) {
         <div className="relative min-w-0">
           <div className="relative overflow-hidden rounded-[2rem] border border-white/15 shadow-lift">
             <Image
-              src={heroLab}
+              src={content?.heroImagePath ? getSiteMediaPublicUrl(content.heroImagePath) : heroLab}
               alt="Scientist at Salem Medical Laboratories operating a modern diagnostic analyser"
               width={1600}
               height={1104}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
+import { hasPermission } from "@/lib/auth/permissions";
 import { saveDraftContent, publishPageContent, unpublishPageContent } from "@/lib/data/websitePages";
 import { updateSiteSettings, type SiteSettingsInput } from "@/lib/data/siteSettings";
 import { uploadSiteMedia, removeSiteMediaSlot, type SiteMediaSlot } from "@/lib/data/storage";
@@ -198,4 +199,68 @@ export async function removeSiteMediaAction(_prev: ActionState, formData: FormDa
   revalidatePath("/admin/settings");
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+// Backward-compatible homepage hero actions used by the homepage uploader.
+// Keep these in the existing website action module so there is only one
+// website-media workflow.
+export async function uploadHomepageHeroAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) return { error: "Choose a hero image to upload." };
+  try {
+    const path = await uploadSiteMedia({
+      slot: "pageHero",
+      pathHint: "homepage/hero",
+      file,
+      fileName: file.name,
+      contentType: file.type,
+      size: file.size,
+      actorRole: staff.role,
+      actorId: staff.userId,
+    });
+    const { getServiceRoleClient } = await import("@/lib/supabase/service-client");
+    const supabase = getServiceRoleClient();
+    const { data: page, error: readError } = await supabase
+      .from("website_pages")
+      .select("draft_content")
+      .eq("page_key", "homepage")
+      .single();
+    if (readError) throw readError;
+    const content = (page?.draft_content && typeof page.draft_content === "object") ? { ...(page.draft_content as Record<string, unknown>) } : {};
+    content.heroImagePath = path;
+    await saveDraftContent("homepage", content, staff.role, staff.userId);
+    revalidatePath("/admin/website/homepage");
+    revalidatePath("/");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Could not upload homepage hero image." };
+  }
+}
+
+export async function removeHomepageHeroAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  if (!hasPermissionForWebsiteMediaRemoval(staff.role)) return { error: "You do not have permission to remove website media." };
+  try {
+    const { getServiceRoleClient } = await import("@/lib/supabase/service-client");
+    const supabase = getServiceRoleClient();
+    const { data: page, error: readError } = await supabase
+      .from("website_pages")
+      .select("draft_content")
+      .eq("page_key", "homepage")
+      .single();
+    if (readError) throw readError;
+    const content = (page?.draft_content && typeof page.draft_content === "object") ? { ...(page.draft_content as Record<string, unknown>) } : {};
+    delete content.heroImagePath;
+    await saveDraftContent("homepage", content, staff.role, staff.userId);
+    revalidatePath("/admin/website/homepage");
+    revalidatePath("/");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Could not remove homepage hero image." };
+  }
+}
+
+function hasPermissionForWebsiteMediaRemoval(role: Parameters<typeof hasPermission>[0]): boolean {
+  return hasPermission(role, "settings.manage");
 }

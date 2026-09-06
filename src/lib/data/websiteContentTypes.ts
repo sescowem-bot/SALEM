@@ -1,4 +1,5 @@
 export interface HomepageContent {
+  heroImagePath?: string;
   heroEyebrow?: string;
   heroHeadline?: string;
   heroDescription?: string;
