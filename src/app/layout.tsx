@@ -45,8 +45,15 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: { card: "summary_large_image", title: orgName, description },
     icons: {
-      icon: settings?.faviconUrl || settings?.logoUrl || "/favicon.ico",
-      apple: settings?.faviconUrl || settings?.logoUrl || "/favicon.ico",
+      icon: [
+        // Keep a deterministic local fallback so the browser always has a real
+        // favicon even if CMS media is temporarily unavailable. The versioned
+        // URL also prevents Chrome/Vercel from serving the old default icon from cache.
+        { url: "/favicon.ico?v=3", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" },
+        { url: "/icon.svg?v=3", type: "image/svg+xml" },
+        ...(settings?.faviconUrl ? [{ url: settings.faviconUrl }] : []),
+      ],
+      apple: settings?.faviconUrl || "/apple-icon.png?v=3",
     },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
