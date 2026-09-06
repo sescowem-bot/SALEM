@@ -7,6 +7,7 @@ export interface HomepageContent {
   heroSecondaryCtaLabel?: string;
   heroSecondaryCtaHref?: string;
   heroTrustStatement?: string;
+  heroImagePath?: string;
   aboutPreviewHeading?: string;
   aboutPreviewDescription?: string;
   aboutPreviewCtaLabel?: string;

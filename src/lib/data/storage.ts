@@ -3,6 +3,7 @@ import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
 import type { Database } from "@/lib/supabase/database.types";
 import { logAudit } from "./audit";
+import { decodeCloudinaryAsset, destroyCloudinaryAsset, encodeCloudinaryAsset, isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
 
 const BUCKET = "lab-report-pdfs";
 const SIGNED_URL_TTL_SECONDS = 300; // 5 minutes — short-lived per Phase 4 §11
@@ -154,19 +155,35 @@ export async function uploadServiceImage(input: {
   }
 
   const supabase = getServiceRoleClient();
-  const extension = input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
-  const path = `${input.testId}/${Date.now()}.${extension}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from(SERVICE_IMAGES_BUCKET)
-    .upload(path, input.file, { contentType: input.contentType, upsert: false });
-  if (uploadError) throw uploadError;
-
-  // Best-effort cleanup of any previous image for this service so the
-  // bucket doesn't accumulate orphaned files on repeated replacement.
   const { data: current } = await supabase.from("tests").select("hero_image_path").eq("id", input.testId).single();
+
+  let path: string;
+  if (isCloudinaryConfigured()) {
+    const uploaded = await uploadToCloudinary({
+      file: input.file,
+      fileName: input.fileName,
+      folder: `salem/services/${input.testId}`,
+      resourceType: "image",
+    });
+    if (!uploaded) throw new Error("Cloudinary is not configured.");
+    path = encodeCloudinaryAsset({ publicId: uploaded.public_id, secureUrl: uploaded.secure_url, resourceType: "image" });
+  } else {
+    const extension = input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
+    path = `${input.testId}/${Date.now()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from(SERVICE_IMAGES_BUCKET)
+      .upload(path, input.file, { contentType: input.contentType, upsert: false });
+    if (uploadError) throw uploadError;
+  }
+
+  // Clean up the previous asset after the replacement has uploaded successfully.
   if (current?.hero_image_path) {
-    await supabase.storage.from(SERVICE_IMAGES_BUCKET).remove([current.hero_image_path]);
+    const previousCloudinary = decodeCloudinaryAsset(current.hero_image_path);
+    if (previousCloudinary) {
+      await destroyCloudinaryAsset({ publicId: previousCloudinary.publicId, resourceType: previousCloudinary.resourceType });
+    } else {
+      await supabase.storage.from(SERVICE_IMAGES_BUCKET).remove([current.hero_image_path]);
+    }
   }
 
   const { error: updateError } = await supabase.from("tests").update({ hero_image_path: path }).eq("id", input.testId);
@@ -192,7 +209,12 @@ export async function removeServiceImage(testId: string, actorRole: StaffRole, a
   const supabase = getServiceRoleClient();
   const { data: current } = await supabase.from("tests").select("hero_image_path").eq("id", testId).single();
   if (current?.hero_image_path) {
-    await supabase.storage.from(SERVICE_IMAGES_BUCKET).remove([current.hero_image_path]);
+    const cloudinaryAsset = decodeCloudinaryAsset(current.hero_image_path);
+    if (cloudinaryAsset) {
+      await destroyCloudinaryAsset({ publicId: cloudinaryAsset.publicId, resourceType: cloudinaryAsset.resourceType });
+    } else {
+      await supabase.storage.from(SERVICE_IMAGES_BUCKET).remove([current.hero_image_path]);
+    }
   }
 
   const { error } = await supabase.from("tests").update({ hero_image_path: null }).eq("id", testId);
@@ -214,6 +236,8 @@ export async function removeServiceImage(testId: string, actorRole: StaffRole, a
  * deterministic URL construction, not a privileged operation.
  */
 export function getServiceImagePublicUrl(storagePath: string): string {
+  const cloudinaryAsset = decodeCloudinaryAsset(storagePath);
+  if (cloudinaryAsset) return cloudinaryAsset.secureUrl;
   const supabase = getServiceRoleClient();
   const { data } = supabase.storage.from(SERVICE_IMAGES_BUCKET).getPublicUrl(storagePath);
   return data.publicUrl;
@@ -270,22 +294,42 @@ export async function uploadSiteMedia(input: {
   }
 
   const supabase = getServiceRoleClient();
-  const extension = input.fileName.split(".").pop()?.toLowerCase() || "png";
-  const subpath = input.slot === "pageHero" ? (input.pathHint ?? "page-hero") : input.slot;
-  const path = `${subpath}/${Date.now()}.${extension}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from(SITE_MEDIA_BUCKET)
-    .upload(path, input.file, { contentType: input.contentType, upsert: false });
-  if (uploadError) throw uploadError;
-
   const column = SITE_SETTINGS_COLUMN[input.slot];
-  if (column) {
-    const { data: current } = await supabase.from("site_settings").select(column).eq("id", true).single();
-    const previousPath = current ? (current as Record<string, unknown>)[column] : null;
-    if (typeof previousPath === "string" && previousPath) {
+  const current = column
+    ? (await supabase.from("site_settings").select(column).eq("id", true).single()).data
+    : null;
+  const previousPath = column && current ? (current as Record<string, unknown>)[column] : null;
+
+  let path: string;
+  if (isCloudinaryConfigured()) {
+    const uploaded = await uploadToCloudinary({
+      file: input.file,
+      fileName: input.fileName,
+      folder: `salem/site/${input.slot}`,
+      resourceType: "image",
+    });
+    if (!uploaded) throw new Error("Cloudinary is not configured.");
+    path = encodeCloudinaryAsset({ publicId: uploaded.public_id, secureUrl: uploaded.secure_url, resourceType: "image" });
+  } else {
+    const extension = input.fileName.split(".").pop()?.toLowerCase() || "png";
+    const subpath = input.slot === "pageHero" ? (input.pathHint ?? "page-hero") : input.slot;
+    path = `${subpath}/${Date.now()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from(SITE_MEDIA_BUCKET)
+      .upload(path, input.file, { contentType: input.contentType, upsert: false });
+    if (uploadError) throw uploadError;
+  }
+
+  if (typeof previousPath === "string" && previousPath) {
+    const previousCloudinary = decodeCloudinaryAsset(previousPath);
+    if (previousCloudinary) {
+      await destroyCloudinaryAsset({ publicId: previousCloudinary.publicId, resourceType: previousCloudinary.resourceType });
+    } else {
       await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
     }
+  }
+
+  if (column) {
     const { error: updateError } = await supabase
       .from("site_settings")
       .update({
@@ -319,7 +363,12 @@ export async function removeSiteMediaSlot(slot: SiteMediaSlot, actorRole: StaffR
   const { data: current } = await supabase.from("site_settings").select(column).eq("id", true).single();
   const previousPath = current ? (current as Record<string, unknown>)[column] : null;
   if (typeof previousPath === "string" && previousPath) {
-    await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
+    const cloudinaryAsset = decodeCloudinaryAsset(previousPath);
+    if (cloudinaryAsset) {
+      await destroyCloudinaryAsset({ publicId: cloudinaryAsset.publicId, resourceType: cloudinaryAsset.resourceType });
+    } else {
+      await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
+    }
   }
 
   const { error } = await supabase
@@ -341,7 +390,30 @@ export async function removeSiteMediaSlot(slot: SiteMediaSlot, actorRole: StaffR
   });
 }
 
+export async function removeSiteMediaPath(storagePath: string, actorRole: StaffRole, actorId?: string): Promise<void> {
+  if (!hasPermission(actorRole, "settings.manage")) {
+    throw new Error(`Forbidden: role "${actorRole}" cannot manage website media.`);
+  }
+  const cloudinaryAsset = decodeCloudinaryAsset(storagePath);
+  if (cloudinaryAsset) {
+    await destroyCloudinaryAsset({ publicId: cloudinaryAsset.publicId, resourceType: cloudinaryAsset.resourceType });
+  } else {
+    const supabase = getServiceRoleClient();
+    const { error } = await supabase.storage.from(SITE_MEDIA_BUCKET).remove([storagePath]);
+    if (error) throw error;
+  }
+  await logAudit({
+    action: "WEBSITE_MEDIA_REMOVED",
+    entityType: "website_pages",
+    actorId,
+    actorRole,
+    metadata: { storagePath },
+  });
+}
+
 export function getSiteMediaPublicUrl(storagePath: string): string {
+  const cloudinaryAsset = decodeCloudinaryAsset(storagePath);
+  if (cloudinaryAsset) return cloudinaryAsset.secureUrl;
   const supabase = getServiceRoleClient();
   const { data } = supabase.storage.from(SITE_MEDIA_BUCKET).getPublicUrl(storagePath);
   return data.publicUrl;
@@ -478,9 +550,18 @@ export async function getSignatureImageDataUri(storagePath: string): Promise<str
  * same-process-embed reason as getSignatureImageDataUri above.
  */
 export async function getSiteMediaDataUri(storagePath: string): Promise<string | null> {
-  const supabase = getServiceRoleClient();
-  const { data, error } = await supabase.storage.from(SITE_MEDIA_BUCKET).download(storagePath);
-  if (error) return null;
+  const cloudinaryAsset = decodeCloudinaryAsset(storagePath);
+  let data: Blob;
+  if (cloudinaryAsset) {
+    const response = await fetch(cloudinaryAsset.secureUrl, { cache: "no-store" });
+    if (!response.ok) return null;
+    data = await response.blob();
+  } else {
+    const supabase = getServiceRoleClient();
+    const result = await supabase.storage.from(SITE_MEDIA_BUCKET).download(storagePath);
+    if (result.error || !result.data) return null;
+    data = result.data;
+  }
 
   const buffer = Buffer.from(await data.arrayBuffer());
   const extension = storagePath.split(".").pop()?.toLowerCase();
