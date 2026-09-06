@@ -1,6 +1,7 @@
 "use client";
 
-import { ImagePlus, useActionState, useState } from "react";
+import { useActionState, useState } from "react";
+import { ImagePlus } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { createServiceAction, updateServiceAction, type ActionState } from "./actions";
 import { slugify } from "@/lib/utils/slug";
