@@ -83,7 +83,7 @@ export async function destroyCloudinaryAsset(input: {
 
   const timestamp = Math.floor(Date.now() / 1000);
   const resourceType = input.resourceType ?? "image";
-  const params = { public_id: input.publicId, timestamp };
+  const params = { public_id: input.publicId, timestamp, invalidate: "true" };
   const signature = signParams(params, config.apiSecret);
 
   const form = new FormData();
