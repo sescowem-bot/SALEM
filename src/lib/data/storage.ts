@@ -176,18 +176,27 @@ export async function uploadServiceImage(input: {
     if (uploadError) throw uploadError;
   }
 
-  // Clean up the previous asset after the replacement has uploaded successfully.
-  if (current?.hero_image_path) {
-    const previousCloudinary = decodeCloudinaryAsset(current.hero_image_path);
-    if (previousCloudinary) {
-      await destroyCloudinaryAsset({ publicId: previousCloudinary.publicId, resourceType: previousCloudinary.resourceType });
-    } else {
-      await supabase.storage.from(SERVICE_IMAGES_BUCKET).remove([current.hero_image_path]);
-    }
+  // Persist the replacement before attempting to remove the old asset.
+  // Cloudinary credential/permission errors must not make the new image fail.
+  const { error: updateError } = await supabase.from("tests").update({ hero_image_path: path }).eq("id", input.testId);
+  if (updateError) {
+    try {
+      const uploadedAsset = decodeCloudinaryAsset(path);
+      if (uploadedAsset) await destroyCloudinaryAsset({ publicId: uploadedAsset.publicId, resourceType: uploadedAsset.resourceType });
+      else await supabase.storage.from(SERVICE_IMAGES_BUCKET).remove([path]);
+    } catch {}
+    throw updateError;
   }
 
-  const { error: updateError } = await supabase.from("tests").update({ hero_image_path: path }).eq("id", input.testId);
-  if (updateError) throw updateError;
+  if (current?.hero_image_path && current.hero_image_path !== path) {
+    try {
+      const previousCloudinary = decodeCloudinaryAsset(current.hero_image_path);
+      if (previousCloudinary) await destroyCloudinaryAsset({ publicId: previousCloudinary.publicId, resourceType: previousCloudinary.resourceType });
+      else await supabase.storage.from(SERVICE_IMAGES_BUCKET).remove([current.hero_image_path]);
+    } catch {
+      // Cleanup is best-effort and never blocks the replacement image.
+    }
+  }
 
   await logAudit({
     action: "SERVICE_UPDATED",
@@ -320,15 +329,11 @@ export async function uploadSiteMedia(input: {
     if (uploadError) throw uploadError;
   }
 
-  if (typeof previousPath === "string" && previousPath) {
-    const previousCloudinary = decodeCloudinaryAsset(previousPath);
-    if (previousCloudinary) {
-      await destroyCloudinaryAsset({ publicId: previousCloudinary.publicId, resourceType: previousCloudinary.resourceType });
-    } else {
-      await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
-    }
-  }
-
+  // Persist the new asset first. Cleanup of the previous Cloudinary asset is
+  // deliberately best-effort: a 401/403 from Cloudinary must never make a
+  // successful upload appear to fail or leave the site pointing at the old
+  // favicon/logo. This was the cause of the confusing "Cloudinary delete
+  // failed (401)" upload experience.
   if (column) {
     const { error: updateError } = await supabase
       .from("site_settings")
@@ -338,7 +343,33 @@ export async function uploadSiteMedia(input: {
         updated_by: input.actorId ?? null,
       } as Database["public"]["Tables"]["site_settings"]["Update"])
       .eq("id", true);
-    if (updateError) throw updateError;
+    if (updateError) {
+      // The new asset is not referenced by the CMS, so clean it up if we can.
+      try {
+        const uploadedAsset = decodeCloudinaryAsset(path);
+        if (uploadedAsset) {
+          await destroyCloudinaryAsset({ publicId: uploadedAsset.publicId, resourceType: uploadedAsset.resourceType });
+        } else {
+          await supabase.storage.from(SITE_MEDIA_BUCKET).remove([path]);
+        }
+      } catch {
+        // Never replace the database error with a cleanup error.
+      }
+      throw updateError;
+    }
+  }
+
+  if (typeof previousPath === "string" && previousPath && previousPath !== path) {
+    try {
+      const previousCloudinary = decodeCloudinaryAsset(previousPath);
+      if (previousCloudinary) {
+        await destroyCloudinaryAsset({ publicId: previousCloudinary.publicId, resourceType: previousCloudinary.resourceType });
+      } else {
+        await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
+      }
+    } catch {
+      // Old assets can be removed later. They must never block the new asset.
+    }
   }
 
   await logAudit({
@@ -362,14 +393,6 @@ export async function removeSiteMediaSlot(slot: SiteMediaSlot, actorRole: StaffR
   const supabase = getServiceRoleClient();
   const { data: current } = await supabase.from("site_settings").select(column).eq("id", true).single();
   const previousPath = current ? (current as Record<string, unknown>)[column] : null;
-  if (typeof previousPath === "string" && previousPath) {
-    const cloudinaryAsset = decodeCloudinaryAsset(previousPath);
-    if (cloudinaryAsset) {
-      await destroyCloudinaryAsset({ publicId: cloudinaryAsset.publicId, resourceType: cloudinaryAsset.resourceType });
-    } else {
-      await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
-    }
-  }
 
   const { error } = await supabase
     .from("site_settings")
@@ -380,6 +403,16 @@ export async function removeSiteMediaSlot(slot: SiteMediaSlot, actorRole: StaffR
     } as Database["public"]["Tables"]["site_settings"]["Update"])
     .eq("id", true);
   if (error) throw error;
+
+  if (typeof previousPath === "string" && previousPath) {
+    try {
+      const cloudinaryAsset = decodeCloudinaryAsset(previousPath);
+      if (cloudinaryAsset) await destroyCloudinaryAsset({ publicId: cloudinaryAsset.publicId, resourceType: cloudinaryAsset.resourceType });
+      else await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previousPath]);
+    } catch {
+      // Removal from the CMS must remain successful even if Cloudinary cleanup fails.
+    }
+  }
 
   await logAudit({
     action: "WEBSITE_MEDIA_REMOVED",

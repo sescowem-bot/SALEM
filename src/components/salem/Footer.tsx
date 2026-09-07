@@ -24,6 +24,7 @@ const columns = [
       { label: "Home collection", href: "/home-collection" },
       { label: "Access results", href: "/results" },
       { label: "FAQs", href: "/faq" },
+      { label: "Health blog", href: "/blog" },
     ],
   },
 ];

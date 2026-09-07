@@ -16,6 +16,7 @@ const nav = [
   { label: "Packages", href: "/packages" },
   { label: "Home Collection", href: "/home-collection" },
   { label: "FAQs", href: "/faq" },
+  { label: "Health Blog", href: "/blog" },
   { label: "Contact", href: "/contact" },
 ] as const;
 

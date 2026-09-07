@@ -2,6 +2,8 @@ import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
 import { logAudit } from "./audit";
+import { getSiteMediaPublicUrl } from "./storage";
+import { isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
 
 type Article = {
   id: string; title: string; slug: string; excerpt: string | null; content: string;
@@ -34,6 +36,60 @@ export async function upsertArticle(input: Partial<Article> & { title: string; s
   await logAudit({ action: "WEBSITE_CONTENT_UPDATED", entityType: "seo_articles", entityId: data.id, actorId, actorRole: role });
   return data as Article;
 }
+
+export async function uploadArticleFeaturedImage(input: {
+  articleId: string;
+  file: File;
+  actorRole: StaffRole;
+  actorId?: string;
+}): Promise<string> {
+  guard(input.actorRole);
+  const allowed = ["image/jpeg", "image/png", "image/webp"] as const;
+  if (!allowed.includes(input.file.type as (typeof allowed)[number])) {
+    throw new Error("Unsupported image type. Use JPEG, PNG, or WebP.");
+  }
+  if (input.file.size > 5 * 1024 * 1024) {
+    throw new Error("Featured image is too large. The limit is 5MB.");
+  }
+
+  const db = getServiceRoleClient() as any;
+  let imageUrl: string;
+  if (isCloudinaryConfigured()) {
+    const uploaded = await uploadToCloudinary({
+      file: input.file,
+      fileName: input.file.name,
+      folder: `salem/blog/${input.articleId}`,
+      resourceType: "image",
+    });
+    if (!uploaded?.secure_url) throw new Error("Cloudinary did not return an image URL.");
+    imageUrl = uploaded.secure_url;
+  } else {
+    const ext = input.file.type === "image/png" ? "png" : input.file.type === "image/webp" ? "webp" : "jpg";
+    const path = `blog/${input.articleId}/${Date.now()}.${ext}`;
+    const { error } = await db.storage.from("site-media").upload(path, input.file, { contentType: input.file.type, upsert: false });
+    if (error) throw error;
+    imageUrl = getSiteMediaPublicUrl(path);
+  }
+
+  const { error } = await db.from("seo_articles").update({
+    featured_image_url: imageUrl,
+    updated_at: new Date().toISOString(),
+    updated_by: input.actorId ?? null,
+  }).eq("id", input.articleId);
+  if (error) throw error;
+
+  await logAudit({
+    action: "WEBSITE_CONTENT_UPDATED",
+    entityType: "seo_articles",
+    entityId: input.articleId,
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    metadata: { featuredImageUploaded: true, fileName: input.file.name },
+  });
+
+  return imageUrl;
+}
+
 export async function setArticleStatus(id: string, status: Article["status"], role: StaffRole, actorId?: string) {
   guard(role); const db = getServiceRoleClient() as any;
   const { error } = await db.from("seo_articles").update({ status, published_at: status === "published" ? new Date().toISOString() : null, updated_at: new Date().toISOString(), updated_by: actorId ?? null }).eq("id", id);
