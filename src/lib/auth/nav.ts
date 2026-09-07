@@ -66,6 +66,7 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
       { href: "/admin/website/contact", label: "Contact" },
       { href: "/admin/website/footer", label: "Footer" },
       { href: "/admin/website/seo", label: "SEO" },
+      { href: "/admin/seo-performance/articles", label: "Blog" },
       { href: "/admin/seo-performance", label: "SEO Performance" }
     );
   }

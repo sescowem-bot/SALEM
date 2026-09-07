@@ -29,12 +29,31 @@ export async function listAllArticles(role: StaffRole): Promise<Article[]> {
   if (error) throw error; return data ?? [];
 }
 export async function upsertArticle(input: Partial<Article> & { title: string; slug: string; content: string }, role: StaffRole, actorId?: string) {
-  guard(role); const db = getServiceRoleClient() as any;
-  const payload = { ...input, updated_at: new Date().toISOString(), updated_by: actorId ?? null };
-  const { data, error } = input.id ? await db.from("seo_articles").update(payload).eq("id", input.id).select("*").single() : await db.from("seo_articles").insert({ ...payload, created_by: actorId ?? null }).select("*").single();
-  if (error) throw error;
-  await logAudit({ action: "WEBSITE_CONTENT_UPDATED", entityType: "seo_articles", entityId: data.id, actorId, actorRole: role });
-  return data as Article;
+  guard(role);
+  const db = getServiceRoleClient() as any;
+  const now = new Date().toISOString();
+  const { id, created_by: _createdBy, updated_by: _updatedBy, updated_at: _updatedAt, published_at: inputPublishedAt, ...fields } = input as any;
+
+  const payload = {
+    ...fields,
+    title: input.title.trim(),
+    slug: input.slug.trim().toLowerCase(),
+    content: input.content.trim(),
+    updated_at: now,
+    updated_by: actorId ?? null,
+  };
+
+  // Never clear an existing publish timestamp merely because an editor saves.
+  // Publication is controlled explicitly by setArticleStatus().
+  if (!id && payload.status === "published") payload.published_at = inputPublishedAt ?? now;
+
+  const result = id
+    ? await db.from("seo_articles").update(payload).eq("id", id).select("*").single()
+    : await db.from("seo_articles").insert({ ...payload, created_by: actorId ?? null }).select("*").single();
+
+  if (result.error) throw result.error;
+  await logAudit({ action: "WEBSITE_CONTENT_UPDATED", entityType: "seo_articles", entityId: result.data.id, actorId, actorRole: role });
+  return result.data as Article;
 }
 
 export async function uploadArticleFeaturedImage(input: {
@@ -90,9 +109,18 @@ export async function uploadArticleFeaturedImage(input: {
   return imageUrl;
 }
 
-export async function setArticleStatus(id: string, status: Article["status"], role: StaffRole, actorId?: string) {
-  guard(role); const db = getServiceRoleClient() as any;
-  const { error } = await db.from("seo_articles").update({ status, published_at: status === "published" ? new Date().toISOString() : null, updated_at: new Date().toISOString(), updated_by: actorId ?? null }).eq("id", id);
+export async function setArticleStatus(id: string, status: Article["status"], role: StaffRole, actorId?: string): Promise<Article> {
+  guard(role);
+  const db = getServiceRoleClient() as any;
+  const now = new Date().toISOString();
+  const patch = {
+    status,
+    published_at: status === "published" ? now : null,
+    updated_at: now,
+    updated_by: actorId ?? null,
+  };
+  const { data, error } = await db.from("seo_articles").update(patch).eq("id", id).select("*").single();
   if (error) throw error;
   await logAudit({ action: "WEBSITE_CONTENT_PUBLISHED", entityType: "seo_articles", entityId: id, actorId, actorRole: role, metadata: { status } });
+  return data as Article;
 }
