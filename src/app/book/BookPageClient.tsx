@@ -8,7 +8,6 @@ import { siteConfig } from "@/data/siteContent";
 import { APPOINTMENT_TIME_SLOTS } from "@/lib/bookingConstants";
 import { bookAppointmentAction, getSlotAvailabilityAction, type BookState } from "./actions";
 import type { Database } from "@/lib/supabase/database.types";
-import type { ResolvedSiteSettings } from "@/lib/data/siteSettings";
 
 type Test = Database["public"]["Tables"]["tests"]["Row"];
 
@@ -62,14 +61,12 @@ export function BookPageClient({
   preselectedTest,
   bookingWindowDays = 14,
   bookingMinNoticeHours = 2,
-  paymentSettings,
 }: {
   tests: Test[];
   preselectedTestName?: string;
   preselectedTest?: Test;
   bookingWindowDays?: number;
   bookingMinNoticeHours?: number;
-  paymentSettings?: ResolvedSiteSettings | null;
 }) {
   const days = nextDays(Math.min(Math.max(bookingWindowDays, 1), 14));
 
@@ -91,7 +88,6 @@ export function BookPageClient({
   };
 
   const [selectedDay, setSelectedDayState] = useState(0);
-  const [homeLocation, setHomeLocation] = useState<{ latitude?: number; longitude?: number; mapUrl?: string; error?: string }>({});
   // Lazy initializer — runs once at mount, not inside an effect — so
   // today's default selection is never a slot that's already past the
   // notice cutoff.
@@ -122,15 +118,6 @@ export function BookPageClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDay]);
 
-  function captureHomeLocation() {
-    if (!navigator.geolocation) { setHomeLocation({ error: "Location sharing is not supported by this browser. Please enter your address manually." }); return; }
-    navigator.geolocation.getCurrentPosition((position) => {
-      const latitude = Number(position.coords.latitude.toFixed(6));
-      const longitude = Number(position.coords.longitude.toFixed(6));
-      setHomeLocation({ latitude, longitude, mapUrl: `https://www.google.com/maps?q=${latitude},${longitude}` });
-    }, () => setHomeLocation({ error: "We could not access your location. Please enter your full address and landmark manually." }), { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
-  }
-
   if (state.bookingReference) {
     return (
       <section className="bg-background py-14 lg:py-20">
@@ -140,16 +127,8 @@ export function BookPageClient({
           </span>
           <h2 className="mt-5 text-xl font-semibold text-navy-deep">Booking received</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Your booking request has been received. Our front desk will contact you to confirm the service and appointment.
+            Your reference number is below. Our front desk will confirm your slot shortly.
           </p>
-          {paymentSettings?.homeCollectionPaymentRequired ? (
-            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-left">
-              <h3 className="text-base font-semibold text-navy-deep">Home-visit payment requirement</h3>
-              <p className="mt-2 text-sm leading-relaxed text-navy">If you selected home collection, payment must be completed and verified before a home visit is dispatched.</p>
-              {paymentSettings.homeCollectionAccountNumber ? <p className="mt-3 text-sm text-navy">Bank: <strong>{paymentSettings.homeCollectionBankName || "—"}</strong><br/>Account name: <strong>{paymentSettings.homeCollectionAccountName || "—"}</strong><br/>Account number: <strong>{paymentSettings.homeCollectionAccountNumber}</strong></p> : null}
-              {paymentSettings.homeCollectionPaymentPhone ? <a href={`tel:${paymentSettings.homeCollectionPaymentPhone.replace(/[^\d+]/g, "")}`} className="mt-3 inline-block text-sm font-semibold underline">Payment support: {paymentSettings.homeCollectionPaymentPhone}</a> : null}
-            </div>
-          ) : null}
           <p className="mt-4 rounded-xl border border-cyan/40 bg-accent p-4 font-mono text-base font-semibold text-navy-deep">
             {state.bookingReference}
           </p>
@@ -285,25 +264,6 @@ export function BookPageClient({
                 ))}
               </div>
 
-              {location === "home" ? (
-                <div className="mt-8 space-y-4 rounded-2xl border border-border bg-secondary/50 p-4">
-                  <h3 className="text-sm font-semibold text-navy-deep">Home visit location</h3>
-                  <label className="block text-sm font-medium text-navy-deep">Full address
-                    <textarea name="address" rows={3} required className={fieldClass} placeholder="House number, street, area, city" />
-                  </label>
-                  <label className="block text-sm font-medium text-navy-deep">Landmark / delivery note (optional)
-                    <input name="landmark" className={fieldClass} placeholder="Estate gate, nearby landmark, flat number" />
-                  </label>
-                  <button type="button" onClick={captureHomeLocation} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-xs font-semibold text-navy hover:border-cyan hover:bg-accent"><MapPin className="h-4 w-4" /> Share my map location</button>
-                  {homeLocation.latitude != null ? <p className="text-xs font-medium text-navy">Map location captured: {homeLocation.latitude}, {homeLocation.longitude}</p> : null}
-                  {homeLocation.error ? <p className="text-xs font-medium text-destructive">{homeLocation.error}</p> : null}
-                  <input type="hidden" name="latitude" value={homeLocation.latitude ?? ""} />
-                  <input type="hidden" name="longitude" value={homeLocation.longitude ?? ""} />
-                  <input type="hidden" name="mapUrl" value={homeLocation.mapUrl ?? ""} />
-                  <p className="text-xs leading-relaxed text-muted-foreground">Your address is required so our team can plan the visit. The map pin is an additional navigation aid.</p>
-                </div>
-              ) : null}
-
               <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-purple">
                 Patient details
               </h3>
@@ -366,6 +326,24 @@ export function BookPageClient({
                       </div>
                     ) : null}
                   </div>
+                ) : null}
+                {location === "home" ? (
+                  <>
+                    <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
+                      Home address
+                      <textarea className={fieldClass} rows={2} name="address" placeholder="House number, street, area, city" required />
+                    </label>
+                    <label className="block text-sm font-medium text-navy-deep">
+                      Landmark (optional)
+                      <input className={fieldClass} name="landmark" placeholder="Nearby landmark" />
+                    </label>
+                    <input type="hidden" name="latitude" value="" />
+                    <input type="hidden" name="longitude" value="" />
+                    <input type="hidden" name="mapUrl" value="" />
+                    <div className="sm:col-span-2 rounded-2xl border border-cyan/30 bg-accent/40 p-4 text-xs leading-relaxed text-muted-foreground">
+                      Please provide a complete address. Salem will confirm the collection location and visit availability before dispatch.
+                    </div>
+                  </>
                 ) : null}
                 <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
                   Notes for the laboratory (optional)

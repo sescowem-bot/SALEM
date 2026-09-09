@@ -66,7 +66,7 @@ export function BookingCta({ content, settings }: { content?: HomepageContent; s
                 ))}
               </ul>
               <p className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">
-                For home collection, payment must be verified before a visit is dispatched. Online payment is not currently available.
+                Payment is completed at the laboratory or on collection. Online payment is coming
                 soon.
               </p>
             </div>

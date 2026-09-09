@@ -129,22 +129,6 @@ export function SettingsEditorForm({ row }: { row: SiteSettingsRow }) {
         />
       </Section>
 
-
-      <Section title="Home collection payment" description="Manual payment only. No payment gateway is connected. Customers see these instructions after submitting a home-collection request.">
-        <label className="flex items-start gap-3 sm:col-span-2">
-          <input type="hidden" name="homeCollectionPaymentRequired" value="false" />
-          <input type="checkbox" name="homeCollectionPaymentRequired" value="true" defaultChecked={row.home_collection_payment_required} className="mt-0.5 h-4 w-4 rounded border-border text-navy focus:ring-cyan" />
-          <span className="text-sm text-navy-deep">Require payment before a home visit is confirmed<span className="mt-0.5 block text-xs text-muted-foreground">The request can still be received, but the visit should not be dispatched until staff verify payment.</span></span>
-        </label>
-        <Field label="Bank name" name="homeCollectionBankName" defaultValue={row.home_collection_bank_name ?? ""} placeholder="Bank name" />
-        <Field label="Account name" name="homeCollectionAccountName" defaultValue={row.home_collection_account_name ?? ""} placeholder="Salem Medical Laboratories" />
-        <Field label="Account number" name="homeCollectionAccountNumber" defaultValue={row.home_collection_account_number ?? ""} placeholder="Business account number" />
-        <Field label="Payment support phone" name="homeCollectionPaymentPhone" defaultValue={row.home_collection_payment_phone ?? ""} placeholder="+234 …" />
-        <label className="block text-sm font-medium text-navy-deep sm:col-span-2">Payment instruction
-          <textarea name="homeCollectionPaymentMessage" defaultValue={row.home_collection_payment_message ?? ""} rows={3} className={fieldClass} placeholder="Home collection is confirmed only after payment is verified by Salem Medical Laboratories." />
-        </label>
-      </Section>
-
       {state.error ? <p className="surface-card p-4 text-sm text-destructive">{state.error}</p> : null}
       <div className="flex items-center gap-3">
         <SaveBar />

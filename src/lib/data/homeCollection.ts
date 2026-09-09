@@ -69,18 +69,6 @@ export async function updateHomeCollectionStatus(
     throw new Error(`Forbidden: role "${actorRole}" cannot update home collection requests.`);
   }
 
-  if (["confirmed", "assigned", "in_progress"].includes(status)) {
-    const [{ data: request, error: requestError }, { data: settings, error: settingsError }] = await Promise.all([
-      supabase.from("home_collection_requests").select("payment_status").eq("id", requestId).single(),
-      supabase.from("site_settings").select("home_collection_payment_required").eq("id", true).single(),
-    ]);
-    if (requestError) throw requestError;
-    if (settingsError) throw settingsError;
-    if (settings?.home_collection_payment_required && request.payment_status !== "paid" && request.payment_status !== "waived") {
-      throw new Error("Payment must be verified before the home-collection visit can be confirmed or dispatched.");
-    }
-  }
-
   const { error } = await supabase.from("home_collection_requests").update({ status }).eq("id", requestId);
   if (error) throw error;
 
@@ -142,13 +130,13 @@ export async function assignPhlebotomist(
   }
 
   const supabase = getServiceRoleClient();
-  const [{ data: request, error: requestError }, { data: settings, error: settingsError }] = await Promise.all([
-    supabase.from("home_collection_requests").select("payment_status").eq("id", requestId).single(),
-    supabase.from("site_settings").select("home_collection_payment_required").eq("id", true).single(),
-  ]);
+  const { data: request, error: requestError } = await supabase
+    .from("home_collection_requests")
+    .select("payment_status")
+    .eq("id", requestId)
+    .single();
   if (requestError) throw requestError;
-  if (settingsError) throw settingsError;
-  if (settings?.home_collection_payment_required && request.payment_status !== "paid" && request.payment_status !== "waived") {
+  if (request.payment_status !== "paid" && request.payment_status !== "waived") {
     throw new Error("Payment must be verified before a home-collection visit can be assigned.");
   }
 

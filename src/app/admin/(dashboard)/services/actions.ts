@@ -26,7 +26,7 @@ export interface ActionState {
 function toEditableFields(parsed: {
   name: string;
   categoryId: string;
-  serviceType: "laboratory" | "ultrasound" | "cardiac" | "screening" | "home_collection" | "other";
+  serviceType: "laboratory" | "ultrasound" | "cardiac" | "screening" | "other";
   templateId?: string;
   slug: string;
   publicDescription?: string;

@@ -10,12 +10,6 @@ type TestCategory = Database["public"]["Tables"]["test_categories"]["Row"];
 type ServiceWithImage = ServiceWithCategory & { heroImageUrl: string | null };
 
 const ALL = "All services";
-const SERVICE_TYPES = [
-  ["all", "All offerings"],
-  ["laboratory", "Laboratory"],
-  ["ultrasound", "Ultrasound & Imaging"],
-  ["cardiac", "Cardiac / ECG"],
-] as const;
 
 function ServiceCard({ service }: { service: ServiceWithImage }) {
   return (
@@ -73,17 +67,15 @@ function ServiceCard({ service }: { service: ServiceWithImage }) {
 export function ServicesPageClient({ categories, services }: { categories: TestCategory[]; services: ServiceWithImage[] }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(ALL);
-  const [serviceType, setServiceType] = useState<string>("all");
 
   const filtered = useMemo(() => {
     return services.filter((s) => {
       const categoryName = s.category?.name ?? "";
       const matchesCategory = category === ALL || categoryName === category;
-      const matchesType = serviceType === "all" || s.service_type === serviceType;
       const matchesQuery = s.name.toLowerCase().includes(query.toLowerCase());
-      return matchesCategory && matchesType && matchesQuery;
+      return matchesCategory && matchesQuery;
     });
-  }, [services, query, category, serviceType]);
+  }, [services, query, category]);
 
   const featured = useMemo(() => services.filter((s) => s.featured), [services]);
 
@@ -97,12 +89,13 @@ export function ServicesPageClient({ categories, services }: { categories: TestC
           aria-hidden="true"
         />
         <div className="relative mx-auto max-w-7xl px-5 sm:px-6">
-          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-soft/80">Diagnostic Services</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-soft/80">Laboratory Services</span>
           <h1 className="mt-4 max-w-3xl text-3xl font-semibold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-5xl">
-            Laboratory, ultrasound and cardiac services — organised for patients and easy to manage.
+            A diagnostic menu, run under one quality system.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-cyan-soft/80">
-            Browse Salem Medical Laboratories’ diagnostic catalogue by service type or laboratory department, then open an individual service to review details and booking options.
+            Every sample is barcoded on arrival, processed under documented quality control and reviewed by a
+            scientist before release.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-cyan-soft/80">
@@ -155,15 +148,7 @@ export function ServicesPageClient({ categories, services }: { categories: TestC
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-purple">Full catalogue</span>
           <h2 className="mt-2 text-2xl font-semibold text-navy-deep sm:text-3xl">Browse every service</h2>
 
-          <div className="mt-6 rounded-2xl border border-border bg-card p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Service type</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {SERVICE_TYPES.map(([value, label]) => (
-                <button key={value} type="button" onClick={() => { setServiceType(value); setCategory(ALL); }} className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${serviceType === value ? "bg-navy text-primary-foreground" : "border border-border bg-card text-muted-foreground hover:border-cyan hover:bg-accent hover:text-navy-deep"}`}>{label}</button>
-              ))}
-            </div>
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Laboratory / department</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-6 flex flex-wrap gap-2">
             {[ALL, ...categories.map((c) => c.name)].map((c) => (
               <button
                 key={c}
@@ -178,7 +163,6 @@ export function ServicesPageClient({ categories, services }: { categories: TestC
                 {c}
               </button>
             ))}
-            </div>
           </div>
 
           <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">

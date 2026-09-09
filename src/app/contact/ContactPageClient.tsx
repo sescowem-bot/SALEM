@@ -15,6 +15,10 @@ const fieldClass =
 
 const initialState: ContactState = {};
 
+const SALEM_MAP_EMBED_URL = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d669.6880306253121!2d3.199342526819188!3d6.793342778949812!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103ba3437d06a7db%3A0x52049b00e6caf0fd!2sSalem%20Medical%20Laboratories!5e1!3m2!1sen!2sng!4v1788924262664!5m2!1sen!2sng";
+const SALEM_MAP_LISTING_URL = "https://maps.app.goo.gl/rY44gLDa4XGPDiWE7";
+const SALEM_MAP_DIRECTIONS_URL = "https://www.google.com/maps/dir/?api=1&destination=Salem%20Medical%20Laboratories";
+
 function SendButton() {
   const { pending } = useFormStatus();
   return (
@@ -42,8 +46,8 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
   const hoursWeekend = settings?.hoursWeekend ?? siteConfig.hours.weekend;
   const instagramUrl = settings?.socialInstagram ?? siteConfig.social.instagramUrl;
   const ctaLabel = content?.ctaLabel || "Chat with us on WhatsApp";
-  const mapEmbedUrl = content?.mapEmbedUrl;
-  const mapDirectionsUrl = content?.mapDirectionsUrl;
+  const mapEmbedUrl = content?.mapEmbedUrl || SALEM_MAP_EMBED_URL;
+  const mapDirectionsUrl = content?.mapDirectionsUrl || SALEM_MAP_DIRECTIONS_URL;
 
   const cards = [
     { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2] },
@@ -118,7 +122,8 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
                   src={mapEmbedUrl}
                   className="h-72 w-full border-0"
                   loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
                   title="Map to Salem Medical Laboratories"
                 />
               ) : (
@@ -143,6 +148,9 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
                 <MapPin className="h-4 w-4 shrink-0" /> Get directions
               </a>
             ) : null}
+            <a href={SALEM_MAP_LISTING_URL} target="_blank" rel="noopener noreferrer" className="ml-2 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent">
+              <MapPin className="h-4 w-4 shrink-0" /> Open in Google Maps
+            </a>
 
             <div className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6">
               <span className="flex items-center gap-2 text-sm font-semibold text-destructive">

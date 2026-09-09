@@ -238,6 +238,7 @@ export async function isServiceSlugTaken(slug: string, excludeId: string | undef
 export interface ServiceEditableFields {
   name: string;
   categoryId: string;
+  serviceType: "laboratory" | "ultrasound" | "cardiac" | "screening" | "other";
   templateId: string;
   slug: string;
   publicDescription: string | null;

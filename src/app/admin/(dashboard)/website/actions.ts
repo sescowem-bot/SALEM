@@ -143,12 +143,6 @@ export async function updateSiteSettingsAction(_prev: ActionState, formData: For
     patient_email_includes_access_code: validated.data.patientEmailIncludesAccessCode === "true",
     booking_window_days: validated.data.bookingWindowDays ? Number(validated.data.bookingWindowDays) : undefined,
     booking_min_notice_hours: validated.data.bookingMinNoticeHours ? Number(validated.data.bookingMinNoticeHours) : undefined,
-    home_collection_payment_required: validated.data.homeCollectionPaymentRequired === "true",
-    home_collection_payment_message: validated.data.homeCollectionPaymentMessage || null,
-    home_collection_bank_name: validated.data.homeCollectionBankName || null,
-    home_collection_account_name: validated.data.homeCollectionAccountName || null,
-    home_collection_account_number: validated.data.homeCollectionAccountNumber || null,
-    home_collection_payment_phone: validated.data.homeCollectionPaymentPhone || null,
   };
 
   try {

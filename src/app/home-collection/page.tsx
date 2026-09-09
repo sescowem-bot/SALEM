@@ -7,7 +7,6 @@ import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { WhatsAppIcon } from "@/components/salem/WhatsAppButton";
 import { siteConfig } from "@/data/siteContent";
 import { HomeCollectionFormClient } from "./HomeCollectionFormClient";
-import { getSiteSettings } from "@/lib/data/siteSettings";
 
 const description =
   "Book a home visit and have a Salem phlebotomist collect your sample safely and comfortably at home.";
@@ -48,9 +47,7 @@ const points = [
   "Full biohazard disposal on every visit",
 ];
 
-export default async function HomeCollectionPage() {
-  const settings = await getSiteSettings();
-
+export default function HomeCollectionPage() {
   return (
     <SiteLayout>
       <PageHeader
@@ -162,7 +159,7 @@ export default async function HomeCollectionPage() {
 
       <section id="request-form" className="bg-secondary py-16 lg:py-24 scroll-mt-24">
         <div className="mx-auto max-w-2xl px-5 sm:px-6">
-          <HomeCollectionFormClient settings={settings} />
+          <HomeCollectionFormClient />
         </div>
       </section>
     </SiteLayout>
