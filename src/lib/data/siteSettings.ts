@@ -51,6 +51,12 @@ export interface ResolvedSiteSettings {
   socialYoutube: string | null;
   bookingWindowDays: number;
   bookingMinNoticeHours: number;
+  homeCollectionPaymentRequired: boolean;
+  homeCollectionPaymentMessage: string | null;
+  homeCollectionBankName: string | null;
+  homeCollectionAccountName: string | null;
+  homeCollectionAccountNumber: string | null;
+  homeCollectionPaymentPhone: string | null;
 }
 
 function toTelHref(phone: string): string {
@@ -98,6 +104,12 @@ function resolve(row: SiteSettingsRow | null): ResolvedSiteSettings {
     socialYoutube: row?.social_youtube ?? null,
     bookingWindowDays: row?.booking_window_days ?? 14,
     bookingMinNoticeHours: row?.booking_min_notice_hours ?? 2,
+    homeCollectionPaymentRequired: row?.home_collection_payment_required ?? true,
+    homeCollectionPaymentMessage: row?.home_collection_payment_message ?? null,
+    homeCollectionBankName: row?.home_collection_bank_name ?? null,
+    homeCollectionAccountName: row?.home_collection_account_name ?? null,
+    homeCollectionAccountNumber: row?.home_collection_account_number ?? null,
+    homeCollectionPaymentPhone: row?.home_collection_payment_phone ?? null,
   };
 }
 

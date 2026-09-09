@@ -280,7 +280,7 @@ export function ServiceEditorForm({
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-navy-deep">
-            Category
+            Category / department
             <select name="categoryId" required defaultValue={service?.category_id ?? ""} className={fieldClass}>
               <option value="" disabled>
                 Choose a category
@@ -290,6 +290,18 @@ export function ServiceEditorForm({
                   {c.name}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label className="block text-sm font-medium text-navy-deep">
+            Offering type
+            <select name="serviceType" required defaultValue={service?.service_type ?? "laboratory"} className={fieldClass}>
+              <option value="laboratory">Laboratory investigation</option>
+              <option value="ultrasound">Ultrasound / imaging</option>
+              <option value="cardiac">Cardiac / ECG</option>
+              <option value="screening">Health screening / package</option>
+              <option value="home_collection">Home collection</option>
+              <option value="other">Other</option>
             </select>
           </label>
 

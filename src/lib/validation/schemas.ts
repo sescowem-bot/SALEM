@@ -76,7 +76,16 @@ export const bookAppointmentSchema = z.object({
   preferredDate: z.string().date("Choose a valid date"),
   preferredTime: z.enum(APPOINTMENT_TIME_SLOTS, { message: "Choose a valid time slot" }),
   locationType: z.enum(["lab", "home"]),
+  address: z.string().trim().max(500).optional().or(z.literal("")),
+  landmark: z.string().trim().max(250).optional().or(z.literal("")),
+  latitude: z.string().trim().optional().or(z.literal("")),
+  longitude: z.string().trim().optional().or(z.literal("")),
+  mapUrl: z.string().trim().max(500).optional().or(z.literal("")),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
+}).superRefine((val, ctx) => {
+  if (val.locationType === "home" && (!val.address || val.address.trim().length < 5)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["address"], message: "Home address is required for a home visit" });
+  }
 });
 
 export const homeCollectionRequestSchema = z.object({
@@ -84,6 +93,10 @@ export const homeCollectionRequestSchema = z.object({
   phone: z.string().trim().min(7, "A valid phone number is required").max(30),
   email: z.string().trim().email().optional().or(z.literal("")),
   address: z.string().trim().min(5, "Address is required so we can send a phlebotomist").max(500),
+  landmark: z.string().trim().max(250).optional().or(z.literal("")),
+  latitude: z.string().trim().optional().or(z.literal("")),
+  longitude: z.string().trim().optional().or(z.literal("")),
+  mapUrl: z.string().trim().max(500).optional().or(z.literal("")),
   testOrPackage: z.string().trim().max(300).optional().or(z.literal("")),
   preferredDate: z.string().date("Choose a valid date"),
   preferredTime: z.enum(HOME_COLLECTION_TIME_SLOTS, { message: "Choose a valid time window" }),
@@ -245,6 +258,7 @@ export const serviceEditorSchema = z
     testId: z.string().uuid().optional(),
     name: z.string().trim().min(2, "Service name is required").max(200),
     categoryId: z.string().uuid("Choose a category"),
+    serviceType: z.enum(["laboratory", "ultrasound", "cardiac", "screening", "home_collection", "other"]).default("laboratory"),
     templateId: z.string().uuid().optional().or(z.literal("")),
     templateMode: z.enum(["existing", "new"]).default("existing"),
     newTemplateStructureType: z.enum(["field_based", "table_based"]).optional(),
@@ -315,6 +329,12 @@ export const siteSettingsSchema = z.object({
   patientEmailIncludesAccessCode: z.enum(["true", "false"]).default("false"),
   bookingWindowDays: z.string().trim().max(4).optional().or(z.literal("")),
   bookingMinNoticeHours: z.string().trim().max(4).optional().or(z.literal("")),
+  homeCollectionPaymentRequired: z.enum(["true", "false"]).default("true"),
+  homeCollectionPaymentMessage: z.string().trim().max(1000).optional().or(z.literal("")),
+  homeCollectionBankName: z.string().trim().max(150).optional().or(z.literal("")),
+  homeCollectionAccountName: z.string().trim().max(200).optional().or(z.literal("")),
+  homeCollectionAccountNumber: z.string().trim().max(50).optional().or(z.literal("")),
+  homeCollectionPaymentPhone: z.string().trim().max(30).optional().or(z.literal("")),
 });
 
 const optionalUrlOrPath = z

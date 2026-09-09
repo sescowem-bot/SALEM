@@ -99,6 +99,7 @@ export type AuditAction =
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type HomeCollectionPaymentStatus = "unpaid" | "pending" | "paid" | "waived";
 export type ServiceStatus = "draft" | "published" | "archived";
+export type ServiceType = "laboratory" | "ultrasound" | "cardiac" | "screening" | "home_collection" | "other";
 export type WebsitePageKey = "homepage" | "about" | "contact" | "footer" | "seo";
 export type WebsiteContentStatus = "draft" | "published";
 
@@ -271,6 +272,7 @@ export interface Database {
           is_custom: boolean;
           what_to_avoid: string | null;
           important_notes: string | null;
+          service_type: ServiceType;
         };
         Insert: Partial<Database["public"]["Tables"]["tests"]["Row"]> & {
           category_id: string;
@@ -616,6 +618,10 @@ export interface Database {
           payment_status: HomeCollectionPaymentStatus;
           payment_amount_ngn: number | null;
           payment_notes: string | null;
+          landmark: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          map_url: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["home_collection_requests"]["Row"]> & {
           full_name: string;
@@ -736,6 +742,12 @@ export interface Database {
           updated_by: string | null;
           booking_window_days: number;
           booking_min_notice_hours: number;
+          home_collection_payment_required: boolean;
+          home_collection_payment_message: string | null;
+          home_collection_bank_name: string | null;
+          home_collection_account_name: string | null;
+          home_collection_account_number: string | null;
+          home_collection_payment_phone: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;

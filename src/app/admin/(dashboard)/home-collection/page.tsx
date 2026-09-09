@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Home } from "lucide-react";
+import { Home, MapPin, ExternalLink } from "lucide-react";
 import { AdminShell } from "@/components/salem/AdminShell";
 import { StatusBadge } from "@/components/salem/StatusBadge";
 import { requireStaff, can } from "@/lib/auth/session";
@@ -69,6 +69,11 @@ export default async function HomeCollectionPage() {
                     {r.phone} {"\u00b7"} {r.preferred_date ?? "\u2014"} {r.preferred_time ?? ""}
                   </span>
                   <span className="block text-xs text-muted-foreground">{r.address}</span>
+                  {r.landmark ? <span className="block text-xs text-muted-foreground">Landmark: {r.landmark}</span> : null}
+                  {r.latitude != null && r.longitude != null ? (
+                    <a href={r.map_url || `https://www.google.com/maps?q=${r.latitude},${r.longitude}`} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-purple hover:text-navy"><MapPin className="h-3 w-3" /> View map location <ExternalLink className="h-3 w-3" /></a>
+                  ) : <span className="block text-xs text-amber-700">No map pin supplied</span>}
+                  {r.payment_status !== "paid" && r.payment_status !== "waived" ? <span className="mt-1 block text-xs font-semibold text-amber-700">Payment not verified — do not dispatch yet.</span> : null}
                   {r.notes ? <span className="block text-xs text-muted-foreground">{r.notes}</span> : null}
                   {r.booking_reference ? (
                     <span className="block font-mono text-[0.65rem] text-muted-foreground">{r.booking_reference}</span>

@@ -56,6 +56,7 @@ export default async function BookPage({
         preselectedTest={preselectedTest}
         bookingWindowDays={bookingWindowDays}
         bookingMinNoticeHours={bookingMinNoticeHours}
+        paymentSettings={await getSiteSettings().catch(() => null)}
       />
     </SiteLayout>
   );

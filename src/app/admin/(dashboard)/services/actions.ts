@@ -26,6 +26,7 @@ export interface ActionState {
 function toEditableFields(parsed: {
   name: string;
   categoryId: string;
+  serviceType: "laboratory" | "ultrasound" | "cardiac" | "screening" | "home_collection" | "other";
   templateId?: string;
   slug: string;
   publicDescription?: string;
@@ -47,6 +48,7 @@ function toEditableFields(parsed: {
   return {
     name: parsed.name,
     categoryId: parsed.categoryId,
+    serviceType: parsed.serviceType,
     templateId: parsed.templateId ?? "",
     slug: parsed.slug,
     publicDescription: parsed.publicDescription || null,
@@ -86,6 +88,7 @@ function readForm(formData: FormData) {
     testId: (formData.get("testId") as string) || undefined,
     name: formData.get("name"),
     categoryId: formData.get("categoryId"),
+    serviceType: (formData.get("serviceType") as string) || "laboratory",
     templateId: formData.get("templateId") || "",
     templateMode: (formData.get("templateMode") as string) || "existing",
     newTemplateStructureType: formData.get("newTemplateStructureType") || undefined,

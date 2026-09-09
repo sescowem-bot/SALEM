@@ -261,6 +261,7 @@ function toTestRow(input: ServiceEditableFields) {
   return {
     name: input.name,
     category_id: input.categoryId,
+    service_type: input.serviceType,
     template_id: input.templateId,
     slug: input.slug,
     public_description: input.publicDescription,
