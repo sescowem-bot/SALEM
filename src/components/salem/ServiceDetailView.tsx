@@ -1,9 +1,46 @@
 import Link from "next/link";
-import { CheckCircle2, Clock, ArrowRight, ShieldCheck, Phone, AlertTriangle, Info } from "lucide-react";
+import { CheckCircle2, Clock, ArrowRight, ShieldCheck, Phone, AlertTriangle, Info, Droplet, Microscope, Dna, HeartPulse, Baby, ScanLine, Activity, FlaskConical } from "lucide-react";
 import type { ServiceWithCategory } from "@/lib/data/testCatalog";
 import type { Database } from "@/lib/supabase/database.types";
 
 type Test = Database["public"]["Tables"]["tests"]["Row"];
+
+
+function CategoryIcon({ category }: { category: string }) {
+  const value = category.toLowerCase();
+  if (value.includes("haemat") || value.includes("blood")) return Droplet;
+  if (value.includes("micro")) return Microscope;
+  if (value.includes("horm") || value.includes("endocr")) return Activity;
+  if (value.includes("fertility") || value.includes("obstetric")) return Baby;
+  if (value.includes("ultrasound") || value.includes("scan")) return ScanLine;
+  if (value.includes("ecg") || value.includes("cardiac")) return HeartPulse;
+  if (value.includes("serology") || value.includes("immun")) return Dna;
+  return FlaskConical;
+}
+
+function PremiumNoImageHero({ service }: { service: ServiceWithCategory }) {
+  const Icon = CategoryIcon({ category: service.category?.name ?? "Laboratory" });
+  return (
+    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-navy-deep via-navy to-purple/80 shadow-soft">
+      <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full border border-white/10" />
+      <div className="absolute -bottom-20 -left-16 h-64 w-64 rounded-full border border-cyan/20" />
+      <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,white_1px,transparent_1px)] [background-size:18px_18px]" />
+      <div className="relative flex h-full flex-col justify-between p-7 sm:p-9">
+        <div className="flex items-center justify-between">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
+            <Icon className="h-7 w-7 text-cyan-soft" />
+          </span>
+          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-soft">Salem Medical Laboratories</span>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-soft/80">{service.category?.name ?? "Laboratory service"}</p>
+          <p className="mt-2 max-w-sm text-2xl font-semibold leading-tight text-white">Precision diagnostics, presented with care.</p>
+          <div className="mt-4 flex items-center gap-2 text-xs text-cyan-soft/75"><ShieldCheck className="h-4 w-4" /> Quality-controlled service</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function splitLines(text: string | null): string[] {
   if (!text) return [];
@@ -86,7 +123,7 @@ export function ServiceDetailView({
                 className="aspect-[4/3] w-full rounded-2xl border border-white/10 object-cover shadow-soft"
               />
             ) : (
-              <div className="aspect-[4/3] w-full rounded-2xl border border-white/10 bg-white/5" />
+              <PremiumNoImageHero service={service} />
             )}
           </div>
         </div>
@@ -94,6 +131,13 @@ export function ServiceDetailView({
 
       {/* Body */}
       <section className="py-14 lg:py-20">
+        <div className="mx-auto max-w-7xl px-5 sm:px-6">
+          <div className="mb-10 grid gap-4 sm:grid-cols-3">
+            <div className="surface-card p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-purple">Service</p><p className="mt-2 text-sm font-semibold text-navy-deep">{service.category?.name ?? "Laboratory diagnostics"}</p></div>
+            {service.turnaround_time ? <div className="surface-card p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-purple">Turnaround</p><p className="mt-2 text-sm font-semibold text-navy-deep">{service.turnaround_time}</p></div> : <div className="surface-card p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-purple">Quality</p><p className="mt-2 text-sm font-semibold text-navy-deep">Scientist-reviewed results</p></div>}
+            <div className="surface-card p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-purple">Next step</p><p className="mt-2 text-sm font-semibold text-navy-deep">Request this service</p></div>
+          </div>
+        </div>
         <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-6 lg:grid-cols-[1.3fr_1fr]">
           <div className="min-w-0 space-y-8">
             {service.full_description ? (

@@ -16,10 +16,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function EditServicePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditServicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ templateId?: string }> }) {
   const staff = await requireStaff();
   const navItems = getAdminNavItems(staff);
   const { id } = await params;
+  const query = searchParams ? await searchParams : {};
 
   if (!can(staff, "catalogue.manage")) {
     return (
@@ -54,7 +55,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
       <div className="space-y-6">
         <ServicePublishBar testId={service.id} status={service.content_status} />
         <ServiceImageUploader testId={service.id} currentImageUrl={currentImageUrl} />
-        <ServiceEditorForm mode="edit" service={service} categories={categories} templates={templates} />
+        <ServiceEditorForm mode="edit" service={service} categories={categories} templates={templates} selectedTemplateId={query.templateId} />
       </div>
     </AdminShell>
   );

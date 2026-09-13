@@ -327,24 +327,6 @@ export function BookPageClient({
                     ) : null}
                   </div>
                 ) : null}
-                {location === "home" ? (
-                  <>
-                    <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
-                      Home address
-                      <textarea className={fieldClass} rows={2} name="address" placeholder="House number, street, area, city" required />
-                    </label>
-                    <label className="block text-sm font-medium text-navy-deep">
-                      Landmark (optional)
-                      <input className={fieldClass} name="landmark" placeholder="Nearby landmark" />
-                    </label>
-                    <input type="hidden" name="latitude" value="" />
-                    <input type="hidden" name="longitude" value="" />
-                    <input type="hidden" name="mapUrl" value="" />
-                    <div className="sm:col-span-2 rounded-2xl border border-cyan/30 bg-accent/40 p-4 text-xs leading-relaxed text-muted-foreground">
-                      Please provide a complete address. Salem will confirm the collection location and visit availability before dispatch.
-                    </div>
-                  </>
-                ) : null}
                 <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
                   Notes for the laboratory (optional)
                   <textarea
@@ -381,7 +363,7 @@ export function BookPageClient({
 
               <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan" />
-                For home collection, payment must be verified before a visit is dispatched. Your details stay confidential.
+                Payment is completed at the laboratory or on collection. Your details stay confidential.
               </p>
               <Link
                 href="/contact"

@@ -76,16 +76,7 @@ export const bookAppointmentSchema = z.object({
   preferredDate: z.string().date("Choose a valid date"),
   preferredTime: z.enum(APPOINTMENT_TIME_SLOTS, { message: "Choose a valid time slot" }),
   locationType: z.enum(["lab", "home"]),
-  address: z.string().trim().max(500).optional().or(z.literal("")),
-  landmark: z.string().trim().max(200).optional().or(z.literal("")),
-  latitude: z.coerce.number().min(-90).max(90).optional(),
-  longitude: z.coerce.number().min(-180).max(180).optional(),
-  mapUrl: z.string().trim().max(400).optional().or(z.literal("")),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
-}).superRefine((val, ctx) => {
-  if (val.locationType === "home" && !val.address) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Home address is required for home collection.", path: ["address"] });
-  }
 });
 
 export const homeCollectionRequestSchema = z.object({
@@ -254,7 +245,6 @@ export const serviceEditorSchema = z
     testId: z.string().uuid().optional(),
     name: z.string().trim().min(2, "Service name is required").max(200),
     categoryId: z.string().uuid("Choose a category"),
-    serviceType: z.enum(["laboratory", "ultrasound", "cardiac", "screening", "other"]).default("laboratory"),
     templateId: z.string().uuid().optional().or(z.literal("")),
     templateMode: z.enum(["existing", "new"]).default("existing"),
     newTemplateStructureType: z.enum(["field_based", "table_based"]).optional(),
@@ -379,7 +369,6 @@ export const contactContentSchema = z.object({
   pageHeading: z.string().trim().max(200).optional().or(z.literal("")),
   introduction: z.string().trim().max(500).optional().or(z.literal("")),
   mapEmbedUrl: optionalUrlOrPath,
-  mapDirectionsUrl: optionalUrlOrPath,
   ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
 });
 

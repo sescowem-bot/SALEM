@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search, ArrowUpRight, Star, ShieldCheck, Clock, FlaskConical } from "lucide-react";
+import { Search, ArrowUpRight, Star, ShieldCheck, Clock, FlaskConical, Droplet, Microscope, Dna, HeartPulse, Baby, ScanLine, Activity } from "lucide-react";
 import type { Database } from "@/lib/supabase/database.types";
 import type { ServiceWithCategory } from "@/lib/data/testCatalog";
 
@@ -11,17 +11,50 @@ type ServiceWithImage = ServiceWithCategory & { heroImageUrl: string | null };
 
 const ALL = "All services";
 
+function CategoryIcon({ category }: { category: string }) {
+  const value = category.toLowerCase();
+  if (value.includes("haemat") || value.includes("blood")) return Droplet;
+  if (value.includes("micro")) return Microscope;
+  if (value.includes("horm") || value.includes("endocr")) return Activity;
+  if (value.includes("fertility") || value.includes("obstetric")) return Baby;
+  if (value.includes("ultrasound") || value.includes("scan")) return ScanLine;
+  if (value.includes("ecg") || value.includes("cardiac")) return HeartPulse;
+  if (value.includes("serology") || value.includes("immun")) return Dna;
+  return FlaskConical;
+}
+
+function PremiumNoImage({ service }: { service: ServiceWithImage }) {
+  const Icon = CategoryIcon({ category: service.category?.name ?? "Laboratory" });
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-purple/80">
+      <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full border border-white/10" />
+      <div className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full border border-cyan/20" />
+      <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,white_1px,transparent_1px)] [background-size:18px_18px]" />
+      <div className="relative flex h-full flex-col justify-between p-6 text-white">
+        <div className="flex items-center justify-between">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
+            <Icon className="h-6 w-6 text-cyan-soft" />
+          </span>
+          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-soft">Salem Diagnostics</span>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-soft/80">{service.category?.name ?? "Laboratory service"}</p>
+          <p className="mt-2 max-w-[15rem] text-xl font-semibold leading-tight">Professional diagnostic service</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ServiceCard({ service }: { service: ServiceWithImage }) {
   return (
-    <article className="surface-card flex flex-col overflow-hidden p-0">
+    <article className="surface-card group flex flex-col overflow-hidden p-0">
       <div className="aspect-[16/9] w-full bg-secondary">
         {service.heroImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
-          <img src={service.heroImageUrl} alt={service.name} className="h-full w-full object-cover" />
+          <img src={service.heroImageUrl} alt={service.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
         ) : (
-          <div className="grid h-full w-full place-items-center text-muted-foreground">
-            <FlaskConical className="h-8 w-8" />
-          </div>
+          <PremiumNoImage service={service} />
         )}
       </div>
       <div className="flex flex-1 flex-col p-6">
@@ -69,11 +102,15 @@ export function ServicesPageClient({ categories, services }: { categories: TestC
   const [category, setCategory] = useState(ALL);
 
   const filtered = useMemo(() => {
+    const browsingWithFilter = query.trim() !== "" || category !== ALL;
     return services.filter((s) => {
       const categoryName = s.category?.name ?? "";
       const matchesCategory = category === ALL || categoryName === category;
       const matchesQuery = s.name.toLowerCase().includes(query.toLowerCase());
-      return matchesCategory && matchesQuery;
+      // Featured services get their own curated section on the default view.
+      // Once the visitor searches/filters, all matching services remain discoverable.
+      const includeInDirectory = browsingWithFilter || !s.featured;
+      return matchesCategory && matchesQuery && includeInDirectory;
     });
   }, [services, query, category]);
 
@@ -146,7 +183,7 @@ export function ServicesPageClient({ categories, services }: { categories: TestC
       <section className="bg-secondary/40 py-14 lg:py-20">
         <div className="mx-auto max-w-7xl px-5 sm:px-6">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-purple">Full catalogue</span>
-          <h2 className="mt-2 text-2xl font-semibold text-navy-deep sm:text-3xl">Browse every service</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-navy-deep sm:text-3xl">Explore our services</h2>
 
           <div className="mt-6 flex flex-wrap gap-2">
             {[ALL, ...categories.map((c) => c.name)].map((c) => (

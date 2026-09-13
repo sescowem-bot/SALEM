@@ -151,6 +151,16 @@ export function Services({
           </div>
         )}
 
+        <div className="mt-10 flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-navy-deep">Looking for a specific investigation?</p>
+            <p className="mt-1 text-sm text-muted-foreground">Explore the full published catalogue by category or search by test name.</p>
+          </div>
+          <Link href="/services" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.01]">
+            Explore all services <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </div>
+
         <div className="mt-6 grid gap-6 md:grid-cols-3">
           {more.map(({ icon: Icon, title, body }) => (
             <div key={title} className="surface-card flex items-start gap-4 p-6">

@@ -244,7 +244,6 @@ export interface Database {
         Row: {
           id: string;
           category_id: string;
-          service_type: "laboratory" | "ultrasound" | "cardiac" | "screening" | "other";
           template_id: string;
           name: string;
           code: string | null;
@@ -584,11 +583,6 @@ export interface Database {
           preferred_date: string | null;
           preferred_time: string | null;
           location_type: "lab" | "home" | null;
-          address: string | null;
-          landmark: string | null;
-          latitude: number | null;
-          longitude: number | null;
-          map_url: string | null;
           test_or_package: string | null;
           notes: string | null;
           status: IntakeStatus;
@@ -612,10 +606,6 @@ export interface Database {
           phone: string;
           email: string | null;
           address: string | null;
-          landmark: string | null;
-          latitude: number | null;
-          longitude: number | null;
-          map_url: string | null;
           preferred_date: string | null;
           preferred_time: string | null;
           notes: string | null;

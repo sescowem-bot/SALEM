@@ -37,8 +37,8 @@ export function ServiceImageUploader({ testId, currentImageUrl }: { testId: stri
       <div className="flex items-start gap-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-navy"><ImagePlus className="h-4 w-4" /></span>
         <div>
-          <h2 className="text-sm font-semibold text-navy-deep">Service image</h2>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Shown on the service directory, homepage featured cards and service detail page. Use a genuine Salem image where possible.</p>
+          <h2 className="text-sm font-semibold text-navy-deep">Service presentation</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Choose the visual treatment for this service. Upload a genuine Salem image when available; if no image is present, the public pages automatically use a premium medical no-image layout.</p>
         </div>
       </div>
 
@@ -48,7 +48,7 @@ export function ServiceImageUploader({ testId, currentImageUrl }: { testId: stri
             // eslint-disable-next-line @next/next/no-img-element -- marketing images may come from Cloudinary or legacy Supabase Storage.
             <img src={preview || currentImageUrl || ""} alt="Service preview" className="h-full w-full object-cover" />
           ) : (
-            <div className="grid h-full place-items-center text-center text-xs text-muted-foreground"><div><ImagePlus className="mx-auto mb-2 h-7 w-7" /><span>No service image yet</span></div></div>
+            <div className="grid h-full place-items-center text-center text-xs text-muted-foreground"><div><ImagePlus className="mx-auto mb-2 h-7 w-7" /><span>Premium no-image layout is active</span></div></div>
           )}
         </div>
 

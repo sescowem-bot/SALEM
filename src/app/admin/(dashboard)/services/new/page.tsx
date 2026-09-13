@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function NewServicePage() {
+export default async function NewServicePage({ searchParams }: { searchParams?: Promise<{ templateId?: string }> }) {
   const staff = await requireStaff();
   const navItems = getAdminNavItems(staff);
 
@@ -26,6 +26,7 @@ export default async function NewServicePage() {
     );
   }
 
+  const query = searchParams ? await searchParams : {};
   const [categories, templates] = await Promise.all([
     listAllTestCategoriesForAdmin(staff.role),
     listActiveTestTemplates(staff.role),
@@ -42,7 +43,7 @@ export default async function NewServicePage() {
       staffRole={staff.role}
       navItems={navItems}
     >
-      <ServiceEditorForm mode="create" categories={categories} templates={templates} />
+      <ServiceEditorForm mode="create" categories={categories} templates={templates} selectedTemplateId={query.templateId} />
     </AdminShell>
   );
 }

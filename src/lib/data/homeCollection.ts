@@ -130,16 +130,6 @@ export async function assignPhlebotomist(
   }
 
   const supabase = getServiceRoleClient();
-  const { data: request, error: requestError } = await supabase
-    .from("home_collection_requests")
-    .select("payment_status")
-    .eq("id", requestId)
-    .single();
-  if (requestError) throw requestError;
-  if (request.payment_status !== "paid" && request.payment_status !== "waived") {
-    throw new Error("Payment must be verified before a home-collection visit can be assigned.");
-  }
-
   const { error } = await supabase
     .from("home_collection_requests")
     .update({ assigned_phlebotomist_id: phlebotomistId, status: "assigned" })

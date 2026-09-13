@@ -24,11 +24,6 @@ export async function bookAppointmentAction(_prev: BookState, formData: FormData
     preferredDate: formData.get("preferredDate"),
     preferredTime: formData.get("preferredTime"),
     locationType: formData.get("locationType"),
-    address: formData.get("address") || "",
-    landmark: formData.get("landmark") || "",
-    latitude: formData.get("latitude") || undefined,
-    longitude: formData.get("longitude") || undefined,
-    mapUrl: formData.get("mapUrl") || "",
     notes: formData.get("notes") || "",
   });
 
@@ -45,11 +40,6 @@ export async function bookAppointmentAction(_prev: BookState, formData: FormData
       preferred_date: parsed.data.preferredDate,
       preferred_time: parsed.data.preferredTime,
       location_type: parsed.data.locationType as "lab" | "home",
-      address: parsed.data.address || undefined,
-      landmark: parsed.data.landmark || undefined,
-      latitude: parsed.data.latitude ?? undefined,
-      longitude: parsed.data.longitude ?? undefined,
-      map_url: parsed.data.mapUrl || undefined,
       notes: parsed.data.notes || undefined,
     },
     await requestIp()

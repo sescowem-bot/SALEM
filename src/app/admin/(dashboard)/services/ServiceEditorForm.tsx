@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { ImagePlus } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { createServiceAction, updateServiceAction, type ActionState } from "./actions";
@@ -211,11 +213,13 @@ export function ServiceEditorForm({
   service,
   categories,
   templates,
+  selectedTemplateId,
 }: {
   mode: "create" | "edit";
   service?: ServiceWithCategory;
   categories: TestCategory[];
   templates: TestTemplate[];
+  selectedTemplateId?: string;
 }) {
   const action = mode === "create" ? createServiceAction : updateServiceAction;
   const [state, formAction] = useActionState(action, initial);
@@ -280,16 +284,6 @@ export function ServiceEditorForm({
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-navy-deep">
-            Service type
-            <select name="serviceType" required defaultValue={(service as (ServiceWithCategory & { service_type?: string }) | undefined)?.service_type ?? "laboratory"} className={fieldClass}>
-              <option value="laboratory">Laboratory test</option>
-              <option value="ultrasound">Ultrasound / scanning</option>
-              <option value="cardiac">ECG / cardiac</option>
-              <option value="screening">Screening / wellness</option>
-              <option value="other">Other diagnostic service</option>
-            </select>
-          </label>
-          <label className="block text-sm font-medium text-navy-deep">
             Category
             <select name="categoryId" required defaultValue={service?.category_id ?? ""} className={fieldClass}>
               <option value="" disabled>
@@ -327,7 +321,8 @@ export function ServiceEditorForm({
                 </label>
               </div>
               {templateMode === "existing" ? (
-                <select name="templateId" required defaultValue="" className={fieldClass}>
+                <>
+                <select name="templateId" required defaultValue={selectedTemplateId ?? ""} className={fieldClass}>
                   <option value="" disabled>
                     Choose a template
                   </option>
@@ -337,6 +332,13 @@ export function ServiceEditorForm({
                     </option>
                   ))}
                 </select>
+                <Link
+                  href="/admin/services/templates/new?returnTo=/admin/services/new"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-navy underline underline-offset-2"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Create new template
+                </Link>
+                </>
               ) : (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Build the result structure below — its own result template is created together with this investigation.
@@ -346,7 +348,7 @@ export function ServiceEditorForm({
           ) : (
             <label className="block text-sm font-medium text-navy-deep">
               Result template
-              <select name="templateId" required defaultValue={service?.template_id ?? ""} className={fieldClass}>
+              <select name="templateId" required defaultValue={selectedTemplateId ?? service?.template_id ?? ""} className={fieldClass}>
                 <option value="" disabled>
                   Choose a template
                 </option>
@@ -356,7 +358,15 @@ export function ServiceEditorForm({
                   </option>
                 ))}
               </select>
-              <span className="mt-1 block text-xs text-muted-foreground">Which result-entry template this service produces a report from.</span>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/admin/services/templates/new?serviceId=${service?.id ?? ""}&returnTo=${encodeURIComponent(service ? `/admin/services/${service.id}` : "/admin/services/new")}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-cyan/40 bg-accent px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:border-cyan hover:bg-cyan/10"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Create new template
+                </Link>
+                <span className="text-xs text-muted-foreground">Create the investigation-specific result structure here, then return to this service.</span>
+              </div>
             </label>
           )}
         </div>
@@ -376,7 +386,7 @@ export function ServiceEditorForm({
       </Section>
 
       {mode === "create" ? (
-        <Section number={2} title="Service image" description="Optional now — you can also add or replace the image after the service is created.">
+        <Section number={2} title="Presentation" description="Use a service image when you have a suitable Salem visual. If you leave it empty, the public page automatically uses a premium no-image layout — nothing will look broken or unfinished.">
           <label className="block cursor-pointer rounded-2xl border border-dashed border-border bg-secondary/60 p-5 text-center transition-colors hover:border-cyan hover:bg-background">
             <input
               name="serviceImage"
@@ -395,7 +405,7 @@ export function ServiceEditorForm({
             ) : (
               <ImagePlus className="mx-auto h-7 w-7 text-purple" />
             )}
-            <span className="mt-2 block text-sm font-semibold text-navy-deep">Choose service image</span>
+            <span className="mt-2 block text-sm font-semibold text-navy-deep">Use a service image</span>
             <span className="mt-1 block text-xs text-muted-foreground">JPEG, PNG or WebP · maximum 5MB</span>
           </label>
         </Section>
@@ -501,7 +511,7 @@ export function ServiceEditorForm({
             </label>
             <label className="inline-flex items-center gap-2 text-sm font-medium text-navy-deep">
               <input type="checkbox" name="featured" value="true" defaultChecked={service?.featured ?? false} className="h-4 w-4 rounded border-border" />
-              Featured on the services directory
+              Featured on the homepage
             </label>
           </div>
         </div>

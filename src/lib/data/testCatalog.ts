@@ -30,14 +30,24 @@ export interface TestWithStructure extends Test {
 
 export async function listTestCategories(): Promise<TestCategory[]> {
   const supabase = getServiceRoleClient();
-  const { data, error } = await supabase
-    .from("test_categories")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
+  // Public category navigation is derived from the same visibility rule as
+  // the service catalogue: active category + at least one active, published
+  // service. This prevents empty/hidden categories from appearing with a
+  // misleading “0 services” state.
+  const [{ data: categories, error: categoryError }, { data: publishedTests, error: testsError }] = await Promise.all([
+    supabase.from("test_categories").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
+    supabase
+      .from("tests")
+      .select("category_id")
+      .eq("content_status", "published")
+      .eq("is_active", true),
+  ]);
 
-  if (error) throw error;
-  return data ?? [];
+  if (categoryError) throw categoryError;
+  if (testsError) throw testsError;
+
+  const visibleCategoryIds = new Set((publishedTests ?? []).map((test) => test.category_id));
+  return (categories ?? []).filter((category) => visibleCategoryIds.has(category.id));
 }
 
 export async function listActiveTests(): Promise<Test[]> {
@@ -238,7 +248,6 @@ export async function isServiceSlugTaken(slug: string, excludeId: string | undef
 export interface ServiceEditableFields {
   name: string;
   categoryId: string;
-  serviceType: "laboratory" | "ultrasound" | "cardiac" | "screening" | "other";
   templateId: string;
   slug: string;
   publicDescription: string | null;
@@ -262,7 +271,6 @@ function toTestRow(input: ServiceEditableFields) {
   return {
     name: input.name,
     category_id: input.categoryId,
-    service_type: input.serviceType,
     template_id: input.templateId,
     slug: input.slug,
     public_description: input.publicDescription,
