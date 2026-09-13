@@ -68,6 +68,11 @@ export default async function AppointmentsPage() {
                   {r.test_or_package ? (
                     <span className="block text-xs text-muted-foreground">{r.test_or_package}</span>
                   ) : null}
+                  {r.location_type === "home" && r.address ? (
+                    <span className="mt-1 block break-words text-xs font-medium text-navy-deep">
+                      Home address: {r.address}{r.landmark ? ` · Landmark: ${r.landmark}` : ""}
+                    </span>
+                  ) : null}
                   {r.notes ? (
                     <span className="block text-xs text-muted-foreground">Patient notes: {r.notes}</span>
                   ) : null}

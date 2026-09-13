@@ -112,6 +112,33 @@ export function SettingsEditorForm({ row }: { row: SiteSettingsRow }) {
       </Section>
 
       <Section
+        title="Home-service payment"
+        description="Manual payment instructions shown after a customer submits a home-service booking. No online payment gateway is used."
+      >
+        <input type="hidden" name="homeCollectionPaymentRequired" value="false" />
+        <label className="flex items-start gap-3 sm:col-span-2">
+          <input
+            type="checkbox"
+            name="homeCollectionPaymentRequired"
+            value="true"
+            defaultChecked={row.home_collection_payment_required ?? true}
+            className="mt-0.5 h-4 w-4 rounded border-border text-navy focus:ring-cyan"
+          />
+          <span className="text-sm text-navy-deep">
+            Require payment before a home visit is confirmed
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Customers will see the payment instructions immediately after submitting a home-service booking.
+            </span>
+          </span>
+        </label>
+        <Field label="Bank name" name="homeCollectionBankName" defaultValue={row.home_collection_bank_name ?? ""} placeholder="Salem Medical Laboratories bank" />
+        <Field label="Account name" name="homeCollectionAccountName" defaultValue={row.home_collection_account_name ?? ""} placeholder="Salem Medical Laboratories" />
+        <Field label="Account number" name="homeCollectionAccountNumber" defaultValue={row.home_collection_account_number ?? ""} placeholder="Enter confirmed account number" />
+        <Field label="Payment proof / WhatsApp phone" name="homeCollectionPaymentPhone" defaultValue={row.home_collection_payment_phone ?? ""} placeholder="+234 …" />
+        <Field label="Customer payment message" name="homeCollectionPaymentMessage" defaultValue={row.home_collection_payment_message ?? ""} placeholder="Payment is required before your home visit is confirmed." full />
+      </Section>
+
+      <Section
         title="Booking rules"
         description="Admin-controlled scheduling rules for the public appointment booking calendar."
       >

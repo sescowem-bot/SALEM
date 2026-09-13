@@ -591,6 +591,8 @@ export interface Database {
           admin_notes: string | null;
           rescheduled_date: string | null;
           rescheduled_time: string | null;
+          address: string | null;
+          landmark: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["appointment_requests"]["Row"]> & {
           full_name: string;
@@ -736,6 +738,12 @@ export interface Database {
           updated_by: string | null;
           booking_window_days: number;
           booking_min_notice_hours: number;
+          home_collection_payment_required: boolean;
+          home_collection_payment_message: string | null;
+          home_collection_bank_name: string | null;
+          home_collection_account_name: string | null;
+          home_collection_account_number: string | null;
+          home_collection_payment_phone: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["site_settings"]["Row"]>;

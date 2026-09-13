@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { CalendarCheck, MapPin, Home, ShieldCheck, Check, Info } from "lucide-react";
+import { CalendarCheck, MapPin, Home, ShieldCheck, Check, Info, CreditCard } from "lucide-react";
 import { siteConfig } from "@/data/siteContent";
 import { APPOINTMENT_TIME_SLOTS } from "@/lib/bookingConstants";
 import { bookAppointmentAction, getSlotAvailabilityAction, type BookState } from "./actions";
@@ -119,25 +119,80 @@ export function BookPageClient({
   }, [selectedDay]);
 
   if (state.bookingReference) {
+    const isHome = state.locationType === "home";
+    const payment = state.payment;
+    const hasBankDetails = Boolean(payment?.bankName || payment?.accountName || payment?.accountNumber);
     return (
       <section className="bg-background py-14 lg:py-20">
-        <div className="mx-auto max-w-2xl px-5 text-center sm:px-6">
-          <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent text-navy">
-            <Check className="h-6 w-6" />
-          </span>
-          <h2 className="mt-5 text-xl font-semibold text-navy-deep">Booking received</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Your reference number is below. Our front desk will confirm your slot shortly.
-          </p>
-          <p className="mt-4 rounded-xl border border-cyan/40 bg-accent p-4 font-mono text-base font-semibold text-navy-deep">
-            {state.bookingReference}
-          </p>
-          <Link
-            href="/"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02]"
-          >
-            Back to homepage
-          </Link>
+        <div className="mx-auto max-w-3xl px-5 sm:px-6">
+          <div className="text-center">
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent text-navy">
+              <Check className="h-6 w-6" />
+            </span>
+            <h2 className="mt-5 text-xl font-semibold text-navy-deep">Booking received</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Your request has been submitted successfully. Our front desk will contact you to confirm the appointment.
+            </p>
+            <p className="mx-auto mt-4 max-w-md rounded-xl border border-cyan/40 bg-accent p-4 font-mono text-base font-semibold text-navy-deep">
+              {state.bookingReference}
+            </p>
+          </div>
+
+          {isHome && payment?.required !== false ? (
+            <div className="mt-8 rounded-3xl border border-cyan/40 bg-card p-6 shadow-soft sm:p-8">
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-navy">
+                  <CreditCard className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-navy-deep">Home visit payment</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {payment?.message || "Payment is required before a home visit can be confirmed."}
+                  </p>
+                </div>
+              </div>
+
+              {hasBankDetails ? (
+                <div className="mt-6 grid gap-3 rounded-2xl border border-border bg-secondary p-5 sm:grid-cols-3">
+                  {payment?.bankName ? <div><p className="text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground">Bank</p><p className="mt-1 break-words text-sm font-semibold text-navy-deep">{payment.bankName}</p></div> : null}
+                  {payment?.accountName ? <div><p className="text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground">Account name</p><p className="mt-1 break-words text-sm font-semibold text-navy-deep">{payment.accountName}</p></div> : null}
+                  {payment?.accountNumber ? <div><p className="text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground">Account number</p><p className="mt-1 break-all font-mono text-sm font-semibold text-navy-deep">{payment.accountNumber}</p></div> : null}
+                </div>
+              ) : null}
+
+              {payment?.paymentPhone ? (
+                <p className="mt-4 rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
+                  After payment, send your proof of payment to <strong className="text-navy-deep">{payment.paymentPhone}</strong> and quote your booking reference <strong className="text-navy-deep">{state.bookingReference}</strong>.
+                </p>
+              ) : null}
+
+              {state.address ? (
+                <div className="mt-4 rounded-xl border border-border bg-background p-4 text-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Home visit address</p>
+                  <p className="mt-1 break-words font-medium text-navy-deep">{state.address}</p>
+                </div>
+              ) : null}
+
+              <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan" />
+                Your home visit is not confirmed until payment has been received and verified by Salem Medical Laboratories.
+              </p>
+            </div>
+          ) : isHome ? (
+            <div className="mt-8 rounded-3xl border border-border bg-card p-6 text-center shadow-soft sm:p-8">
+              <h3 className="text-base font-semibold text-navy-deep">Home visit request received</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Payment is not currently required. Our team will contact you to confirm the visit.</p>
+            </div>
+          ) : null}
+
+          <div className="mt-6 text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02]"
+            >
+              Back to homepage
+            </Link>
+          </div>
         </div>
       </section>
     );
@@ -264,6 +319,34 @@ export function BookPageClient({
                 ))}
               </div>
 
+              {location === "home" ? (
+                <div className="mt-6 rounded-2xl border border-cyan/30 bg-accent/40 p-4">
+                  <h3 className="text-sm font-semibold text-navy-deep">Home visit location</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Please provide the exact address where the phlebotomist should meet you. A home visit cannot be confirmed without a usable address.
+                  </p>
+                  <label className="mt-4 block text-sm font-medium text-navy-deep">
+                    Home address <span className="text-destructive">*</span>
+                    <textarea
+                      rows={2}
+                      className={fieldClass}
+                      name="address"
+                      placeholder="House number, street, area, city"
+                      required={location === "home"}
+                    />
+                  </label>
+                  <label className="mt-4 block text-sm font-medium text-navy-deep">
+                    Landmark <span className="font-normal text-muted-foreground">(optional)</span>
+                    <input className={fieldClass} name="landmark" placeholder="Nearby landmark or easy-to-find location" />
+                  </label>
+                </div>
+              ) : (
+                <>
+                  <input type="hidden" name="address" value="" />
+                  <input type="hidden" name="landmark" value="" />
+                </>
+              )}
+
               <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-purple">
                 Patient details
               </h3>
@@ -354,7 +437,9 @@ export function BookPageClient({
                 ))}
               </dl>
               <p className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">
-                Pricing is confirmed by our front desk once your test or package is selected.
+                {location === "home"
+                  ? "Home visits require manual payment before the visit is confirmed. Payment instructions will be shown after you submit the booking."
+                  : "Pricing is confirmed by our front desk once your test or package is selected."}
               </p>
 
               {state.error ? <p className="mt-4 text-sm font-medium text-destructive">{state.error}</p> : null}

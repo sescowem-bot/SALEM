@@ -68,16 +68,24 @@ export const approvalDecisionSchema = z.object({
  * "Book this test" links) — never a fixed clinical enum, since exact
  * phrasing varies by what the patient brings.
  */
-export const bookAppointmentSchema = z.object({
-  fullName: z.string().trim().min(2, "Full name is required").max(200),
-  phone: z.string().trim().min(7, "A valid phone number is required").max(30),
-  email: z.string().trim().email().optional().or(z.literal("")),
-  testOrPackage: z.string().trim().max(300).optional().or(z.literal("")),
-  preferredDate: z.string().date("Choose a valid date"),
-  preferredTime: z.enum(APPOINTMENT_TIME_SLOTS, { message: "Choose a valid time slot" }),
-  locationType: z.enum(["lab", "home"]),
-  notes: z.string().trim().max(1000).optional().or(z.literal("")),
-});
+export const bookAppointmentSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Full name is required").max(200),
+    phone: z.string().trim().min(7, "A valid phone number is required").max(30),
+    email: z.string().trim().email().optional().or(z.literal("")),
+    testOrPackage: z.string().trim().max(300).optional().or(z.literal("")),
+    preferredDate: z.string().date("Choose a valid date"),
+    preferredTime: z.enum(APPOINTMENT_TIME_SLOTS, { message: "Choose a valid time slot" }),
+    locationType: z.enum(["lab", "home"]),
+    address: z.string().trim().max(500).optional().or(z.literal("")),
+    landmark: z.string().trim().max(200).optional().or(z.literal("")),
+    notes: z.string().trim().max(1000).optional().or(z.literal("")),
+  })
+  .superRefine((value, ctx) => {
+    if (value.locationType === "home" && !value.address?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["address"], message: "Home address is required for a home visit" });
+    }
+  });
 
 export const homeCollectionRequestSchema = z.object({
   fullName: z.string().trim().min(2, "Full name is required").max(200),
@@ -315,6 +323,12 @@ export const siteSettingsSchema = z.object({
   patientEmailIncludesAccessCode: z.enum(["true", "false"]).default("false"),
   bookingWindowDays: z.string().trim().max(4).optional().or(z.literal("")),
   bookingMinNoticeHours: z.string().trim().max(4).optional().or(z.literal("")),
+  homeCollectionPaymentRequired: z.enum(["true", "false"]).default("true"),
+  homeCollectionPaymentMessage: z.string().trim().max(1000).optional().or(z.literal("")),
+  homeCollectionBankName: z.string().trim().max(150).optional().or(z.literal("")),
+  homeCollectionAccountName: z.string().trim().max(200).optional().or(z.literal("")),
+  homeCollectionAccountNumber: z.string().trim().max(100).optional().or(z.literal("")),
+  homeCollectionPaymentPhone: z.string().trim().max(30).optional().or(z.literal("")),
 });
 
 const optionalUrlOrPath = z
@@ -369,7 +383,6 @@ export const contactContentSchema = z.object({
   pageHeading: z.string().trim().max(200).optional().or(z.literal("")),
   introduction: z.string().trim().max(500).optional().or(z.literal("")),
   mapEmbedUrl: optionalUrlOrPath,
-  mapDirectionsUrl: optionalUrlOrPath,
   ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
 });
 
