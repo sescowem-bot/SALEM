@@ -21,7 +21,11 @@ const initial: ActionState = {};
 
 export function ContactEditorForm({ content }: { content: ContactContent }) {
   const [state, formAction] = useActionState(saveWebsiteDraftAction, initial);
-  const [form, setForm] = useState<ContactContent>(content);
+  const [form, setForm] = useState<ContactContent>({
+    ...content,
+    mapEmbedUrl: content.mapEmbedUrl || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d669.6880306253121!2d3.199342526819188!3d6.793342778949812!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103ba3437d06a7db%3A0x52049b00e6caf0fd!2sSalem%20Medical%20Laboratories!5e1!3m2!1sen!2sng!4v1788924262664!5m2!1sen!2sng",
+    mapDirectionsUrl: content.mapDirectionsUrl || "https://maps.app.goo.gl/rY44gLDa4XGPDiWE7",
+  });
 
   function set<K extends keyof ContactContent>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -44,12 +48,12 @@ export function ContactEditorForm({ content }: { content: ContactContent }) {
         <label className="block text-sm font-medium text-navy-deep">
           Map embed URL
           <input value={form.mapEmbedUrl ?? ""} onChange={(e) => set("mapEmbedUrl", e.target.value)} placeholder="https://www.google.com/maps/embed?..." className={fieldClass} />
-          <span className="mt-1 block text-xs text-muted-foreground">Leave blank if no map embed is configured yet. Use the real, verified Salem Medical Laboratories location — never a placeholder.</span>
+          <span className="mt-1 block text-xs text-muted-foreground">Verified Salem Medical Laboratories map. No Google Maps API key is required.</span>
         </label>
         <label className="block text-sm font-medium text-navy-deep">
           &quot;Get directions&quot; link
           <input value={form.mapDirectionsUrl ?? ""} onChange={(e) => set("mapDirectionsUrl", e.target.value)} placeholder="https://maps.google.com/?q=..." className={fieldClass} />
-          <span className="mt-1 block text-xs text-muted-foreground">Optional. Shown as a &quot;Get directions&quot; button under the map — opens Google Maps directly.</span>
+          <span className="mt-1 block text-xs text-muted-foreground">Opens the verified Salem location in Google Maps so visitors can get directions from their current location.</span>
         </label>
         <label className="block text-sm font-medium text-navy-deep">
           CTA label

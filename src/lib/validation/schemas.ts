@@ -369,6 +369,7 @@ export const contactContentSchema = z.object({
   pageHeading: z.string().trim().max(200).optional().or(z.literal("")),
   introduction: z.string().trim().max(500).optional().or(z.literal("")),
   mapEmbedUrl: optionalUrlOrPath,
+  mapDirectionsUrl: optionalUrlOrPath,
   ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
 });
 

@@ -42,8 +42,17 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
   const hoursWeekend = settings?.hoursWeekend ?? siteConfig.hours.weekend;
   const instagramUrl = settings?.socialInstagram ?? siteConfig.social.instagramUrl;
   const ctaLabel = content?.ctaLabel || "Chat with us on WhatsApp";
-  const mapEmbedUrl = content?.mapEmbedUrl;
-  const mapDirectionsUrl = content?.mapDirectionsUrl;
+  // Salem's verified public Google Maps location. This is a normal Google Maps
+  // embed/link — no Maps API key or Google Cloud billing is required.
+  const verifiedMapEmbedUrl =
+    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d669.6880306253121!2d3.199342526819188!3d6.793342778949812!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103ba3437d06a7db%3A0x52049b00e6caf0fd!2sSalem%20Medical%20Laboratories!5e1!3m2!1sen!2sng!4v1788924262664!5m2!1sen!2sng";
+  const verifiedDirectionsUrl = "https://maps.app.goo.gl/rY44gLDa4XGPDiWE7";
+  const mapEmbedUrl = content?.mapEmbedUrl?.startsWith("https://www.google.com/maps/embed")
+    ? content.mapEmbedUrl
+    : verifiedMapEmbedUrl;
+  const mapDirectionsUrl = content?.mapDirectionsUrl?.startsWith("https://")
+    ? content.mapDirectionsUrl
+    : verifiedDirectionsUrl;
 
   const cards = [
     { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2] },
@@ -58,13 +67,13 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
           {cards.map(({ icon: Icon, title: t, lines }) => (
-            <div key={t} className="surface-card p-6">
+            <div key={t} className="surface-card min-w-0 overflow-hidden p-5 sm:p-6">
               <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-navy">
                 <Icon className="h-5 w-5" />
               </span>
               <h2 className="mt-4 text-base font-semibold text-navy-deep">{t}</h2>
               {lines.map((l) => (
-                <p key={l} className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <p key={l} className="mt-1 break-words text-sm leading-relaxed text-muted-foreground">
                   {l}
                 </p>
               ))}
@@ -116,33 +125,32 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
               {mapEmbedUrl ? (
                 <iframe
                   src={mapEmbedUrl}
-                  className="h-72 w-full border-0"
+                  className="h-[300px] w-full border-0 sm:h-[340px]"
                   loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
                   title="Map to Salem Medical Laboratories"
                 />
-              ) : (
-                <div className="grid-lab relative grid h-72 place-items-center bg-secondary">
-                  <div className="text-center">
-                    <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-navy text-primary-foreground">
-                      <MapPin className="h-5 w-5" />
-                    </span>
-                    <p className="mt-4 text-sm font-semibold text-navy-deep">{addressLine1}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Map to be added once the address is confirmed</p>
-                  </div>
-                </div>
-              )}
+              ) : null}
             </div>
-            {mapDirectionsUrl ? (
+            <div className="flex flex-col gap-3 sm:flex-row">
               <a
                 href={mapDirectionsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
+                className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-3 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
               >
                 <MapPin className="h-4 w-4 shrink-0" /> Get directions
               </a>
-            ) : null}
+              <a
+                href={mapDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-navy px-4 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.01]"
+              >
+                Open in Google Maps
+              </a>
+            </div>
 
             <div className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6">
               <span className="flex items-center gap-2 text-sm font-semibold text-destructive">
