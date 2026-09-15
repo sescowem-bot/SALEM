@@ -1123,7 +1123,7 @@ async function buildReportSnapshot(labReportId: string): Promise<Record<string, 
   if (tcError) throw tcError;
 
   return {
-    report: reportForView,
+    report,
     reportTests: reportTests ?? [],
     fieldValues: fieldValues ?? [],
     tableCells: tableCells ?? [],
