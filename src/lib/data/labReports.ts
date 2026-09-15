@@ -1120,6 +1120,21 @@ async function buildReportSnapshot(labReportId: string): Promise<Record<string, 
   if (fvError) throw fvError;
   if (tcError) throw tcError;
 
+  // Draft/reviewed screens always reflect the latest patient record. Once a
+  // report is published or archived, its issued snapshot remains immutable.
+  let reportForView = report;
+  if (report.status !== "published" && report.status !== "archived") {
+    const patient = await getPatientByIdForReport(report.patient_id);
+    if (patient) {
+      reportForView = {
+        ...report,
+        patient_name_snapshot: patient.full_name,
+        patient_sex_snapshot: patient.sex,
+        patient_dob_snapshot: patient.date_of_birth,
+      };
+    }
+  }
+
   return {
     report: reportForView,
     reportTests: reportTests ?? [],
