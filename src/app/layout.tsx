@@ -47,8 +47,8 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       // Route through /icon so the browser always resolves the current CMS
       // favicon instead of retaining an old static Next.js icon.
-      icon: [{ url: `/icon?v=${encodeURIComponent(settings?.faviconPath || settings?.logoPath || "brand")}` }],
-      apple: `/icon?v=${encodeURIComponent(settings?.faviconPath || settings?.logoPath || "brand")}`,
+      icon: [{ url: `/icon?v=${encodeURIComponent(settings?.logoPath || settings?.faviconPath || "brand")}` }],
+      apple: `/icon?v=${encodeURIComponent(settings?.logoPath || settings?.faviconPath || "brand")}`,
     },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
@@ -101,7 +101,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <link
           rel="icon"
-          href={`/icon?v=${encodeURIComponent(settings?.faviconPath || settings?.logoPath || "brand")}`}
+          href={`/icon?v=${encodeURIComponent(settings?.logoPath || settings?.faviconPath || "brand")}`}
         />
       </head>
       <body className="antialiased">

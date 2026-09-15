@@ -69,11 +69,11 @@ export interface EmailProvider {
 class NullEmailProvider implements EmailProvider {
   readonly name = "none";
 
+  constructor(private readonly reason = "No email provider is configured.") {}
+
   async send(message: EmailMessage): Promise<EmailSendResult> {
-    console.warn(
-      `[email] No provider configured (set RESEND_API_KEY + EMAIL_FROM_ADDRESS (or RESEND_FROM_EMAIL)) — would have sent "${message.subject}" to ${message.to}.`
-    );
-    return { ok: false, error: "No email provider is configured." };
+    console.warn(`[email] ${this.reason} Would have sent "${message.subject}" to ${message.to}.`);
+    return { ok: false, error: this.reason };
   }
 }
 
@@ -156,23 +156,43 @@ class ResendEmailProvider implements EmailProvider {
  * being the only way to pick it up in serverless.
  */
 export function getEmailProvider(): EmailProvider {
-  const apiKey = process.env.RESEND_API_KEY;
-  // Set either EMAIL_FROM_ADDRESS or RESEND_FROM_EMAIL in Vercel. The value
-  // is intentionally not hard-coded, so any sender address verified in the
-  // connected Resend account can be used without changing application code.
-  const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.RESEND_FROM_EMAIL;
-  const fallbackFromAddress =
-    process.env.EMAIL_FALLBACK_ADDRESS || process.env.RESEND_FALLBACK_FROM_EMAIL;
+  // Vercel injects server-side environment variables at runtime. Read them
+  // fresh for every send and trim accidental whitespace/quotes copied into
+  // the Vercel dashboard. No sender address is hard-coded here.
+  const cleanEnv = (value: string | undefined) => {
+    const v = value?.trim();
+    if (!v) return undefined;
+    // Be forgiving if a value was pasted with surrounding quotes.
+    return v.replace(/^(?:"|\')|(?:"|\')$/g, "").trim() || undefined;
+  };
 
-  if (apiKey && fromAddress) {
-    return new ResendEmailProvider(
-      apiKey,
-      fromAddress,
-      process.env.EMAIL_FROM_NAME || "Salem Medical Laboratories",
-      fallbackFromAddress
+  const apiKey = cleanEnv(process.env.RESEND_API_KEY);
+  const fromAddress = cleanEnv(
+    process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM_ADDRESS
+  );
+  const fallbackFromAddress = cleanEnv(
+    process.env.RESEND_FALLBACK_FROM_EMAIL || process.env.EMAIL_FALLBACK_ADDRESS
+  );
+  const fromName = cleanEnv(process.env.EMAIL_FROM_NAME) || "Salem Medical Laboratories";
+
+  if (!apiKey) {
+    return new NullEmailProvider(
+      "Resend is not configured: RESEND_API_KEY is missing from the server environment."
     );
   }
-  return new NullEmailProvider();
+
+  if (!fromAddress) {
+    return new NullEmailProvider(
+      "Resend is not configured: RESEND_FROM_EMAIL (or EMAIL_FROM_ADDRESS) is missing from the server environment."
+    );
+  }
+
+  return new ResendEmailProvider(
+    apiKey,
+    fromAddress,
+    fromName,
+    fallbackFromAddress
+  );
 }
 
 /** Absolute base URL for links inside emails. See NEXT_PUBLIC_SITE_URL above. */
