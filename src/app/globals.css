@@ -257,3 +257,9 @@ button {
     border: 0 !important;
   }
 }
+
+
+/* Client-facing legal pages */
+.legal-copy h2 { margin-top: 2rem; font-size: 1.15rem; font-weight: 700; color: var(--navy-deep); }
+.legal-copy p { margin-top: 0.8rem; font-size: 0.95rem; line-height: 1.8; color: var(--muted-foreground); }
+.legal-copy h2 + p { margin-top: 0.55rem; }

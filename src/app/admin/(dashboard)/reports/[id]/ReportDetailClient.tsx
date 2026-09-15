@@ -184,7 +184,7 @@ function FieldRow({
   testId: string;
   labReportId: string;
   field: { id: string; label: string; input_type: string; unit: string | null; options: string[] | null };
-  value?: { valueText: string | null; valueNumeric: number | null; flag: string | null };
+  value?: { valueText: string | null; valueNumeric: number | null; unit: string | null; referenceRange: string | null; flag: string | null };
   disabled: boolean;
 }) {
   const [state, action] = useActionState(saveFieldResultAction, initial);
@@ -199,7 +199,7 @@ function FieldRow({
     <form
       action={action}
       onChangeCapture={() => markDirty(dirtyKey)}
-      className="grid grid-cols-[1fr_auto] items-end gap-2 sm:grid-cols-[160px_1fr_100px_auto]"
+      className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[160px_1fr_100px_150px_150px_auto]"
     >
       <input type="hidden" name="reportTestId" value={reportTestId} />
       <input type="hidden" name="testId" value={testId} />
@@ -227,7 +227,22 @@ function FieldRow({
         <input type="text" name="valueText" defaultValue={value?.valueText ?? ""} disabled={disabled} className={fieldClass} />
       )}
 
-      {field.unit ? <span className="text-xs text-muted-foreground sm:pb-2.5">{field.unit}</span> : <span />}
+      <input
+        type="text"
+        name="unit"
+        defaultValue={value?.unit ?? field.unit ?? ""}
+        placeholder="Unit"
+        disabled={disabled}
+        className="w-full rounded-md border border-border bg-secondary px-2 py-1.5 text-xs text-navy-deep outline-none focus:border-cyan"
+      />
+      <input
+        type="text"
+        name="referenceRange"
+        defaultValue={value?.referenceRange ?? ""}
+        placeholder="Reference range"
+        disabled={disabled}
+        className="w-full rounded-md border border-border bg-secondary px-2 py-1.5 text-xs text-navy-deep outline-none focus:border-cyan"
+      />
 
       {!disabled ? <MiniSubmit /> : <span />}
 

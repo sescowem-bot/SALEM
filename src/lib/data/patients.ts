@@ -7,18 +7,34 @@ import { logAudit } from "./audit";
 type Patient = Database["public"]["Tables"]["patients"]["Row"];
 type PatientInsert = Database["public"]["Tables"]["patients"]["Insert"];
 
-export async function searchPatientsByName(query: string): Promise<Patient[]> {
+export async function searchPatients(query: string): Promise<Patient[]> {
   const supabase = getServiceRoleClient();
+  const q = query.trim();
+  if (!q) return [];
   const { data, error } = await supabase
     .from("patients")
     .select("*")
-    .ilike("full_name", `%${query}%`)
+    .or(`full_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
     .order("full_name", { ascending: true })
-    .limit(20);
+    .limit(50);
 
   if (error) throw error;
   return data ?? [];
 }
+
+export async function listPatientsForResultsEntry(): Promise<Patient[]> {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from("patients")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Backward-compatible alias for existing callers.
+export const searchPatientsByName = searchPatients;
 
 export async function getPatientById(patientId: string): Promise<Patient | null> {
   const supabase = getServiceRoleClient();

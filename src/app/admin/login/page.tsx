@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SalemLogo } from "@/components/salem/Logo";
+import { getSiteSettings } from "@/lib/data/siteSettings";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = {
@@ -14,6 +15,12 @@ export default async function AdminLoginPage({
   searchParams: Promise<{ redirectTo?: string }>;
 }) {
   const params = await searchParams;
+  let logoUrl: string | null = null;
+  try {
+    logoUrl = (await getSiteSettings()).logoUrl;
+  } catch {
+    // Keep staff login available even if the settings service is temporarily unavailable.
+  }
   const redirectTo =
     params.redirectTo && params.redirectTo.startsWith("/admin") && !params.redirectTo.startsWith("/admin/login")
       ? params.redirectTo
@@ -23,7 +30,7 @@ export default async function AdminLoginPage({
     <div className="grid min-h-screen place-items-center bg-secondary px-5">
       <div className="surface-card w-full max-w-sm p-8">
         <Link href="/" className="mx-auto flex w-fit">
-          <SalemLogo />
+          <SalemLogo logoUrl={logoUrl} />
         </Link>
 
         <h1 className="mt-6 text-lg font-semibold text-navy-deep">Staff sign in</h1>

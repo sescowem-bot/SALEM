@@ -31,19 +31,21 @@ const initialState: ActionState = {};
 export function NewVisitClient({
   categories,
   tests,
+  patients,
   preselectedPatient,
   canRegisterPatients,
   canCreateVisit,
 }: {
   categories: TestCategory[];
   tests: Test[];
+  patients: Patient[];
   preselectedPatient: Patient | null;
   canRegisterPatients: boolean;
   canCreateVisit: boolean;
 }) {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(preselectedPatient);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Patient[]>([]);
+  const [results, setResults] = useState<Patient[]>(patients);
   const [isSearching, startSearch] = useTransition();
   const [showRegister, setShowRegister] = useState(false);
 
@@ -53,7 +55,7 @@ export function NewVisitClient({
   function handleQueryChange(value: string) {
     setQuery(value);
     if (value.trim().length < 2) {
-      setResults([]);
+      setResults(patients);
       return;
     }
     startSearch(async () => {
@@ -69,12 +71,12 @@ export function NewVisitClient({
 
           <div className="mt-4">
             <label className="block text-sm font-medium text-navy-deep">
-              Search by name
+              Search patients
               <span className="relative mt-1.5 block">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   className={`${fieldClass} pl-10`}
-                  placeholder="Start typing a patient's name…"
+                  placeholder="Search by name, phone or email…"
                   value={query}
                   onChange={(e) => handleQueryChange(e.target.value)}
                 />
@@ -83,22 +85,35 @@ export function NewVisitClient({
 
             {isSearching ? <p className="mt-2 text-xs text-muted-foreground">Searching…</p> : null}
 
-            {results.length > 0 ? (
-              <ul className="mt-3 divide-y divide-border rounded-xl border border-border bg-card">
-                {results.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPatient(p)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-accent"
-                    >
-                      <span className="font-medium text-navy-deep">{p.full_name}</span>
-                      <span className="text-xs text-muted-foreground">{p.sex ?? "—"}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+            <div className="mt-3 overflow-x-auto rounded-xl border border-border bg-card">
+              <table className="w-full min-w-[680px] text-sm">
+                <thead className="border-b border-border bg-secondary/70 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Patient</th>
+                    <th className="px-4 py-3 font-semibold">Sex</th>
+                    <th className="px-4 py-3 font-semibold">Date of birth</th>
+                    <th className="px-4 py-3 font-semibold">Phone</th>
+                    <th className="px-4 py-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {results.map((p) => (
+                    <tr key={p.id} className="hover:bg-accent/40">
+                      <td className="px-4 py-3 font-semibold text-navy-deep">{p.full_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{p.sex ?? "Not specified"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{p.date_of_birth ?? "Not specified"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{p.phone ?? "Not specified"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button type="button" onClick={() => setSelectedPatient(p)} className="rounded-full bg-navy px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-navy/90">Select</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {results.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">No patients match this search.</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {canRegisterPatients ? (

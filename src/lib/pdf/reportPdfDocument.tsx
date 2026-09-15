@@ -142,11 +142,12 @@ function statusColor(status: string): { bg: string; fg: string } {
   return { bg: "#eef1f6", fg: "#5b6b85" };
 }
 
-function InfoCell({ label, value }: { label: string; value: string }) {
+function InfoCell({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
   return (
     <View style={styles.infoCell}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value || "—"}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
@@ -192,17 +193,14 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
 
         <View style={styles.infoGrid}>
           <InfoCell label="Patient name" value={report.patientName} />
-          <InfoCell label="Sex" value={report.patientSex ?? "—"} />
-          <InfoCell label="Date of birth" value={report.patientDob ?? "—"} />
-          <InfoCell label="Lab number" value={report.labNumber} />
-          <InfoCell label="Report reference" value={report.resultReference ?? "Pending publication"} />
-          <InfoCell label="Document version" value={`v${report.versionNumber}`} />
-          <InfoCell label="Requested service(s)" value={tests.map((t) => t.testName).join(", ") || "—"} />
-          <InfoCell label="Specimen" value={report.specimen ?? "—"} />
-          <InfoCell label="Date collected" value={report.dateCollected ?? "—"} />
-          <InfoCell label="Date reported" value={report.dateReported ?? "—"} />
-          <InfoCell label="Clinical request" value={report.request ?? "—"} />
-          <InfoCell label="Generated" value={generatedAt} />
+          <InfoCell label="Sex" value={report.patientSex} />
+          <InfoCell label="Date of birth" value={report.patientDob} />
+          <InfoCell label="Report reference" value={report.resultReference} />
+          <InfoCell label="Requested service(s)" value={tests.map((t) => t.testName).join(", ") || null} />
+          <InfoCell label="Specimen" value={report.specimen} />
+          <InfoCell label="Date collected" value={report.dateCollected} />
+          <InfoCell label="Date reported" value={report.dateReported} />
+          <InfoCell label="Clinical request" value={report.request} />
         </View>
 
         {tests.map((t, i) => (
@@ -224,12 +222,12 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
                     <View key={fi} style={styles.tableRow}>
                       <Text style={[styles.td, styles.colField]}>{f.label}</Text>
                       <Text style={[styles.td, styles.colValue, abnormal ? styles.flagAbnormal : undefined]}>
-                        {f.value || "—"}
+                        {f.value || ""}
                       </Text>
-                      <Text style={[styles.td, styles.colUnit]}>{f.unit ?? "—"}</Text>
-                      <Text style={[styles.td, styles.colRange]}>{f.referenceRange ?? "—"}</Text>
+                      <Text style={[styles.td, styles.colUnit]}>{f.unit ?? ""}</Text>
+                      <Text style={[styles.td, styles.colRange]}>{f.referenceRange ?? ""}</Text>
                       <Text style={[styles.td, styles.colFlag, abnormal ? styles.flagAbnormal : undefined]}>
-                        {f.flag ?? "—"}
+                        {f.flag ?? ""}
                       </Text>
                     </View>
                   );
@@ -250,7 +248,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
                     <Text style={[styles.td, { width: "28%" }]}>{row.rowLabel}</Text>
                     {t.tableColumns.map((c) => (
                       <Text key={c} style={[styles.td, { width: `${72 / Math.max(t.tableColumns.length, 1)}%` }]}>
-                        {row.cells.find((cell) => cell.columnLabel === c)?.value || "—"}
+                        {row.cells.find((cell) => cell.columnLabel === c)?.value || ""}
                       </Text>
                     ))}
                   </View>
@@ -305,7 +303,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
         </View>
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
-            {org.orgName} · Lab {report.labNumber} · {isFinal ? "Official laboratory report" : "Internal preview — not a final document"}
+            {org.orgName} · {isFinal ? "Official laboratory report" : "Internal preview — not a final document"}
           </Text>
           <Text
             style={styles.footerText}

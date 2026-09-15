@@ -5,6 +5,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { getSiteSettings } from "./siteSettings";
 import { logAudit } from "./audit";
 import { getEmailProvider } from "@/lib/email/provider";
+import { downloadReportPdfBytes } from "./storage";
 import {
   buildApprovalRequestedTemplate,
   buildReportApprovedTemplate,
@@ -64,6 +65,8 @@ export async function dispatchReportNotification(input: {
    */
   accessCodePlaintext?: string | null;
   forceIncludeAccessCode?: boolean;
+  /** Attach the generated final PDF to the patient delivery email. */
+  attachFinalReport?: boolean;
 }): Promise<void> {
   const supabase = getServiceRoleClient();
 
@@ -137,6 +140,27 @@ export async function dispatchReportNotification(input: {
     return;
   }
 
+  let attachments: { filename: string; contentBase64: string; contentType: string }[] | undefined;
+  if (input.attachFinalReport && input.eventType === "patient_result_available") {
+    const { data: finalDocument, error: finalDocumentError } = await supabase
+      .from("report_final_documents")
+      .select("storage_path, version_number")
+      .eq("lab_report_id", input.labReportId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (finalDocumentError) throw finalDocumentError;
+    if (finalDocument?.storage_path) {
+      const pdfBytes = await downloadReportPdfBytes(finalDocument.storage_path);
+      attachments = [{
+        filename: `Salem-Laboratory-Report-${report.result_reference ?? report.lab_number}.pdf`,
+        contentBase64: pdfBytes.toString("base64"),
+        contentType: "application/pdf",
+      }];
+    }
+  }
+
   const provider = getEmailProvider();
   const result = await provider.send({
     to: recipientEmail,
@@ -144,6 +168,7 @@ export async function dispatchReportNotification(input: {
     subject: template.subject,
     html: template.html,
     text: template.text,
+    attachments,
   });
 
   if (result.ok) {

@@ -160,12 +160,9 @@ export function buildPatientResultAvailableTemplate(ctx: TemplateContext): Email
   const appUrl = getAppUrl();
   const title = `Your ${siteSettings.orgName} result is ready`;
   const resultsLink = `${appUrl}/results`;
-  // Result values are NEVER included, regardless of settings — that line
-  // is not admin-configurable. The access code below is: it only renders
-  // when the caller explicitly passed one, which only happens when
-  // site_settings.patient_email_includes_access_code is on (see
-  // lib/data/notifications.ts) or this was triggered as an explicit manual
-  // resend from the report screen — see the module comment above.
+  // The final report itself is attached by the publish workflow. Result values
+  // are not copied into the email body. The reference + access code are included
+  // so the patient can always return to the website and retrieve the report again.
   const codeHtml = accessCode
     ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;"><strong>Access code:</strong> <span style="font-family:monospace;font-size:15px;letter-spacing:1px;">${accessCode}</span></p>`
     : "";

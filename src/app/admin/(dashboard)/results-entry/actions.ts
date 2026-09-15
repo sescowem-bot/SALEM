@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/auth/session";
-import { searchPatientsByName, createPatient, getPatientById } from "@/lib/data/patients";
+import { searchPatients, createPatient, getPatientById } from "@/lib/data/patients";
 import { createLabReport, addTestToReport } from "@/lib/data/labReports";
 import { registerPatientSchema, createVisitSchema } from "@/lib/validation/schemas";
 
@@ -19,7 +19,7 @@ export async function searchPatientsAction(query: string) {
   // by staff with reports.view — see page.tsx) — searchPatientsByName itself
   // is read-only and low-risk, but we still require a signed-in staff member.
   void staff;
-  return searchPatientsByName(query);
+  return searchPatients(query);
 }
 
 export async function registerPatientAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

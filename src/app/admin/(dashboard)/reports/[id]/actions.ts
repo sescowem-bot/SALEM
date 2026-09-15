@@ -7,6 +7,7 @@ import {
   setTableCellResult,
   returnForCorrection,
   publishReport,
+  syncReportPatientSnapshot,
   unlockPublishedReportForCorrection,
   resetPatientAccessCode,
   sendAccessCodeToPatientNow,
@@ -20,8 +21,12 @@ import {
   approveApprovalRequest,
   rejectApprovalRequest,
   returnApprovalRequestForCorrection,
+  getLatestApprovedApprovalRequest,
 } from "@/lib/data/approvals";
 import { uploadReportPdf } from "@/lib/data/storage";
+import { generateFinalReportPdf } from "@/lib/data/reportDocuments";
+import { dispatchReportNotification } from "@/lib/data/notifications";
+import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import {
   fieldResultSchema,
   tableCellSchema,
@@ -63,6 +68,8 @@ export async function saveFieldResultAction(_prev: ActionState, formData: FormDa
     templateFieldId: formData.get("templateFieldId"),
     valueText: formData.get("valueText") || "",
     valueNumeric: rawNumeric && String(rawNumeric).trim() !== "" ? rawNumeric : undefined,
+    unit: formData.get("unit") || "",
+    referenceRange: formData.get("referenceRange") || "",
     flag: rawFlag || "",
   });
 
@@ -75,6 +82,8 @@ export async function saveFieldResultAction(_prev: ActionState, formData: FormDa
       templateFieldId: parsed.data.templateFieldId,
       valueText: parsed.data.valueText || undefined,
       valueNumeric: parsed.data.valueNumeric,
+      unit: parsed.data.unit || undefined,
+      referenceRange: parsed.data.referenceRange || undefined,
       flag: parsed.data.flag || undefined,
       actorRole: staff.role,
       actorId: staff.userId,
@@ -267,7 +276,53 @@ export async function publishAction(_prev: ActionState, formData: FormData): Pro
   if (!parsed.success) return { error: "Invalid report." };
 
   try {
-    const { accessCodePlaintext } = await publishReport(parsed.data.labReportId, staff.role, staff.userId);
+    // Freeze the latest patient information at the moment of publication.
+    await syncReportPatientSnapshot(parsed.data.labReportId);
+    const { report, accessCodePlaintext } = await publishReport(parsed.data.labReportId, staff.role, staff.userId);
+
+    const approval = await getLatestApprovedApprovalRequest(parsed.data.labReportId);
+    if (!approval?.decided_by) {
+      throw new Error("The report was published, but no approved signatory decision could be found for the final document.");
+    }
+
+    const supabaseApproval = getServiceRoleClient();
+    const { data: approverProfile } = await supabaseApproval
+      .from("staff_profiles")
+      .select("full_name")
+      .eq("id", approval.decided_by)
+      .single();
+
+    await generateFinalReportPdf({
+      labReportId: parsed.data.labReportId,
+      approvalRequestId: approval.id,
+      approverStaffId: approval.decided_by,
+      approverName: approverProfile?.full_name ?? "Authorized approver",
+      decidedAt: approval.decided_at ?? new Date().toISOString(),
+      actorRole: staff.role,
+      actorId: staff.userId,
+    });
+
+    // Automatic patient delivery: once publication and final-PDF generation
+    // are complete, send the finished report to the patient's saved email.
+    // The same email also contains the result reference and access code so the
+    // patient can return to /results later if the attachment is lost.
+    try {
+      await dispatchReportNotification({
+        eventType: "patient_result_available",
+        labReportId: parsed.data.labReportId,
+        recipientType: "patient",
+        recipientPatientId: report.patient_id,
+        accessCodePlaintext,
+        forceIncludeAccessCode: true,
+        attachFinalReport: true,
+      });
+    } catch (notificationError) {
+      // Email delivery must never undo an already-published report. The report
+      // remains available through the website retrieval method and failures are
+      // logged for staff investigation.
+      console.error("[reports] patient result email failed", parsed.data.labReportId, notificationError);
+    }
+
     revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
     revalidatePath("/admin/review");
     return { ok: true, accessCode: accessCodePlaintext ?? undefined };

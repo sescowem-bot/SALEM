@@ -25,9 +25,9 @@ import "server-only";
  *
  * Required environment variables to actually send email (see .env.example):
  *   RESEND_API_KEY      - Resend API key. Unset = NullEmailProvider is used.
- *   EMAIL_FROM_ADDRESS  - the verified "from" address in your Resend account.
- *   EMAIL_FROM_NAME     - optional display name, defaults to the org name
- *                          from site_settings at send time.
+ *   EMAIL_FROM_ADDRESS or RESEND_FROM_EMAIL
+ *                       - any verified "from" address in your Resend account.
+ *   EMAIL_FROM_NAME     - optional display name, defaults to Salem Medical Laboratories.
  *   NEXT_PUBLIC_SITE_URL - absolute base URL used to build links inside
  *                          emails (e.g. https://salemmedicallabs.com).
  *                          Unset = links fall back to a relative path,
@@ -36,12 +36,20 @@ import "server-only";
  *                          provider.
  */
 
+export interface EmailAttachment {
+  filename: string;
+  /** Base64-encoded file content for the Resend HTTPS API. */
+  contentBase64: string;
+  contentType?: string;
+}
+
 export interface EmailMessage {
   to: string;
   toName?: string;
   subject: string;
   html: string;
   text: string;
+  attachments?: EmailAttachment[];
 }
 
 export interface EmailSendResult {
@@ -60,7 +68,7 @@ class NullEmailProvider implements EmailProvider {
 
   async send(message: EmailMessage): Promise<EmailSendResult> {
     console.warn(
-      `[email] No provider configured (set RESEND_API_KEY + EMAIL_FROM_ADDRESS) — would have sent "${message.subject}" to ${message.to}.`
+      `[email] No provider configured (set RESEND_API_KEY + EMAIL_FROM_ADDRESS (or RESEND_FROM_EMAIL)) — would have sent "${message.subject}" to ${message.to}.`
     );
     return { ok: false, error: "No email provider is configured." };
   }
@@ -89,6 +97,15 @@ class ResendEmailProvider implements EmailProvider {
           subject: message.subject,
           html: message.html,
           text: message.text,
+          ...(message.attachments?.length
+            ? {
+                attachments: message.attachments.map((attachment) => ({
+                  filename: attachment.filename,
+                  content: attachment.contentBase64,
+                  content_type: attachment.contentType ?? "application/octet-stream",
+                })),
+              }
+            : {}),
         }),
       });
 
@@ -115,7 +132,10 @@ class ResendEmailProvider implements EmailProvider {
  */
 export function getEmailProvider(): EmailProvider {
   const apiKey = process.env.RESEND_API_KEY;
-  const fromAddress = process.env.EMAIL_FROM_ADDRESS;
+  // Set either EMAIL_FROM_ADDRESS or RESEND_FROM_EMAIL in Vercel. The value
+  // is intentionally not hard-coded, so any sender address verified in the
+  // connected Resend account can be used without changing application code.
+  const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.RESEND_FROM_EMAIL;
 
   if (apiKey && fromAddress) {
     return new ResendEmailProvider(apiKey, fromAddress, process.env.EMAIL_FROM_NAME || "Salem Medical Laboratories");

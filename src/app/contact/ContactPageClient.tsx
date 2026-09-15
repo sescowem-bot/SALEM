@@ -42,14 +42,27 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
   const hoursWeekend = settings?.hoursWeekend ?? siteConfig.hours.weekend;
   const instagramUrl = settings?.socialInstagram ?? siteConfig.social.instagramUrl;
   const ctaLabel = content?.ctaLabel || "Chat with us on WhatsApp";
-  const mapEmbedUrl = content?.mapEmbedUrl;
-  const mapDirectionsUrl = content?.mapDirectionsUrl;
+  const fullAddress = [addressLine1, addressLine2, settings?.city, settings?.state, "Nigeria"]
+    .filter(Boolean)
+    .filter((value, index, arr) => arr.indexOf(value) === index)
+    .join(", ");
+
+  // Public Google Maps URLs do not require a Maps API key or billing.
+  // A CMS URL can override these, but an empty CMS field never produces a placeholder.
+  const encodedAddress = encodeURIComponent(fullAddress);
+  const resolvedMapEmbedUrl =
+    content?.mapEmbedUrl?.trim() || `https://www.google.com/maps?q=${encodedAddress}&output=embed`;
+  const resolvedMapDirectionsUrl =
+    content?.mapDirectionsUrl?.trim() || `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
+
+  const uniqueLines = (values: Array<string | null | undefined>) =>
+    values.filter((value): value is string => Boolean(value?.trim())).filter((value, index, arr) => arr.indexOf(value) === index);
 
   const cards = [
-    { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2] },
-    { icon: Phone, title: "Call or WhatsApp", lines: [phonePrimary, whatsappNumber] },
-    { icon: Mail, title: "Email us", lines: [emailPrimary, siteConfig.email.results] },
-    { icon: Clock3, title: "Opening hours", lines: [hoursWeekdays, hoursWeekend] },
+    { icon: MapPin, title: "Visit the laboratory", lines: uniqueLines([addressLine1, addressLine2, settings?.city, settings?.state, "Nigeria"]) },
+    { icon: Phone, title: "Call or WhatsApp", lines: uniqueLines([phonePrimary]) },
+    { icon: Mail, title: "Email us", lines: uniqueLines([emailPrimary, settings?.emailSecondary]) },
+    { icon: Clock3, title: "Opening hours", lines: uniqueLines([hoursWeekdays, hoursWeekend]) },
     { icon: InstagramIcon, title: "Follow us", lines: [siteConfig.social.instagramHandle] },
   ];
 
@@ -64,7 +77,7 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
               </span>
               <h2 className="mt-4 text-base font-semibold text-navy-deep">{t}</h2>
               {lines.map((l) => (
-                <p key={l} className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <p key={l} className="mt-1 break-words [overflow-wrap:anywhere] text-sm leading-relaxed text-muted-foreground">
                   {l}
                 </p>
               ))}
@@ -113,29 +126,28 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
 
           <div className="space-y-6">
             <div className="surface-card overflow-hidden">
-              {mapEmbedUrl ? (
+              {resolvedMapEmbedUrl ? (
                 <iframe
-                  src={mapEmbedUrl}
-                  className="h-72 w-full border-0"
+                  src={resolvedMapEmbedUrl}
+                  className="block h-[18rem] w-full border-0 sm:h-[22rem] lg:h-[26rem]"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                   title="Map to Salem Medical Laboratories"
                 />
               ) : (
-                <div className="grid-lab relative grid h-72 place-items-center bg-secondary">
-                  <div className="text-center">
+                <div className="grid-lab relative grid h-[18rem] place-items-center bg-secondary sm:h-[22rem] lg:h-[26rem]">
+                  <div className="px-6 text-center">
                     <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-navy text-primary-foreground">
                       <MapPin className="h-5 w-5" />
                     </span>
-                    <p className="mt-4 text-sm font-semibold text-navy-deep">{addressLine1}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Map to be added once the address is confirmed</p>
+                    <p className="mt-4 break-words text-sm font-semibold text-navy-deep">{fullAddress}</p>
                   </div>
                 </div>
               )}
             </div>
-            {mapDirectionsUrl ? (
+            {resolvedMapDirectionsUrl ? (
               <a
-                href={mapDirectionsUrl}
+                href={resolvedMapDirectionsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"

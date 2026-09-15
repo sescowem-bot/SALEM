@@ -24,6 +24,8 @@ export const fieldResultSchema = z.object({
   templateFieldId: z.string().uuid(),
   valueText: z.string().trim().max(500).optional().or(z.literal("")),
   valueNumeric: z.coerce.number().finite().optional(),
+  unit: z.string().trim().max(100).optional().or(z.literal("")),
+  referenceRange: z.string().trim().max(200).optional().or(z.literal("")),
   flag: z.enum(["normal", "high", "low", "critical", "abnormal"]).optional().or(z.literal("")),
 });
 

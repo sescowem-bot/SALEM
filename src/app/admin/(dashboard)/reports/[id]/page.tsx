@@ -24,7 +24,7 @@ export interface ReportTestViewModel {
   testName: string;
   comment: string | null;
   structure: TestWithStructure;
-  fieldValues: { templateFieldId: string; valueText: string | null; valueNumeric: number | null; flag: string | null }[];
+  fieldValues: { templateFieldId: string; valueText: string | null; valueNumeric: number | null; unit: string | null; referenceRange: string | null; flag: string | null }[];
   tableCells: { rowId: string; columnId: string; value: string | null }[];
   pdfSignedUrl: string | null;
 }
@@ -77,6 +77,8 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             templateFieldId: fv.template_field_id,
             valueText: fv.value_text,
             valueNumeric: fv.value_numeric,
+            unit: fv.unit,
+            referenceRange: fv.reference_range_display,
             flag: fv.flag,
           })),
         tableCells: tableCells
@@ -164,13 +166,13 @@ function ReportSummary({
   testNames: string[];
 }) {
   const fields: { label: string; value: string }[] = [
-    { label: "Sex", value: report.patient_sex_snapshot ?? "—" },
-    { label: "Date of birth", value: report.patient_dob_snapshot ?? "—" },
-    { label: "Requested service(s)", value: testNames.length > 0 ? testNames.join(", ") : "—" },
-    { label: "Specimen", value: report.specimen ?? "—" },
-    { label: "Date collected", value: report.date_collected ?? "—" },
-    { label: "Date reported", value: report.date_reported ?? "—" },
-    { label: "Request", value: report.request ?? "—" },
+    { label: "Sex", value: report.patient_sex_snapshot ?? "Not specified" },
+    { label: "Date of birth", value: report.patient_dob_snapshot ?? "Not specified" },
+    { label: "Requested service(s)", value: testNames.length > 0 ? testNames.join(", ") : "Not specified" },
+    { label: "Specimen", value: report.specimen ?? "Not specified" },
+    { label: "Date collected", value: report.date_collected ?? "Not specified" },
+    { label: "Date reported", value: report.date_reported ?? "Not yet published" },
+    { label: "Request", value: report.request ?? "Not specified" },
   ];
 
   return (

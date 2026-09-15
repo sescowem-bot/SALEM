@@ -28,6 +28,49 @@ type ReportTest = Database["public"]["Tables"]["report_tests"]["Row"];
 // ---------------------------------------------------------------------------
 // Create
 // ---------------------------------------------------------------------------
+// Keep draft/reviewed reports aligned with the current patient record.
+// Historical published/archived reports retain their issued snapshot.
+export async function syncReportPatientSnapshot(labReportId: string): Promise<LabReport> {
+  const supabase = getServiceRoleClient();
+  const { data: report, error: reportError } = await supabase
+    .from("lab_reports")
+    .select("*")
+    .eq("id", labReportId)
+    .single();
+  if (reportError) throw reportError;
+
+  if (report.status === "published" || report.status === "archived") return report;
+
+  const patient = await getPatientByIdForReport(report.patient_id);
+  if (!patient) throw new Error("The patient linked to this report no longer exists.");
+
+  const update = {
+    patient_name_snapshot: patient.full_name,
+    patient_sex_snapshot: patient.sex,
+    patient_dob_snapshot: patient.date_of_birth,
+    last_modified_at: new Date().toISOString(),
+  };
+
+  const { data: updated, error } = await supabase
+    .from("lab_reports")
+    .update(update)
+    .eq("id", labReportId)
+    .select()
+    .single();
+  if (error) throw error;
+  return updated;
+}
+
+async function getPatientByIdForReport(patientId: string) {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase.from("patients").select("id, full_name, sex, date_of_birth").eq("id", patientId).single();
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+  return data;
+}
+
 
 export interface CreateLabReportInput {
   patientId: string;
@@ -433,6 +476,7 @@ export interface SetFieldResultInput {
   valueText?: string;
   valueNumeric?: number;
   unit?: string;
+  referenceRange?: string;
   sex?: Database["public"]["Tables"]["patients"]["Row"]["sex"];
   flag?: Database["public"]["Tables"]["result_field_values"]["Row"]["flag"];
 }
@@ -450,9 +494,11 @@ export async function setFieldResult(input: SetFieldResultInput) {
 
   const range = await getReferenceRangesForField(input.testId, input.templateFieldId, input.sex ?? null);
 
-  const referenceRangeDisplay = range
-    ? range.range_text ?? formatNumericRange(range.range_low, range.range_high, range.unit)
-    : null;
+  const referenceRangeDisplay = input.referenceRange?.trim()
+    ? input.referenceRange.trim()
+    : range
+      ? range.range_text ?? formatNumericRange(range.range_low, range.range_high, range.unit)
+      : null;
 
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
@@ -660,13 +706,9 @@ export async function publishReport(
       metadata: { resultReference: report.result_reference },
     });
 
-    dispatchReportNotification({
-      eventType: "patient_result_available",
-      labReportId,
-      recipientType: "patient",
-      recipientPatientId: report.patient_id,
-      accessCodePlaintext: plaintext,
-    }).catch((err) => console.error("[labReports] patient_result_available notification failed", labReportId, err));
+    // Patient delivery is dispatched by the publish server action only AFTER
+    // the final PDF has been generated and stored. This guarantees the email
+    // can contain the finished report rather than a premature availability notice.
   }
 
   return { report, accessCodePlaintext };
@@ -755,6 +797,7 @@ export async function transitionReportStatus(
   if (toStatus === "published") {
     update.published_by = actorId ?? null;
     update.published_at = now;
+    update.date_reported = now.slice(0, 10);
     // Result Reference is opaque/random and generated ONLY at publish time
     // (Phase 2B rules #2-3) — never before, never derived from lab_number.
     if (!current.result_reference) {
@@ -1078,7 +1121,7 @@ async function buildReportSnapshot(labReportId: string): Promise<Record<string, 
   if (tcError) throw tcError;
 
   return {
-    report,
+    report: reportForView,
     reportTests: reportTests ?? [],
     fieldValues: fieldValues ?? [],
     tableCells: tableCells ?? [],
@@ -1108,6 +1151,21 @@ export async function getReportDetail(labReportId: string) {
     .single();
   if (reportError) throw reportError;
 
+  // Draft/reviewed screens always reflect the latest patient record. Once a
+  // report is published or archived, its issued snapshot becomes immutable.
+  let reportForView = report;
+  if (report.status !== "published" && report.status !== "archived") {
+    const patient = await getPatientByIdForReport(report.patient_id);
+    if (patient) {
+      reportForView = {
+        ...report,
+        patient_name_snapshot: patient.full_name,
+        patient_sex_snapshot: patient.sex,
+        patient_dob_snapshot: patient.date_of_birth,
+      };
+    }
+  }
+
   const { data: reportTests, error: rtError } = await supabase
     .from("report_tests")
     .select("*, tests(id, name, template_id, test_templates(id, name, structure_type))")
@@ -1129,7 +1187,7 @@ export async function getReportDetail(labReportId: string) {
   if (tcError) throw tcError;
 
   return {
-    report,
+    report: reportForView,
     reportTests: reportTests ?? [],
     fieldValues: fieldValues ?? [],
     tableCells: tableCells ?? [],

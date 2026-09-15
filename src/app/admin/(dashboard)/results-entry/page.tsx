@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/salem/AdminShell";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getAdminNavItems } from "@/lib/auth/nav";
 import { listTestCategories, listActiveTests } from "@/lib/data/testCatalog";
-import { getPatientById } from "@/lib/data/patients";
+import { getPatientById, listPatientsForResultsEntry } from "@/lib/data/patients";
 import { NewVisitClient } from "./NewVisitClient";
 
 export const metadata: Metadata = {
@@ -40,10 +40,11 @@ export default async function ResultsEntryPage({
   const canRegisterPatients = can(staff, "patients.register");
   const canCreateVisit = can(staff, "reports.create_draft");
 
-  const [categories, tests, preselectedPatient] = await Promise.all([
+  const [categories, tests, preselectedPatient, patients] = await Promise.all([
     listTestCategories(),
     listActiveTests(),
     patientId ? getPatientById(patientId) : Promise.resolve(null),
+    listPatientsForResultsEntry(),
   ]);
 
   return (
@@ -60,6 +61,7 @@ export default async function ResultsEntryPage({
         categories={categories}
         tests={tests}
         preselectedPatient={preselectedPatient}
+        patients={patients}
         canRegisterPatients={canRegisterPatients}
         canCreateVisit={canCreateVisit}
       />
