@@ -1101,6 +1101,21 @@ async function buildReportSnapshot(labReportId: string): Promise<Record<string, 
     .single();
   if (reportError) throw reportError;
 
+  // Draft/reviewed reports should reflect the latest patient record. Once a
+  // report is published or archived, keep the issued patient snapshot intact.
+  let reportForView = report;
+  if (report.status !== "published" && report.status !== "archived") {
+    const patient = await getPatientByIdForReport(report.patient_id);
+    if (patient) {
+      reportForView = {
+        ...report,
+        patient_name_snapshot: patient.full_name,
+        patient_sex_snapshot: patient.sex,
+        patient_dob_snapshot: patient.date_of_birth,
+      };
+    }
+  }
+
   const { data: reportTests, error: testsError } = await supabase
     .from("report_tests")
     .select("*")
