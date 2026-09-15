@@ -1,17 +1,20 @@
 /**
  * Central site content — contact details, hours, and other business facts.
  *
- * This is the single place to update public business facts used as safe
- * fallbacks when CMS settings are unavailable.
+ * This is the single place to update these values. The physical address and
+ * opening hours have not yet been confirmed by the client, so they use a
+ * clean generic label rather than invented specifics — update `address` and
+ * `hours` here once those details are finalised. Do not invent a street
+ * address, phone number, or email that hasn't been supplied.
  */
 
 export const siteConfig = {
   name: "Salem Medical Laboratories",
   tagline: "Precision you can trust. Clarity you can understand. Peace you can feel.",
 
-  // Confirmed Salem laboratory address used as the safe public fallback.
+  // Final street address not yet confirmed — generic location label only.
   address: {
-    line1: "KM 46, Lagos Abeokuta Express, Iyana Cele, Ogun State",
+    line1: "Lagos / Ogun State",
     line2: "Nigeria",
   },
 
@@ -29,10 +32,10 @@ export const siteConfig = {
     results: "salemlaboratories@gmail.com",
   },
 
-  // Confirmed public opening hours.
+  // Opening hours not yet confirmed by the client.
   hours: {
-    weekdays: "Mon – Sat, 8am–6pm",
-    weekend: "Saturday, 8am–6pm",
+    weekdays: "Contact us for opening hours",
+    weekend: "Contact us for opening hours",
   },
 
   social: {

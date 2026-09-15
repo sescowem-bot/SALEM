@@ -44,11 +44,15 @@ export async function generateMetadata(): Promise<Metadata> {
       images: settings?.ogImageUrl ? [settings.ogImageUrl] : undefined,
     },
     twitter: { card: "summary_large_image", title: orgName, description },
+    // Use the verified Salem brand mark as the browser icon.
+    // Do not allow an old CMS favicon or legacy icon.svg to override the brand asset.
     icons: {
-      // Route through /icon so the browser always resolves the current CMS
-      // favicon instead of retaining an old static Next.js icon.
-      icon: [{ url: `/icon?v=${encodeURIComponent(settings?.logoPath || settings?.faviconPath || "brand")}` }],
-      apple: `/icon?v=${encodeURIComponent(settings?.logoPath || settings?.faviconPath || "brand")}`,
+      icon: [
+        { url: "/favicon.ico?v=salem-brand-1", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" },
+        { url: "/icon-32.png?v=salem-brand-1", type: "image/png", sizes: "32x32" },
+        { url: "/icon-48.png?v=salem-brand-1", type: "image/png", sizes: "48x48" },
+      ],
+      apple: "/apple-icon.png?v=salem-brand-1",
     },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
@@ -98,10 +102,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
-        />
-        <link
-          rel="icon"
-          href={`/icon?v=${encodeURIComponent(settings?.logoPath || settings?.faviconPath || "brand")}`}
         />
       </head>
       <body className="antialiased">

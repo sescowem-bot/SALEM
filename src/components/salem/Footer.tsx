@@ -27,14 +27,6 @@ const columns = [
       { label: "Health blog", href: "/blog" },
     ],
   },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacy policy", href: "/privacy-policy" },
-      { label: "Terms & conditions", href: "/terms-and-conditions" },
-      { label: "Legal information", href: "/legal" },
-    ],
-  },
 ];
 
 export function Footer({ settings, content }: { settings?: ResolvedSiteSettings; content?: FooterContent }) {
@@ -76,19 +68,19 @@ export function Footer({ settings, content }: { settings?: ResolvedSiteSettings;
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-white">Reach us</h3>
             <ul className="mt-4 space-y-3 text-sm">
-              <li className="flex min-w-0 items-start gap-2.5 break-words [overflow-wrap:anywhere]">
+              <li className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan" />
                 {addressLine1}, {addressLine2}
               </li>
-              <li className="flex min-w-0 items-center gap-2.5 break-words [overflow-wrap:anywhere]">
+              <li className="flex items-center gap-2.5">
                 <Phone className="h-4 w-4 shrink-0 text-cyan" />
                 <a href={phonePrimaryHref} className="hover:text-cyan">
                   {phonePrimary}
                 </a>
               </li>
-              <li className="flex min-w-0 items-center gap-2.5 break-words [overflow-wrap:anywhere]">
+              <li className="flex items-center gap-2.5">
                 <Mail className="h-4 w-4 shrink-0 text-cyan" />
-                <a href={`mailto:${emailPrimary}`} className="break-words [overflow-wrap:anywhere] hover:text-cyan">
+                <a href={`mailto:${emailPrimary}`} className="hover:text-cyan">
                   {emailPrimary}
                 </a>
               </li>

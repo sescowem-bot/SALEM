@@ -28,9 +28,6 @@ import "server-only";
  *   EMAIL_FROM_ADDRESS or RESEND_FROM_EMAIL
  *                       - any verified "from" address in your Resend account.
  *   EMAIL_FROM_NAME     - optional display name, defaults to Salem Medical Laboratories.
- *   EMAIL_FALLBACK_ADDRESS or RESEND_FALLBACK_FROM_EMAIL
- *                       - optional verified Resend sender used once if the
- *                         primary sender fails.
  *   NEXT_PUBLIC_SITE_URL - absolute base URL used to build links inside
  *                          emails (e.g. https://salemmedicallabs.com).
  *                          Unset = links fall back to a relative path,
@@ -69,11 +66,11 @@ export interface EmailProvider {
 class NullEmailProvider implements EmailProvider {
   readonly name = "none";
 
-  constructor(private readonly reason = "No email provider is configured.") {}
-
   async send(message: EmailMessage): Promise<EmailSendResult> {
-    console.warn(`[email] ${this.reason} Would have sent "${message.subject}" to ${message.to}.`);
-    return { ok: false, error: this.reason };
+    console.warn(
+      `[email] No provider configured (set RESEND_API_KEY + EMAIL_FROM_ADDRESS (or RESEND_FROM_EMAIL)) — would have sent "${message.subject}" to ${message.to}.`
+    );
+    return { ok: false, error: "No email provider is configured." };
   }
 }
 
@@ -83,11 +80,10 @@ class ResendEmailProvider implements EmailProvider {
   constructor(
     private readonly apiKey: string,
     private readonly fromAddress: string,
-    private readonly fromName: string,
-    private readonly fallbackFromAddress?: string
+    private readonly fromName: string
   ) {}
 
-  private async sendFrom(message: EmailMessage, fromAddress: string): Promise<EmailSendResult> {
+  async send(message: EmailMessage): Promise<EmailSendResult> {
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -96,7 +92,7 @@ class ResendEmailProvider implements EmailProvider {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: `${this.fromName} <${fromAddress}>`,
+          from: `${this.fromName} <${this.fromAddress}>`,
           to: message.toName ? `${message.toName} <${message.to}>` : message.to,
           subject: message.subject,
           html: message.html,
@@ -126,27 +122,6 @@ class ResendEmailProvider implements EmailProvider {
       return { ok: false, error: err instanceof Error ? err.message : "Unknown email send error." };
     }
   }
-
-  async send(message: EmailMessage): Promise<EmailSendResult> {
-    const primary = await this.sendFrom(message, this.fromAddress);
-    if (primary.ok) return primary;
-
-    // If the primary sender is rejected by Resend (for example because its
-    // domain/sender is temporarily unavailable), retry once with the optional
-    // fallback sender. This keeps patient notifications working without
-    // changing the recipient or message content.
-    if (this.fallbackFromAddress && this.fallbackFromAddress !== this.fromAddress) {
-      console.warn(`[email] Primary sender failed; retrying with fallback sender: ${primary.error ?? "unknown error"}`);
-      const fallback = await this.sendFrom(message, this.fallbackFromAddress);
-      if (fallback.ok) return fallback;
-      return {
-        ok: false,
-        error: `Primary sender failed: ${primary.error ?? "unknown error"}. Fallback sender also failed: ${fallback.error ?? "unknown error"}.`,
-      };
-    }
-
-    return primary;
-  }
 }
 
 /**
@@ -156,43 +131,16 @@ class ResendEmailProvider implements EmailProvider {
  * being the only way to pick it up in serverless.
  */
 export function getEmailProvider(): EmailProvider {
-  // Vercel injects server-side environment variables at runtime. Read them
-  // fresh for every send and trim accidental whitespace/quotes copied into
-  // the Vercel dashboard. No sender address is hard-coded here.
-  const cleanEnv = (value: string | undefined) => {
-    const v = value?.trim();
-    if (!v) return undefined;
-    // Be forgiving if a value was pasted with surrounding quotes.
-    return v.replace(/^(?:"|\')|(?:"|\')$/g, "").trim() || undefined;
-  };
+  const apiKey = process.env.RESEND_API_KEY;
+  // Set either EMAIL_FROM_ADDRESS or RESEND_FROM_EMAIL in Vercel. The value
+  // is intentionally not hard-coded, so any sender address verified in the
+  // connected Resend account can be used without changing application code.
+  const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.RESEND_FROM_EMAIL;
 
-  const apiKey = cleanEnv(process.env.RESEND_API_KEY);
-  const fromAddress = cleanEnv(
-    process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM_ADDRESS
-  );
-  const fallbackFromAddress = cleanEnv(
-    process.env.RESEND_FALLBACK_FROM_EMAIL || process.env.EMAIL_FALLBACK_ADDRESS
-  );
-  const fromName = cleanEnv(process.env.EMAIL_FROM_NAME) || "Salem Medical Laboratories";
-
-  if (!apiKey) {
-    return new NullEmailProvider(
-      "Resend is not configured: RESEND_API_KEY is missing from the server environment."
-    );
+  if (apiKey && fromAddress) {
+    return new ResendEmailProvider(apiKey, fromAddress, process.env.EMAIL_FROM_NAME || "Salem Medical Laboratories");
   }
-
-  if (!fromAddress) {
-    return new NullEmailProvider(
-      "Resend is not configured: RESEND_FROM_EMAIL (or EMAIL_FROM_ADDRESS) is missing from the server environment."
-    );
-  }
-
-  return new ResendEmailProvider(
-    apiKey,
-    fromAddress,
-    fromName,
-    fallbackFromAddress
-  );
+  return new NullEmailProvider();
 }
 
 /** Absolute base URL for links inside emails. See NEXT_PUBLIC_SITE_URL above. */

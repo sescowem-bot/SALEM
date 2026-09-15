@@ -43,12 +43,12 @@ export function ContactEditorForm({ content }: { content: ContactContent }) {
         </label>
         <label className="block text-sm font-medium text-navy-deep">
           Map embed URL
-          <input value={form.mapEmbedUrl ?? ""} onChange={(e) => set("mapEmbedUrl", e.target.value)} placeholder="Optional verified Google Maps embed URL" className={fieldClass} />
-          <span className="mt-1 block text-xs text-muted-foreground">Leave blank to let the public site build the map from the saved Salem address automatically. You do not need a Google Maps API key.</span>
+          <input value={form.mapEmbedUrl ?? ""} onChange={(e) => set("mapEmbedUrl", e.target.value)} placeholder="https://www.google.com/maps/embed?..." className={fieldClass} />
+          <span className="mt-1 block text-xs text-muted-foreground">Leave blank if no map embed is configured yet. Use the real, verified Salem Medical Laboratories location — never a placeholder.</span>
         </label>
         <label className="block text-sm font-medium text-navy-deep">
           &quot;Get directions&quot; link
-          <input value={form.mapDirectionsUrl ?? ""} onChange={(e) => set("mapDirectionsUrl", e.target.value)} placeholder="Optional verified Google Maps directions URL" className={fieldClass} />
+          <input value={form.mapDirectionsUrl ?? ""} onChange={(e) => set("mapDirectionsUrl", e.target.value)} placeholder="https://maps.google.com/?q=..." className={fieldClass} />
           <span className="mt-1 block text-xs text-muted-foreground">Optional. Shown as a &quot;Get directions&quot; button under the map — opens Google Maps directly.</span>
         </label>
         <label className="block text-sm font-medium text-navy-deep">

@@ -38,7 +38,6 @@ export default async function HomePage() {
       name: s.name,
       slug: s.slug,
       publicDescription: s.public_description,
-      categoryName: s.category?.name ?? "Laboratory service",
       heroImageUrl: s.hero_image_path ? getServiceImagePublicUrl(s.hero_image_path) : null,
     }));
 

@@ -62,7 +62,6 @@ export interface HomepageFeaturedService {
   slug: string;
   publicDescription: string | null;
   heroImageUrl: string | null;
-  categoryName: string;
 }
 
 export function Services({
@@ -101,23 +100,8 @@ export function Services({
                     // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
                     <img src={s.heroImageUrl} alt={s.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   ) : (
-                    <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-purple/80 text-white">
-                      <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full border border-white/10" />
-                      <div className="absolute -bottom-20 -left-10 h-48 w-48 rounded-full border border-cyan/20" />
-                      <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,white_1px,transparent_1px)] [background-size:18px_18px]" />
-                      <div className="relative flex h-full flex-col justify-between p-5">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/10 backdrop-blur">
-                            <FlaskConical className="h-5 w-5 text-cyan-soft" />
-                          </span>
-                          <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-cyan-soft">Salem Diagnostics</span>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-soft/80">{s.categoryName}</p>
-                          <p className="mt-1.5 max-w-[15rem] text-lg font-semibold leading-tight">{s.name}</p>
-                          <p className="mt-2 text-xs text-cyan-soft/75">Quality-controlled diagnostic service</p>
-                        </div>
-                      </div>
+                    <div className="grid h-full w-full place-items-center text-muted-foreground">
+                      <FlaskConical className="h-10 w-10" />
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 to-transparent" aria-hidden="true" />
