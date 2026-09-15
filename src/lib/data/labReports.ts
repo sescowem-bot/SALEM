@@ -282,9 +282,10 @@ export async function reorderReportTest(
 
 export interface CustomInvestigationFieldInput {
   label: string;
-  inputType: "numeric" | "text";
+  inputType: "numeric" | "text" | "select" | "positive_negative";
   unit?: string;
   referenceRange?: string;
+  options?: string[];
 }
 
 export interface CreateCustomInvestigationInput {
@@ -367,6 +368,7 @@ export async function createCustomInvestigation(input: CreateCustomInvestigation
         label: f.label.trim(),
         input_type: f.inputType,
         unit: f.unit?.trim() || null,
+        options: f.inputType === "select" ? (f.options ?? []).map((v) => v.trim()).filter(Boolean) : null,
         sort_order: i,
       }));
       const { data: insertedFields, error: fieldsError } = await supabase
@@ -1100,21 +1102,6 @@ async function buildReportSnapshot(labReportId: string): Promise<Record<string, 
     .eq("id", labReportId)
     .single();
   if (reportError) throw reportError;
-
-  // Draft/reviewed reports should reflect the latest patient record. Once a
-  // report is published or archived, keep the issued patient snapshot intact.
-  let reportForView = report;
-  if (report.status !== "published" && report.status !== "archived") {
-    const patient = await getPatientByIdForReport(report.patient_id);
-    if (patient) {
-      reportForView = {
-        ...report,
-        patient_name_snapshot: patient.full_name,
-        patient_sex_snapshot: patient.sex,
-        patient_dob_snapshot: patient.date_of_birth,
-      };
-    }
-  }
 
   const { data: reportTests, error: testsError } = await supabase
     .from("report_tests")

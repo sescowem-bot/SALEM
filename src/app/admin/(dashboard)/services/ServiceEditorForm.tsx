@@ -32,8 +32,8 @@ function Section({ number, title, description, children }: { number: number; tit
   );
 }
 
-type CustomField = { label: string; inputType: "numeric" | "text"; unit: string; referenceRange: string };
-const emptyCustomField = (): CustomField => ({ label: "", inputType: "text", unit: "", referenceRange: "" });
+type CustomField = { label: string; inputType: "numeric" | "text" | "select" | "positive_negative"; unit: string; referenceRange: string; options: string };
+const emptyCustomField = (): CustomField => ({ label: "", inputType: "text", unit: "", referenceRange: "", options: "" });
 
 /**
  * Inline "parameters/result fields" builder for a brand-new test/
@@ -82,35 +82,54 @@ function ResultStructureBuilder({
             Parameters — one row per result line (e.g. HB, WBC, PCV)
           </p>
           {fields.map((f, i) => (
-            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1.2fr_100px_90px_1fr_auto] sm:items-center">
+            <div key={i} className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-card p-3 sm:grid-cols-[1.2fr_150px_100px_1fr_1fr_auto] sm:items-end">
+              <label className="text-xs font-semibold text-navy-deep">Parameter
               <input
-                placeholder="Parameter name"
+                placeholder="e.g. Haemoglobin"
                 className={fieldClass}
                 value={f.label}
                 onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
               />
+              </label>
+              <label className="text-xs font-semibold text-navy-deep">Input type
               <select
                 className={fieldClass}
                 value={f.inputType}
                 onChange={(e) =>
-                  setFields((prev) => prev.map((x, j) => (j === i ? { ...x, inputType: e.target.value as "numeric" | "text" } : x)))
+                  setFields((prev) => prev.map((x, j) => (j === i ? { ...x, inputType: e.target.value as CustomField["inputType"] } : x)))
                 }
               >
                 <option value="text">Text</option>
                 <option value="numeric">Numeric</option>
+                <option value="positive_negative">Positive / Negative</option>
+                <option value="select">Select</option>
               </select>
+              </label>
+              <label className="text-xs font-semibold text-navy-deep">Unit
               <input
                 placeholder="Unit"
                 className={fieldClass}
                 value={f.unit}
                 onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)))}
               />
+              </label>
+              <label className="text-xs font-semibold text-navy-deep">Reference range
               <input
                 placeholder="Reference range"
                 className={fieldClass}
                 value={f.referenceRange}
                 onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, referenceRange: e.target.value } : x)))}
               />
+              </label>
+              <label className="text-xs font-semibold text-navy-deep">Select options
+                <input
+                  placeholder="A, B, AB, O"
+                  disabled={f.inputType !== "select"}
+                  className={fieldClass}
+                  value={f.options}
+                  onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, options: e.target.value } : x)))}
+                />
+              </label>
               <button
                 type="button"
                 onClick={() => setFields((prev) => prev.filter((_, j) => j !== i))}
@@ -251,7 +270,7 @@ export function ServiceEditorForm({
         <>
           <input type="hidden" name="templateMode" value={templateMode} />
           <input type="hidden" name="newTemplateStructureType" value={structureType} />
-          <input type="hidden" name="newTemplateFieldsJson" value={JSON.stringify(fields.filter((f) => f.label.trim()))} />
+          <input type="hidden" name="newTemplateFieldsJson" value={JSON.stringify(fields.filter((f) => f.label.trim()).map((f) => ({ ...f, options: f.inputType === "select" ? f.options.split(",").map((v) => v.trim()).filter(Boolean) : [] })))} />
           <input type="hidden" name="newTemplateColumnsJson" value={JSON.stringify(columns.map((c) => c.trim()).filter(Boolean))} />
           <input type="hidden" name="newTemplateRowsJson" value={JSON.stringify(rows.map((r) => r.trim()).filter(Boolean))} />
         </>

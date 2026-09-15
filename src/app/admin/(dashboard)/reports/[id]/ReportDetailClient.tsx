@@ -199,14 +199,14 @@ function FieldRow({
     <form
       action={action}
       onChangeCapture={() => markDirty(dirtyKey)}
-      className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[160px_1fr_100px_150px_150px_auto]"
+      className="grid min-w-[860px] grid-cols-[190px_1fr_110px_180px_130px_72px] items-center gap-2 px-3 py-2.5"
     >
       <input type="hidden" name="reportTestId" value={reportTestId} />
       <input type="hidden" name="testId" value={testId} />
       <input type="hidden" name="templateFieldId" value={field.id} />
       <input type="hidden" name="labReportId" value={labReportId} />
 
-      <label className="text-sm font-medium text-navy-deep sm:pb-2">{field.label}</label>
+      <label className="text-sm font-medium text-navy-deep">{field.label}</label>
 
       {field.input_type === "numeric" ? (
         <input
@@ -244,454 +244,11 @@ function FieldRow({
         className="w-full rounded-md border border-border bg-secondary px-2 py-1.5 text-xs text-navy-deep outline-none focus:border-cyan"
       />
 
-      {!disabled ? <MiniSubmit /> : <span />}
-
-      {/* Flag — result_field_values.flag already existed and setFieldResult already
-          accepted it, but nothing in this form ever sent it, so it was never
-          actually settable. Adding the control here (Advanced 7). */}
-      <label className="col-span-full mt-1 flex items-center gap-2 text-xs text-muted-foreground sm:col-span-1 sm:col-start-2">
-        Flag
-        <FlagSelect value={value?.flag ?? ""} disabled={disabled} />
-      </label>
+      <FlagSelect value={value?.flag ?? ""} disabled={disabled} />
+      {!disabled ? <MiniSubmit /> : <span className="text-xs text-muted-foreground">—</span>}
 
       {state.error ? <p className="col-span-full text-xs text-destructive">{state.error}</p> : null}
     </form>
-  );
-}
-
-function TableCell({
-  reportTestId,
-  labReportId,
-  rowId,
-  columnId,
-  value,
-  disabled,
-}: {
-  reportTestId: string;
-  labReportId: string;
-  rowId: string;
-  columnId: string;
-  value?: string | null;
-  disabled: boolean;
-}) {
-  const [state, action] = useActionState(saveTableCellAction, initial);
-  const { markDirty, markClean } = useDirtyFields();
-  const dirtyKey = `cell-${reportTestId}-${rowId}-${columnId}`;
-
-  useEffect(() => {
-    if (state.ok) markClean(dirtyKey);
-  }, [state.ok, markClean, dirtyKey]);
-
-  return (
-    <form action={action} onChangeCapture={() => markDirty(dirtyKey)} className="flex items-center gap-1">
-      <input type="hidden" name="reportTestId" value={reportTestId} />
-      <input type="hidden" name="templateTableRowId" value={rowId} />
-      <input type="hidden" name="templateTableColumnId" value={columnId} />
-      <input type="hidden" name="labReportId" value={labReportId} />
-      <input type="text" name="value" defaultValue={value ?? ""} disabled={disabled} className={`${fieldClass} mt-0 w-20`} />
-      {!disabled ? <MiniSubmit label="" /> : null}
-    </form>
-  );
-}
-
-function PdfUploadButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent disabled:opacity-50"
-    >
-      <UploadCloud className="h-3.5 w-3.5" /> {pending ? "Uploading…" : "Upload PDF"}
-    </button>
-  );
-}
-
-function PdfUpload({ reportTestId, labReportId }: { reportTestId: string; labReportId: string }) {
-  const [state, action] = useActionState(uploadPdfAction, initial);
-
-  return (
-    <form action={action} className="mt-3 flex flex-wrap items-center gap-2">
-      <input type="hidden" name="reportTestId" value={reportTestId} />
-      <input type="hidden" name="labReportId" value={labReportId} />
-      <input type="file" name="file" accept="application/pdf" required className="text-xs" />
-      <PdfUploadButton />
-      {state.error ? <p className="w-full text-xs text-destructive">{state.error}</p> : null}
-      {state.ok ? <p className="w-full text-xs text-navy">Uploaded.</p> : null}
-    </form>
-  );
-}
-
-function WorkflowSubmit({
-  label,
-  icon: Icon,
-  variant,
-  disabled,
-}: {
-  label: string;
-  icon: typeof Send;
-  variant: "primary" | "secondary";
-  disabled?: boolean;
-}) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending || disabled}
-      className={
-        variant === "primary"
-          ? "inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.02] disabled:opacity-60"
-          : "inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent disabled:opacity-60"
-      }
-    >
-      <Icon className="h-4 w-4 shrink-0" /> {pending ? "…" : label}
-    </button>
-  );
-}
-
-/**
- * Shared by the initial Publish success state and the Reset-access-code
- * control — same "shown once, copy it now" moment either way, since the
- * plaintext genuinely will not be retrievable again after this render.
- */
-function SendAccessCodeSubmit() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[0.65rem] font-semibold text-navy hover:border-cyan disabled:opacity-60"
-    >
-      <Mail className="h-3 w-3" /> {pending ? "Sending…" : "Email now"}
-    </button>
-  );
-}
-
-function SendAccessCodeEmailButton({ labReportId, accessCode }: { labReportId: string; accessCode: string }) {
-  const [state, action] = useActionState(sendAccessCodeAction, initial);
-
-  if (state.ok) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-[0.65rem] font-semibold text-emerald-700">
-        <Mail className="h-3 w-3" /> Sent
-      </span>
-    );
-  }
-
-  return (
-    <form action={action}>
-      <input type="hidden" name="labReportId" value={labReportId} />
-      <input type="hidden" name="accessCode" value={accessCode} />
-      <SendAccessCodeSubmit />
-      {state.error ? <p className="mt-1 text-[0.6rem] text-destructive">{state.error}</p> : null}
-    </form>
-  );
-}
-
-function AccessCodeReveal({
-  accessCode,
-  labReference,
-  labReportId,
-  patientPhone,
-}: {
-  accessCode: string;
-  labReference?: string;
-  labReportId: string;
-  patientPhone?: string | null;
-}) {
-  const [copiedField, setCopiedField] = useState<"reference" | "code" | null>(null);
-
-  const copy = (value: string, field: "reference" | "code") => {
-    navigator.clipboard?.writeText(value).then(() => {
-      setCopiedField(field);
-      setTimeout(() => setCopiedField(null), 1500);
-    });
-  };
-
-  const whatsAppHref = patientPhone
-    ? `https://wa.me/${patientPhone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(
-        `Your Salem Medical Laboratories result is ready.${labReference ? `\nLab reference: ${labReference}` : ""}\nAccess code: ${accessCode}\nView it at ${
-          typeof window !== "undefined" ? window.location.origin : ""
-        }/results`
-      )}`
-    : null;
-
-  return (
-    <div className="mt-2 w-full max-w-sm rounded-lg border border-cyan/40 bg-accent p-3 text-xs text-navy-deep">
-      <p className="mb-2 flex items-center gap-1.5 font-semibold">
-        <ShieldCheck className="h-4 w-4 shrink-0" /> Shown once — copy both now and deliver to the patient securely
-      </p>
-      {labReference ? (
-        <div className="mb-2 flex items-center justify-between gap-2 rounded border border-cyan/30 bg-card px-2 py-1.5">
-          <div>
-            <p className="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Lab reference</p>
-            <span className="font-mono font-semibold">{labReference}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => copy(labReference, "reference")}
-            className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[0.65rem] font-semibold text-navy hover:border-cyan"
-          >
-            <Copy className="h-3 w-3" /> {copiedField === "reference" ? "Copied" : "Copy"}
-          </button>
-        </div>
-      ) : null}
-      <div className="mb-2 flex items-center justify-between gap-2 rounded border border-cyan/30 bg-card px-2 py-1.5">
-        <div>
-          <p className="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Access code</p>
-          <span className="font-mono font-semibold">{accessCode}</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => copy(accessCode, "code")}
-          className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[0.65rem] font-semibold text-navy hover:border-cyan"
-        >
-          <Copy className="h-3 w-3" /> {copiedField === "code" ? "Copied" : "Copy"}
-        </button>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <SendAccessCodeEmailButton labReportId={labReportId} accessCode={accessCode} />
-        {whatsAppHref ? (
-          <a
-            href={whatsAppHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-2 py-1 text-[0.65rem] font-semibold text-emerald-700 hover:bg-emerald-50"
-          >
-            <MessageCircle className="h-3 w-3" /> Share via WhatsApp
-          </a>
-        ) : (
-          <span className="text-[0.6rem] text-muted-foreground">No phone on file for WhatsApp</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function WorkflowButton({
-  action,
-  label,
-  icon: Icon,
-  labReportId,
-  variant = "primary",
-  labReference,
-  patientPhone,
-}: {
-  action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
-  label: string;
-  icon: typeof Send;
-  labReportId: string;
-  variant?: "primary" | "secondary";
-  labReference?: string;
-  patientPhone?: string | null;
-}) {
-  const [state, formAction] = useActionState(action, initial);
-
-  return (
-    <form action={formAction}>
-      <input type="hidden" name="labReportId" value={labReportId} />
-      <WorkflowSubmit label={label} icon={Icon} variant={variant} />
-      {state.error ? <p className="mt-1.5 text-xs text-destructive">{state.error}</p> : null}
-      {state.accessCode ? (
-        <AccessCodeReveal
-          accessCode={state.accessCode}
-          labReference={labReference}
-          labReportId={labReportId}
-          patientPhone={patientPhone}
-        />
-      ) : null}
-    </form>
-  );
-}
-
-/**
- * Lets an admin/pathologist reissue a published report's access code when
- * the patient (or the admin themselves) never received or lost the
- * original — see resetPatientAccessCode in lib/data/labReports.ts for why
- * this is a reissue, not a lookup: the plaintext was never stored anywhere
- * after the one-time reveal at publish, by design.
- */
-function ResetAccessCodeControl({
-  labReportId,
-  labReference,
-  patientPhone,
-}: {
-  labReportId: string;
-  labReference?: string;
-  patientPhone?: string | null;
-}) {
-  const [state, action] = useActionState(resetAccessCodeAction, initial);
-  const [confirming, setConfirming] = useState(false);
-
-  if (state.accessCode) {
-    return (
-      <AccessCodeReveal
-        accessCode={state.accessCode}
-        labReference={labReference}
-        labReportId={labReportId}
-        patientPhone={patientPhone}
-      />
-    );
-  }
-
-  if (!confirming) {
-    return (
-      <button
-        type="button"
-        onClick={() => setConfirming(true)}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
-      >
-        <KeyRound className="h-3.5 w-3.5" /> Reset access code
-      </button>
-    );
-  }
-
-  return (
-    <form action={action} className="flex shrink-0 flex-col items-end gap-1.5">
-      <input type="hidden" name="labReportId" value={labReportId} />
-      <p className="max-w-[200px] text-right text-[0.65rem] text-muted-foreground">
-        The current code stops working immediately. You&apos;ll need to redeliver the new one.
-      </p>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setConfirming(false)}
-          className="text-[0.65rem] font-semibold text-muted-foreground hover:text-navy"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="inline-flex items-center gap-1.5 rounded-full bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
-        >
-          <KeyRound className="h-3.5 w-3.5" /> Confirm reset
-        </button>
-      </div>
-      {state.error ? <p className="text-[0.65rem] text-destructive">{state.error}</p> : null}
-    </form>
-  );
-}
-
-function ApproverSelect({
-  labReportId,
-  approvers,
-}: {
-  labReportId: string;
-  approvers: ApproverOption[];
-}) {
-  const [state, action] = useActionState(submitForApprovalAction, initial);
-  const [approverId, setApproverId] = useState("");
-  const { dirtyCount } = useDirtyFields();
-
-  if (approvers.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No active approver accounts are available right now. Ask a super admin to enable one before submitting.
-      </p>
-    );
-  }
-
-  const selectedApprover = approvers.find((a) => a.id === approverId);
-
-  if (state.ok && selectedApprover) {
-    return (
-      <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
-        Report saved and submitted to {selectedApprover.full_name} for approval.
-      </p>
-    );
-  }
-
-  return (
-    <form action={action} className="flex flex-col items-start gap-2">
-      <input type="hidden" name="labReportId" value={labReportId} />
-      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Select authorized approver
-      </label>
-      <select
-        name="approverId"
-        required
-        value={approverId}
-        onChange={(e) => setApproverId(e.target.value)}
-        className="w-full max-w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-navy-deep outline-none focus:border-cyan sm:w-64"
-      >
-        <option value="" disabled>
-          Choose an approver
-        </option>
-        {approvers.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.full_name} — {a.designation ?? a.role.replace("_", " ")}
-          </option>
-        ))}
-      </select>
-      {dirtyCount > 0 ? (
-        <p className="max-w-xs text-xs font-medium text-amber-700">
-          You have {dirtyCount} unsaved result field{dirtyCount === 1 ? "" : "s"} above. Save {dirtyCount === 1 ? "it" : "them"}{" "}
-          before submitting for approval, so the approver reviews your latest entries.
-        </p>
-      ) : null}
-      <WorkflowSubmit label="Submit for approval" icon={Send} variant="primary" disabled={dirtyCount > 0} />
-      {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
-    </form>
-  );
-}
-
-function ApprovalDecisionButtons({ labReportId, requestId }: { labReportId: string; requestId: string }) {
-  const [approveState, approveFormAction] = useActionState(approveApprovalRequestAction, initial);
-  const [rejectState, rejectFormAction] = useActionState(rejectApprovalRequestAction, initial);
-  const [returnState, returnFormAction] = useActionState(returnApprovalRequestAction, initial);
-  const [rejectComment, setRejectComment] = useState("");
-  const [returnComment, setReturnComment] = useState("");
-
-  return (
-    <div className="flex flex-wrap items-start gap-4">
-      <form action={approveFormAction}>
-        <input type="hidden" name="requestId" value={requestId} />
-        <input type="hidden" name="labReportId" value={labReportId} />
-        <WorkflowSubmit label="Approve" icon={CheckCircle2} variant="primary" />
-        {approveState.error ? <p className="mt-1.5 text-xs text-destructive">{approveState.error}</p> : null}
-      </form>
-
-      <form action={rejectFormAction} className="flex flex-col gap-2">
-        <input type="hidden" name="requestId" value={requestId} />
-        <input type="hidden" name="labReportId" value={labReportId} />
-        <textarea
-          name="comment"
-          value={rejectComment}
-          onChange={(e) => setRejectComment(e.target.value)}
-          placeholder="Reason for rejecting (optional)"
-          rows={1}
-          className="w-full max-w-full rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan sm:w-56"
-        />
-        <button
-          type="submit"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/40 px-5 py-2.5 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
-        >
-          <XCircle className="h-4 w-4 shrink-0" /> Reject
-        </button>
-        {rejectState.error ? <p className="text-xs text-destructive">{rejectState.error}</p> : null}
-      </form>
-
-      <form action={returnFormAction} className="flex flex-col gap-2">
-        <input type="hidden" name="requestId" value={requestId} />
-        <input type="hidden" name="labReportId" value={labReportId} />
-        <textarea
-          name="comment"
-          value={returnComment}
-          onChange={(e) => setReturnComment(e.target.value)}
-          placeholder="Reason for returning (optional)"
-          rows={1}
-          className="w-full max-w-full rounded-lg border border-border bg-secondary px-3 py-2 text-xs outline-none focus:border-cyan sm:w-56"
-        />
-        <button
-          type="submit"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-navy transition-colors hover:border-cyan hover:bg-accent"
-        >
-          <RotateCcw className="h-4 w-4 shrink-0" /> Return for correction
-        </button>
-        {returnState.error ? <p className="text-xs text-destructive">{returnState.error}</p> : null}
-      </form>
-    </div>
   );
 }
 
@@ -807,9 +364,9 @@ function AddExistingInvestigationForm({
   );
 }
 
-type CustomField = { label: string; inputType: "numeric" | "text"; unit: string; referenceRange: string };
+type CustomField = { label: string; inputType: "numeric" | "text" | "select" | "positive_negative"; unit: string; referenceRange: string; options: string };
 
-const emptyCustomField = (): CustomField => ({ label: "", inputType: "text", unit: "", referenceRange: "" });
+const emptyCustomField = (): CustomField => ({ label: "", inputType: "text", unit: "", referenceRange: "", options: "" });
 
 function CustomInvestigationForm({ labReportId, testCategories }: { labReportId: string; testCategories: TestCategory[] }) {
   const [state, action] = useActionState(addCustomInvestigationAction, initial);
@@ -849,7 +406,7 @@ function CustomInvestigationForm({ labReportId, testCategories }: { labReportId:
     <form action={action} className="space-y-4 rounded-xl border border-border bg-secondary/40 p-4">
       <input type="hidden" name="labReportId" value={labReportId} />
       <input type="hidden" name="structureType" value={structureType} />
-      <input type="hidden" name="fieldsJson" value={JSON.stringify(fields.filter((f) => f.label.trim()))} />
+      <input type="hidden" name="fieldsJson" value={JSON.stringify(fields.filter((f) => f.label.trim()).map((f) => ({ ...f, options: f.inputType === "select" ? f.options.split(",").map((v) => v.trim()).filter(Boolean) : [] })))} />
       <input type="hidden" name="columnsJson" value={JSON.stringify(columns.map((c) => c.trim()).filter(Boolean))} />
       <input type="hidden" name="rowsJson" value={JSON.stringify(rows.map((r) => r.trim()).filter(Boolean))} />
 
@@ -907,31 +464,40 @@ function CustomInvestigationForm({ labReportId, testCategories }: { labReportId:
             Parameters — one row per result line (e.g. HB, WBC, PCV)
           </p>
           {fields.map((f, i) => (
-            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1.2fr_100px_90px_1fr_auto] sm:items-center">
+            <div key={i} className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-card p-3 sm:grid-cols-[1.2fr_150px_100px_1fr_1fr_auto] sm:items-end">
+              <label className="text-xs font-semibold text-navy-deep">Parameter
               <input
-                placeholder="Parameter name"
+                placeholder="e.g. Haemoglobin"
                 className={fieldClass}
                 value={f.label}
                 onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
               />
+              </label>
+              <label className="text-xs font-semibold text-navy-deep">Input type
               <select
                 className={fieldClass}
                 value={f.inputType}
                 onChange={(e) =>
                   setFields((prev) =>
-                    prev.map((x, j) => (j === i ? { ...x, inputType: e.target.value as "numeric" | "text" } : x))
+                    prev.map((x, j) => (j === i ? { ...x, inputType: e.target.value as CustomField["inputType"] } : x))
                   )
                 }
               >
                 <option value="text">Text</option>
                 <option value="numeric">Numeric</option>
+                <option value="positive_negative">Positive / Negative</option>
+                <option value="select">Select</option>
               </select>
+              </label>
+              <label className="text-xs font-semibold text-navy-deep">Unit
               <input
                 placeholder="Unit"
                 className={fieldClass}
                 value={f.unit}
                 onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)))}
               />
+              </label>
+              <label className="text-xs font-semibold text-navy-deep">Reference range
               <input
                 placeholder="Reference range"
                 className={fieldClass}
@@ -940,6 +506,16 @@ function CustomInvestigationForm({ labReportId, testCategories }: { labReportId:
                   setFields((prev) => prev.map((x, j) => (j === i ? { ...x, referenceRange: e.target.value } : x)))
                 }
               />
+              </label>
+              <label className="text-xs font-semibold text-navy-deep">Select options
+                <input
+                  placeholder="A, B, AB, O"
+                  disabled={f.inputType !== "select"}
+                  className={fieldClass}
+                  value={f.options}
+                  onChange={(e) => setFields((prev) => prev.map((x, j) => (j === i ? { ...x, options: e.target.value } : x)))}
+                />
+              </label>
               <button
                 type="button"
                 onClick={() => setFields((prev) => prev.filter((_, j) => j !== i))}
@@ -1268,18 +844,30 @@ export function ReportDetailClient({
           </div>
 
           {t.structure.template.structure_type === "field_based" ? (
-            <div className="mt-4 space-y-3">
-              {t.structure.fields.map((field) => (
-                <FieldRow
-                  key={field.id}
-                  reportTestId={t.reportTestId}
-                  testId={t.testId}
-                  labReportId={report.id}
-                  field={field}
-                  value={t.fieldValues.find((v) => v.templateFieldId === field.id)}
-                  disabled={!canEdit}
-                />
-              ))}
+            <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card">
+              <div className="min-w-[860px]">
+                <div className="grid grid-cols-[190px_1fr_110px_180px_130px_72px] gap-2 border-b border-border bg-secondary/70 px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span>Parameter</span>
+                  <span>Result</span>
+                  <span>Unit</span>
+                  <span>Reference range</span>
+                  <span>Flag</span>
+                  <span className="text-right">Save</span>
+                </div>
+                <div className="divide-y divide-border">
+                  {t.structure.fields.map((field) => (
+                    <FieldRow
+                      key={field.id}
+                      reportTestId={t.reportTestId}
+                      testId={t.testId}
+                      labReportId={report.id}
+                      field={field}
+                      value={t.fieldValues.find((v) => v.templateFieldId === field.id)}
+                      disabled={!canEdit}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="mt-4 overflow-x-auto">

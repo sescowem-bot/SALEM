@@ -337,8 +337,9 @@ export async function createService(
 
 export interface NewTemplateFieldInput {
   label: string;
-  inputType: "numeric" | "text";
+  inputType: "numeric" | "text" | "select" | "positive_negative";
   unit?: string;
+  options?: string[];
 }
 
 export interface NewTemplateStructureInput {
@@ -400,6 +401,7 @@ export async function createTemplateStructure(
         label: f.label.trim(),
         input_type: f.inputType,
         unit: f.unit?.trim() || null,
+        options: f.inputType === "select" ? (f.options ?? []).map((v) => v.trim()).filter(Boolean) : null,
         sort_order: i,
       }));
       const { error: fieldsError } = await supabase.from("template_fields").insert(fieldRows);

@@ -267,7 +267,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
           </View>
         ) : null}
 
-        {!org.letterheadDataUri ? <View style={styles.signatureBlock} wrap={false}>
+        <View style={styles.signatureBlock} wrap={false}>
           <View style={styles.signatureColumn}>
             {approval && approval.isAuthorizedSignatory ? (
               <>
@@ -298,7 +298,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
               <Text style={styles.pendingNotice}>Pending authorized approval — not yet signed.</Text>
             )}
           </View>
-        </View> : null}
+        </View>
 
         </View>
         <View style={styles.footer} fixed>

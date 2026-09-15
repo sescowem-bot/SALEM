@@ -217,9 +217,10 @@ export const reorderReportTestSchema = z.object({
 
 const customInvestigationFieldSchema = z.object({
   label: z.string().trim().min(1, "Every parameter needs a name").max(200),
-  inputType: z.enum(["numeric", "text"]),
+  inputType: z.enum(["numeric", "text", "select", "positive_negative"]),
   unit: z.string().trim().max(50).optional().or(z.literal("")),
   referenceRange: z.string().trim().max(200).optional().or(z.literal("")),
+  options: z.array(z.string().trim().min(1).max(100)).max(30).optional().default([]),
 });
 
 /**
