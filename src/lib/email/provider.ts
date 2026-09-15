@@ -28,6 +28,9 @@ import "server-only";
  *   EMAIL_FROM_ADDRESS or RESEND_FROM_EMAIL
  *                       - any verified "from" address in your Resend account.
  *   EMAIL_FROM_NAME     - optional display name, defaults to Salem Medical Laboratories.
+ *   EMAIL_FALLBACK_ADDRESS or RESEND_FALLBACK_FROM_EMAIL
+ *                       - optional verified Resend sender used once if the
+ *                         primary sender fails.
  *   NEXT_PUBLIC_SITE_URL - absolute base URL used to build links inside
  *                          emails (e.g. https://salemmedicallabs.com).
  *                          Unset = links fall back to a relative path,
@@ -80,10 +83,11 @@ class ResendEmailProvider implements EmailProvider {
   constructor(
     private readonly apiKey: string,
     private readonly fromAddress: string,
-    private readonly fromName: string
+    private readonly fromName: string,
+    private readonly fallbackFromAddress?: string
   ) {}
 
-  async send(message: EmailMessage): Promise<EmailSendResult> {
+  private async sendFrom(message: EmailMessage, fromAddress: string): Promise<EmailSendResult> {
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -92,7 +96,7 @@ class ResendEmailProvider implements EmailProvider {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: `${this.fromName} <${this.fromAddress}>`,
+          from: `${this.fromName} <${fromAddress}>`,
           to: message.toName ? `${message.toName} <${message.to}>` : message.to,
           subject: message.subject,
           html: message.html,
@@ -122,6 +126,27 @@ class ResendEmailProvider implements EmailProvider {
       return { ok: false, error: err instanceof Error ? err.message : "Unknown email send error." };
     }
   }
+
+  async send(message: EmailMessage): Promise<EmailSendResult> {
+    const primary = await this.sendFrom(message, this.fromAddress);
+    if (primary.ok) return primary;
+
+    // If the primary sender is rejected by Resend (for example because its
+    // domain/sender is temporarily unavailable), retry once with the optional
+    // fallback sender. This keeps patient notifications working without
+    // changing the recipient or message content.
+    if (this.fallbackFromAddress && this.fallbackFromAddress !== this.fromAddress) {
+      console.warn(`[email] Primary sender failed; retrying with fallback sender: ${primary.error ?? "unknown error"}`);
+      const fallback = await this.sendFrom(message, this.fallbackFromAddress);
+      if (fallback.ok) return fallback;
+      return {
+        ok: false,
+        error: `Primary sender failed: ${primary.error ?? "unknown error"}. Fallback sender also failed: ${fallback.error ?? "unknown error"}.`,
+      };
+    }
+
+    return primary;
+  }
 }
 
 /**
@@ -136,9 +161,16 @@ export function getEmailProvider(): EmailProvider {
   // is intentionally not hard-coded, so any sender address verified in the
   // connected Resend account can be used without changing application code.
   const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.RESEND_FROM_EMAIL;
+  const fallbackFromAddress =
+    process.env.EMAIL_FALLBACK_ADDRESS || process.env.RESEND_FALLBACK_FROM_EMAIL;
 
   if (apiKey && fromAddress) {
-    return new ResendEmailProvider(apiKey, fromAddress, process.env.EMAIL_FROM_NAME || "Salem Medical Laboratories");
+    return new ResendEmailProvider(
+      apiKey,
+      fromAddress,
+      process.env.EMAIL_FROM_NAME || "Salem Medical Laboratories",
+      fallbackFromAddress
+    );
   }
   return new NullEmailProvider();
 }

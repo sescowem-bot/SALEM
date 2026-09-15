@@ -45,13 +45,10 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: { card: "summary_large_image", title: orgName, description },
     icons: {
-      // Prefer the uploaded favicon; fall back to the uploaded brand logo so the browser tab never uses the retired built-in mark.
-      icon: settings?.faviconUrl || settings?.logoUrl
-        ? [{ url: `${settings.faviconUrl || settings.logoUrl}${(settings.faviconUrl || settings.logoUrl || "").includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || settings.logoPath || "brand")}` }]
-        : undefined,
-      apple: settings?.faviconUrl || settings?.logoUrl
-        ? `${settings.faviconUrl || settings.logoUrl}${(settings.faviconUrl || settings.logoUrl || "").includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || settings.logoPath || "brand")}`
-        : undefined,
+      // Route through /icon so the browser always resolves the current CMS
+      // favicon instead of retaining an old static Next.js icon.
+      icon: [{ url: `/icon?v=${encodeURIComponent(settings?.faviconPath || settings?.logoPath || "brand")}` }],
+      apple: `/icon?v=${encodeURIComponent(settings?.faviconPath || settings?.logoPath || "brand")}`,
     },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
@@ -102,12 +99,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
         />
-        {settings?.faviconUrl || settings?.logoUrl ? (
-          <link
-            rel="icon"
-            href={`${settings.faviconUrl || settings.logoUrl}${(settings.faviconUrl || settings.logoUrl || "").includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || settings.logoPath || "brand")}`}
-          />
-        ) : null}
+        <link
+          rel="icon"
+          href={`/icon?v=${encodeURIComponent(settings?.faviconPath || settings?.logoPath || "brand")}`}
+        />
       </head>
       <body className="antialiased">
         {seo.googleAnalyticsId ? (
