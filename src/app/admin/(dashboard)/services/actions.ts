@@ -92,7 +92,6 @@ function readForm(formData: FormData) {
     newTemplateFields: parseJsonArray(formData.get("newTemplateFieldsJson")),
     newTemplateColumns: parseJsonArray(formData.get("newTemplateColumnsJson")),
     newTemplateRows: parseJsonArray(formData.get("newTemplateRowsJson")),
-    newTemplateNarrativeSections: parseJsonArray(formData.get("newTemplateNarrativeSectionsJson")),
     slug: formData.get("slug"),
     publicDescription: formData.get("publicDescription") || "",
     fullDescription: formData.get("fullDescription") || "",
@@ -138,7 +137,6 @@ export async function createServiceAction(_prev: ActionState, formData: FormData
               fields: parsed.data.newTemplateFields,
               columns: parsed.data.newTemplateColumns,
               rows: parsed.data.newTemplateRows,
-              narrativeSections: parsed.data.newTemplateNarrativeSections,
             },
             staff.role,
             staff.userId

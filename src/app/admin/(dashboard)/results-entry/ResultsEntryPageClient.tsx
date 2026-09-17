@@ -210,7 +210,7 @@ function ManualEntryForm() {
         </div>
         <div className="mt-5 flex items-center gap-3 rounded-xl border border-dashed border-border bg-secondary p-4 text-sm text-muted-foreground">
           <PenTool className="h-4 w-4 shrink-0" />
-          Final approval signature is applied from the authorized signatory profile when the report is approved. Manage the signatory and signature image in Settings → Signatories; this entry screen does not store a separate signature.
+          Digital signature capture will be added here when the results system is connected.
         </div>
       </section>
 
@@ -224,7 +224,7 @@ function ManualEntryForm() {
           <Save className="h-4 w-4 shrink-0" /> Save &amp; generate report
         </button>
         <p className="text-xs text-muted-foreground">
-          Use the report workflow to save structured results, review them, apply the authorized signatory, and publish the final patient document.
+          This will generate an A4 Salem-letterhead PDF once wired up — not active yet.
         </p>
       </div>
     </form>

@@ -1,7 +1,5 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
-import * as React from "react";
-import { Document, Page, Image as PdfImage, renderToBuffer } from "@react-pdf/renderer";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
 import type { Database } from "@/lib/supabase/database.types";
 import { logAudit } from "./audit";
@@ -9,18 +7,6 @@ import { decodeCloudinaryAsset, destroyCloudinaryAsset, encodeCloudinaryAsset, i
 
 const BUCKET = "lab-report-pdfs";
 const SIGNED_URL_TTL_SECONDS = 300; // 5 minutes — short-lived per Phase 4 §11
-
-function looksLikePdf(bytes: Buffer): boolean {
-  return bytes.length >= 5 && bytes.subarray(0, 5).toString("ascii") === "%PDF-";
-}
-
-function looksLikePng(bytes: Buffer): boolean {
-  return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-}
-
-function looksLikeJpeg(bytes: Buffer): boolean {
-  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-}
 
 /**
  * Uploads a report PDF to the PRIVATE lab-report-pdfs bucket. The bucket has
@@ -79,97 +65,6 @@ export async function uploadReportPdf(input: {
  * number always gets its own row and its own path here, never an overwrite
  * of a prior version's file.
  */
-export async function uploadUploadedFinalReport(input: {
-  labReportId: string;
-  file: File;
-  actorRole: StaffRole;
-  actorId?: string;
-}): Promise<string> {
-  if (!hasPermission(input.actorRole, "reports.review")) {
-    throw new Error(`Forbidden: role "${input.actorRole}" cannot upload an official final report.`);
-  }
-  if (!["application/pdf", "image/png", "image/jpeg"].includes(input.file.type)) {
-    throw new Error("Upload a PDF, PNG, or JPEG signed report.");
-  }
-  if (input.file.size > 15 * 1024 * 1024) {
-    throw new Error("The uploaded report must be 15MB or smaller.");
-  }
-
-  if (input.file instanceof File && input.file.type === "application/pdf") {
-    const bytes = Buffer.from(await input.file.arrayBuffer());
-    if (!looksLikePdf(bytes)) throw new Error("The selected PDF does not contain a valid PDF header.");
-  }
-
-  const supabase = getServiceRoleClient();
-  const { data: report } = await supabase
-    .from("lab_reports")
-    .select("status, current_version_number")
-    .eq("id", input.labReportId)
-    .single();
-  if (!report) throw new Error("Report not found.");
-  if (report.status === "archived") throw new Error("Archived reports cannot receive a new official document.");
-
-  const bytes = Buffer.from(await input.file.arrayBuffer());
-  if (input.file.type === "application/pdf" && !looksLikePdf(bytes)) {
-    throw new Error("The selected PDF does not contain a valid PDF header.");
-  }
-  if (input.file.type === "image/png" && !looksLikePng(bytes)) {
-    throw new Error("The selected PNG file is not a valid PNG image.");
-  }
-  if (input.file.type === "image/jpeg" && !looksLikeJpeg(bytes)) {
-    throw new Error("The selected JPEG file is not a valid JPEG image.");
-  }
-
-  let pdfBytes = bytes;
-  if (input.file.type !== "application/pdf") {
-    const dataUri = `data:${input.file.type};base64,${bytes.toString("base64")}`;
-    pdfBytes = await renderToBuffer(
-      React.createElement(
-        Document,
-        { title: "Salem Laboratory Report" },
-        React.createElement(
-          Page,
-          { size: "A4", style: { padding: 0, backgroundColor: "#ffffff" } },
-          React.createElement(PdfImage, { src: dataUri, style: { width: "100%", height: "100%", objectFit: "contain" } })
-        )
-      )
-    );
-  }
-
-  const path = `${input.labReportId}/uploaded-final/v${report.current_version_number}-${Date.now()}.pdf`;
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, pdfBytes, {
-    contentType: "application/pdf",
-    upsert: false,
-  });
-  if (uploadError) throw uploadError;
-
-  const { error: documentError } = await supabase
-    .from("report_final_documents")
-    .upsert(
-      {
-        lab_report_id: input.labReportId,
-        version_number: report.current_version_number,
-        storage_path: path,
-        generated_by: input.actorId ?? null,
-        approval_request_id: null,
-        signatory_id: null,
-      },
-      { onConflict: "lab_report_id,version_number" }
-    );
-  if (documentError) throw documentError;
-
-  await logAudit({
-    action: "RESULT_UPLOADED",
-    entityType: "lab_reports",
-    entityId: input.labReportId,
-    actorId: input.actorId,
-    actorRole: input.actorRole,
-    metadata: { fileType: input.file.type, officialFinalDocument: true },
-  });
-
-  return path;
-}
-
 export async function uploadFinalReportPdf(input: {
   labReportId: string;
   versionNumber: number;
@@ -205,7 +100,7 @@ export async function downloadReportPdfBytes(storagePath: string): Promise<Buffe
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.storage.from(BUCKET).download(storagePath);
   if (error) throw error;
-  return Buffer.from(await data.arrayBuffer());
+  return Buffer.from(await data.arrayBuffer()) as Buffer<ArrayBuffer>;
 }
 
 /**

@@ -45,13 +45,16 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: { card: "summary_large_image", title: orgName, description },
     icons: {
-      icon: [
-        { url: "/favicon.ico?v=salem-20260917", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" },
-        { url: "/icon.png?v=salem-20260917", type: "image/png", sizes: "512x512" },
-      ],
-      apple: "/apple-icon.png?v=salem-20260917",
+      icon: settings?.faviconUrl
+        ? [{ url: `${settings.faviconUrl}${settings.faviconUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || "custom")}` }]
+        : [
+            { url: "/favicon.ico?v=4", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" },
+            { url: "/icon.svg?v=4", type: "image/svg+xml" },
+          ],
+      apple: settings?.faviconUrl
+        ? `${settings.faviconUrl}${settings.faviconUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || "custom")}`
+        : "/apple-icon.png?v=4",
     },
-    manifest: "/site.webmanifest",
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
   };
@@ -101,6 +104,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
         />
+        {settings?.faviconUrl ? (
+          <link
+            rel="icon"
+            href={`${settings.faviconUrl}${settings.faviconUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || "custom")}`}
+          />
+        ) : null}
       </head>
       <body className="antialiased">
         {seo.googleAnalyticsId ? (

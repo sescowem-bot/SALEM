@@ -8,7 +8,6 @@ import {
   returnForCorrection,
   publishReport,
   syncReportPatientSnapshot,
-  saveReportNarrativeSections,
   unlockPublishedReportForCorrection,
   resetPatientAccessCode,
   sendAccessCodeToPatientNow,
@@ -24,8 +23,8 @@ import {
   returnApprovalRequestForCorrection,
   getLatestApprovedApprovalRequest,
 } from "@/lib/data/approvals";
-import { uploadReportPdf, uploadUploadedFinalReport } from "@/lib/data/storage";
-import { generateFinalReportPdf, getFinalDocumentForDownload } from "@/lib/data/reportDocuments";
+import { uploadReportPdf } from "@/lib/data/storage";
+import { generateFinalReportPdf } from "@/lib/data/reportDocuments";
 import { dispatchReportNotification } from "@/lib/data/notifications";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import {
@@ -55,22 +54,6 @@ function friendlyError(err: unknown): string {
     return err.message;
   }
   return "Something went wrong.";
-}
-
-export async function saveNarrativeSectionsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
-  const labReportId = String(formData.get("labReportId") ?? "");
-  const reportTestId = String(formData.get("reportTestId") ?? "");
-  let sections: unknown = {};
-  try { sections = JSON.parse(String(formData.get("sectionsJson") ?? "{}")); }
-  catch { return { error: "The narrative sections could not be read. Please try again." }; }
-  if (!labReportId || !reportTestId || !sections || typeof sections !== "object" || Array.isArray(sections)) return { error: "Invalid narrative section data." };
-  try {
-    await saveReportNarrativeSections({ labReportId, reportTestId, sections: sections as Record<string, string>, actorRole: staff.role, actorId: staff.userId });
-  } catch (err) { return { error: friendlyError(err) }; }
-  revalidatePath(`/admin/reports/${labReportId}`);
-  revalidatePath(`/admin/reports/${labReportId}/preview`);
-  return { ok: true };
 }
 
 export async function saveFieldResultAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -168,28 +151,6 @@ export async function uploadPdfAction(_prev: ActionState, formData: FormData): P
   }
 
   revalidatePath(`/admin/reports/${labReportId}`);
-  return { ok: true };
-}
-
-export async function uploadOfficialFinalReportAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
-  const labReportId = String(formData.get("labReportId") ?? "");
-  const file = formData.get("file");
-  if (!labReportId || !(file instanceof File) || file.size === 0) {
-    return { error: "Choose the signed final report file first." };
-  }
-  try {
-    await uploadUploadedFinalReport({
-      labReportId,
-      file,
-      actorRole: staff.role,
-      actorId: staff.userId,
-    });
-  } catch (err) {
-    return { error: friendlyError(err) };
-  }
-  revalidatePath(`/admin/reports/${labReportId}`);
-  revalidatePath(`/admin/reports/${labReportId}/preview`);
   return { ok: true };
 }
 
@@ -315,8 +276,7 @@ export async function publishAction(_prev: ActionState, formData: FormData): Pro
   if (!parsed.success) return { error: "Invalid report." };
 
   try {
-    // Sync the latest patient information before publication so the released
-    // document always uses the corrected patient record.
+    // Freeze the latest patient information at the moment of publication.
     await syncReportPatientSnapshot(parsed.data.labReportId);
     const { report, accessCodePlaintext } = await publishReport(parsed.data.labReportId, staff.role, staff.userId);
 
@@ -332,27 +292,15 @@ export async function publishAction(_prev: ActionState, formData: FormData): Pro
       .eq("id", approval.decided_by)
       .single();
 
-    const { data: existingFinalDocument } = await supabaseApproval
-      .from("report_final_documents")
-      .select("storage_path")
-      .eq("lab_report_id", parsed.data.labReportId)
-      .eq("version_number", report.current_version_number)
-      .maybeSingle();
-
-    // If staff already uploaded a completed signed report for this version,
-    // keep that artifact as the official document instead of overwriting it
-    // with a newly generated PDF. Otherwise generate the standard Salem PDF.
-    if (!existingFinalDocument?.storage_path?.includes("/uploaded-final/")) {
-      await generateFinalReportPdf({
-        labReportId: parsed.data.labReportId,
-        approvalRequestId: approval.id,
-        approverStaffId: approval.decided_by,
-        approverName: approverProfile?.full_name ?? "Authorized approver",
-        decidedAt: approval.decided_at ?? new Date().toISOString(),
-        actorRole: staff.role,
-        actorId: staff.userId,
-      });
-    }
+    await generateFinalReportPdf({
+      labReportId: parsed.data.labReportId,
+      approvalRequestId: approval.id,
+      approverStaffId: approval.decided_by,
+      approverName: approverProfile?.full_name ?? "Authorized approver",
+      decidedAt: approval.decided_at ?? new Date().toISOString(),
+      actorRole: staff.role,
+      actorId: staff.userId,
+    });
 
     // Automatic patient delivery: once publication and final-PDF generation
     // are complete, send the finished report to the patient's saved email.
@@ -456,28 +404,6 @@ export async function sendAccessCodeAction(_prev: ActionState, formData: FormDat
 // ---------------------------------------------------------------------------
 
 /** Adds an existing catalogue investigation to an already-created report. */
-export async function resendPatientResultEmailAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
-  const labReportId = String(formData.get("labReportId") ?? "");
-  if (!labReportId) return { error: "Missing report." };
-  try {
-    const finalDocument = await getFinalDocumentForDownload(labReportId, staff.role);
-    if (!finalDocument) return { error: "There is no official final report document to attach yet. Approve or upload the final report first." };
-    const { report, accessCodePlaintext } = await resetPatientAccessCode(labReportId, staff.role, staff.userId);
-    await dispatchReportNotification({
-      eventType: "patient_result_available",
-      labReportId,
-      recipientType: "patient",
-      recipientPatientId: report.patient_id,
-      accessCodePlaintext,
-      forceIncludeAccessCode: true,
-      attachFinalReport: true,
-    });
-    revalidatePath(`/admin/reports/${labReportId}`);
-    return { ok: true, accessCode: accessCodePlaintext };
-  } catch (err) { return { error: friendlyError(err) }; }
-}
-
 export async function addExistingInvestigationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireStaff();
   const parsed = addExistingTestSchema.safeParse({

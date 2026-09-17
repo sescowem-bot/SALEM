@@ -87,7 +87,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           {[
             ["Patient name", report.patientName],
             ["Sex", report.patientSex ?? "—"],
-            ["Age", report.patientAge ?? "—"],
+            ["Date of birth", report.patientDob ?? "—"],
             ["Lab number", report.labNumber],
             ["Report reference", report.resultReference ?? "Pending publication"],
             ["Document version", `v${report.versionNumber}`],
@@ -162,12 +162,6 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
               </table>
               </div>
             )}
-            {t.narrativeSections?.filter((section) => section.value).map(section => (
-              <div key={section.key} className="mt-3 rounded-lg bg-secondary/60 p-3">
-                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">{section.label}</p>
-                <p className="mt-1 whitespace-pre-wrap text-xs text-navy-deep">{section.value}</p>
-              </div>
-            ))}
             {t.comment ? <p className="mt-1.5 text-xs italic text-muted-foreground">Comment: {t.comment}</p> : null}
           </div>
         ))}
@@ -179,6 +173,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           </div>
         ) : null}
 
+        {!org.letterheadDataUri ? (
         <div className="mt-10 flex justify-start break-inside-avoid">
           {approval ? (
             <div>
@@ -202,6 +197,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
             <p className="text-xs italic text-muted-foreground">Pending authorized approval — not yet signed.</p>
           )}
         </div>
+        ) : null}
         </div>
       </div>
       </div>

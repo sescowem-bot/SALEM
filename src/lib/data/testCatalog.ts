@@ -348,7 +348,6 @@ export interface NewTemplateStructureInput {
   fields?: NewTemplateFieldInput[];
   columns?: string[];
   rows?: string[];
-  narrativeSections?: { key: string; label: string; placeholder: string }[];
 }
 
 export async function createTemplateStructure(
@@ -379,14 +378,7 @@ export async function createTemplateStructure(
   for (let attempt = 0; attempt < 2 && !template; attempt++) {
     const { data, error } = await supabase
       .from("test_templates")
-      .insert({
-        name: attemptName,
-        structure_type: input.structureType,
-        is_active: true,
-        description: input.narrativeSections?.length
-          ? JSON.stringify({ version: 1, narrativeSections: input.narrativeSections })
-          : null,
-      })
+      .insert({ name: attemptName, structure_type: input.structureType, is_active: true })
       .select()
       .single();
     if (error) {

@@ -8,7 +8,6 @@ import { hasPermission, permissionForReportTransition, type StaffRole } from "@/
 import { logAudit } from "./audit";
 import { dispatchReportNotification } from "./notifications";
 import { slugify } from "@/lib/utils/slug";
-import { encodeReportNarrative, parseReportNarrative } from "./reportNarratives";
 
 type LabReport = Database["public"]["Tables"]["lab_reports"]["Row"];
 type LabReportInsert = Database["public"]["Tables"]["lab_reports"]["Insert"];
@@ -29,9 +28,8 @@ type ReportTest = Database["public"]["Tables"]["report_tests"]["Row"];
 // ---------------------------------------------------------------------------
 // Create
 // ---------------------------------------------------------------------------
-// Keep every report aligned with the current patient record. The patient
-// record is authoritative for identity corrections; report_versions remain
-// historical workflow snapshots.
+// Keep draft/reviewed reports aligned with the current patient record.
+// Historical published/archived reports retain their issued snapshot.
 export async function syncReportPatientSnapshot(labReportId: string): Promise<LabReport> {
   const supabase = getServiceRoleClient();
   const { data: report, error: reportError } = await supabase
@@ -40,6 +38,8 @@ export async function syncReportPatientSnapshot(labReportId: string): Promise<La
     .eq("id", labReportId)
     .single();
   if (reportError) throw reportError;
+
+  if (report.status === "published" || report.status === "archived") return report;
 
   const patient = await getPatientByIdForReport(report.patient_id);
   if (!patient) throw new Error("The patient linked to this report no longer exists.");
@@ -128,39 +128,6 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
   });
 
   return report;
-}
-
-export async function saveReportNarrativeSections(input: {
-  labReportId: string;
-  reportTestId: string;
-  sections: Record<string, string>;
-  actorRole: StaffRole;
-  actorId?: string;
-}): Promise<void> {
-  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
-    throw new Error(`Forbidden: role "${input.actorRole}" cannot edit report narrative sections.`);
-  }
-  await assertReportIsEditable(input.labReportId);
-  const supabase = getServiceRoleClient();
-  const { data: current, error: currentError } = await supabase
-    .from("report_tests")
-    .select("id, lab_report_id, comment")
-    .eq("id", input.reportTestId)
-    .eq("lab_report_id", input.labReportId)
-    .single();
-  if (currentError) throw currentError;
-  const parsed = parseReportNarrative(current.comment);
-  const encoded = encodeReportNarrative(input.sections, parsed.legacyComment);
-  const { error } = await supabase.from("report_tests").update({ comment: encoded }).eq("id", input.reportTestId);
-  if (error) throw error;
-  await logAudit({
-    action: "RESULT_UPDATED",
-    entityType: "report_tests",
-    entityId: input.reportTestId,
-    actorId: input.actorId,
-    actorRole: input.actorRole,
-    metadata: { labReportId: input.labReportId, narrativeSections: Object.keys(input.sections).length },
-  });
 }
 
 export async function addTestToReport(
@@ -1075,7 +1042,6 @@ export async function sendAccessCodeToPatientNow(
     recipientPatientId: report.patient_id,
     accessCodePlaintext,
     forceIncludeAccessCode: true,
-    attachFinalReport: true,
   });
 
   // dispatchReportNotification's own NOTIFICATION_CREATED/SENT/FAILED audit
@@ -1187,17 +1153,19 @@ export async function getReportDetail(labReportId: string) {
     .single();
   if (reportError) throw reportError;
 
-  // Always reflect the latest patient record. This prevents a corrected
-  // patient name/sex/date of birth from becoming stale on an existing report.
+  // Draft/reviewed screens always reflect the latest patient record. Once a
+  // report is published or archived, its issued snapshot becomes immutable.
   let reportForView = report;
-  const patient = await getPatientByIdForReport(report.patient_id);
-  if (patient) {
-    reportForView = {
-      ...report,
-      patient_name_snapshot: patient.full_name,
-      patient_sex_snapshot: patient.sex,
-      patient_dob_snapshot: patient.date_of_birth,
-    };
+  if (report.status !== "published" && report.status !== "archived") {
+    const patient = await getPatientByIdForReport(report.patient_id);
+    if (patient) {
+      reportForView = {
+        ...report,
+        patient_name_snapshot: patient.full_name,
+        patient_sex_snapshot: patient.sex,
+        patient_dob_snapshot: patient.date_of_birth,
+      };
+    }
   }
 
   const { data: reportTests, error: rtError } = await supabase

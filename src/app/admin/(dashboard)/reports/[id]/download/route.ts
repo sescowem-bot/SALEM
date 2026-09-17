@@ -16,18 +16,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "No final document is available for this report yet." }, { status: 404 });
   }
 
-  let buffer: Buffer;
-  if (doc.storagePath.includes("/uploaded-final/")) {
-    buffer = await downloadReportPdfBytes(doc.storagePath);
-  } else {
-    let currentBuffer: Buffer | null = null;
-    try {
-      currentBuffer = await renderCurrentFinalReportPdfBuffer(id);
-    } catch (error) {
-      console.error("[reports/download] current final PDF render failed", id, error);
-    }
-    buffer = currentBuffer ?? (await downloadReportPdfBytes(doc.storagePath));
+  let currentBuffer: Buffer | null = null;
+  try {
+    currentBuffer = await renderCurrentFinalReportPdfBuffer(id);
+  } catch (error) {
+    console.error("[reports/download] current final PDF render failed", id, error);
   }
+  const buffer = currentBuffer ?? (await downloadReportPdfBytes(doc.storagePath));
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

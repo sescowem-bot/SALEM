@@ -77,7 +77,6 @@ export interface ReportPdfTableRow {
 export interface ReportPdfTest {
   testName: string;
   comment: string | null;
-  narrativeSections: { key: string; label: string; placeholder: string; value: string }[];
   structureType: "field_based" | "table_based";
   fields: ReportPdfFieldValue[];
   tableColumns: string[];
@@ -123,7 +122,6 @@ export interface ReportPdfInput {
     patientName: string;
     patientSex: string | null;
     patientDob: string | null;
-    patientAge: string | null;
     request: string | null;
     specimen: string | null;
     dateCollected: string | null;
@@ -196,7 +194,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
         <View style={styles.infoGrid}>
           <InfoCell label="Patient name" value={report.patientName} />
           <InfoCell label="Sex" value={report.patientSex} />
-          <InfoCell label="Age" value={report.patientAge} />
+          <InfoCell label="Date of birth" value={report.patientDob} />
           <InfoCell label="Report reference" value={report.resultReference} />
           <InfoCell label="Requested service(s)" value={tests.map((t) => t.testName).join(", ") || null} />
           <InfoCell label="Specimen" value={report.specimen} />
@@ -261,18 +259,6 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
             {t.comment ? <Text style={styles.testComment}>Comment: {t.comment}</Text> : null}
           </View>
         ))}
-
-        {tests.some((t) => t.narrativeSections.some((section) => section.value)) ? (
-          <View style={styles.commentsBlock}>
-            <Text style={styles.commentsLabel}>Clinical interpretation / report notes</Text>
-            {tests.flatMap((t) => t.narrativeSections.filter((section) => section.value).map(section => ({ testName: t.testName, ...section }))).map((section) => (
-              <View key={`${section.testName}-${section.key}`} style={{ marginBottom: 6 }}>
-                <Text style={styles.commentsLabel}>{section.label}</Text>
-                <Text style={styles.infoValue}>{section.value}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
 
         {report.reportComment ? (
           <View style={styles.commentsBlock}>

@@ -1,17 +1,42 @@
 import Link from "next/link";
 import {
-  ArrowUpRight,
-  Baby,
-  Clock,
-  Dna,
-  FlaskConical,
-  HeartPulse,
-  Microscope,
-  Star,
   Droplet,
-  ScanLine,
-  Activity,
+  Microscope,
+  Dna,
+  HeartPulse,
+  FlaskConical,
+  Baby,
+  ArrowUpRight,
 } from "lucide-react";
+import Image from "next/image";
+
+const svcBlood = "/images/svc-blood.jpg";
+const svcMicro = "/images/svc-micro.jpg";
+const svcMolecular = "/images/svc-molecular.jpg";
+
+const fallbackFeatured = [
+  {
+    image: svcBlood,
+    icon: Droplet,
+    title: "Haematology & Blood Chemistry",
+    body: "Full blood count, lipid profile, liver and kidney panels, HbA1c and more — run on calibrated automated analysers.",
+    href: "/services",
+  },
+  {
+    image: svcMicro,
+    icon: Microscope,
+    title: "Microbiology & Parasitology",
+    body: "Culture and sensitivity, stool and urine microscopy, malaria and typhoid screening interpreted by our scientists.",
+    href: "/services",
+  },
+  {
+    image: svcMolecular,
+    icon: Dna,
+    title: "Molecular & Serology",
+    body: "PCR diagnostics, hormonal assays, hepatitis and retroviral screening with strict chain-of-custody handling.",
+    href: "/services",
+  },
+];
 
 const more = [
   {
@@ -37,94 +62,6 @@ export interface HomepageFeaturedService {
   slug: string;
   publicDescription: string | null;
   heroImageUrl: string | null;
-  categoryName: string | null;
-  turnaroundTime: string | null;
-  priceNgn: number | null;
-  showPrice: boolean;
-  featured: boolean;
-}
-
-function CategoryIcon({ category }: { category: string }) {
-  const value = category.toLowerCase();
-  if (value.includes("haemat") || value.includes("blood")) return Droplet;
-  if (value.includes("micro")) return Microscope;
-  if (value.includes("horm") || value.includes("endocr")) return Activity;
-  if (value.includes("fertility") || value.includes("obstetric")) return Baby;
-  if (value.includes("ultrasound") || value.includes("scan")) return ScanLine;
-  if (value.includes("ecg") || value.includes("cardiac")) return HeartPulse;
-  if (value.includes("serology") || value.includes("immun")) return Dna;
-  return FlaskConical;
-}
-
-function PremiumNoImage({ service }: { service: HomepageFeaturedService }) {
-  const Icon = CategoryIcon({ category: service.categoryName ?? "Laboratory" });
-  return (
-    <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-purple/80">
-      <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full border border-white/10" />
-      <div className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full border border-cyan/20" />
-      <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,white_1px,transparent_1px)] [background-size:18px_18px]" />
-      <div className="relative flex h-full flex-col justify-between p-6 text-white">
-        <div className="flex items-center justify-between">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
-            <Icon className="h-6 w-6 text-cyan-soft" />
-          </span>
-          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-soft">Salem Diagnostics</span>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-soft/80">{service.categoryName ?? "Laboratory service"}</p>
-          <p className="mt-2 max-w-[15rem] text-xl font-semibold leading-tight">Professional diagnostic service</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ServiceCard({ service }: { service: HomepageFeaturedService }) {
-  return (
-    <article className="surface-card group flex flex-col overflow-hidden p-0">
-      <div className="aspect-[16/9] w-full bg-secondary">
-        {service.heroImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
-          <img src={service.heroImageUrl} alt={service.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-        ) : (
-          <PremiumNoImage service={service} />
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-6">
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="w-fit rounded-full bg-accent px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-navy">
-            {service.categoryName ?? "Laboratory test"}
-          </span>
-          {service.featured ? (
-            <span className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-amber-600">
-              <Star className="h-3 w-3 fill-current" /> Featured
-            </span>
-          ) : null}
-        </span>
-        <Link href={`/services/${service.slug}`} className="mt-4 text-lg font-semibold text-navy-deep hover:text-navy">
-          {service.name}
-        </Link>
-        <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-          {service.publicDescription ?? "Speak with our team for details on this test."}
-        </p>
-        {service.turnaroundTime ? (
-          <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5 shrink-0" /> {service.turnaroundTime}
-          </p>
-        ) : null}
-        <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-          {service.showPrice && service.priceNgn != null ? (
-            <span className="text-sm font-semibold text-navy-deep">₦{service.priceNgn.toLocaleString()}</span>
-          ) : (
-            <span />
-          )}
-          <Link href={`/services/${service.slug}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-purple transition-colors hover:text-navy">
-            View details <ArrowUpRight className="h-4 w-4 shrink-0" />
-          </Link>
-        </div>
-      </div>
-    </article>
-  );
 }
 
 export function Services({
@@ -136,32 +73,81 @@ export function Services({
   description?: string;
   featuredServices?: HomepageFeaturedService[];
 }) {
-  const services = (featuredServices ?? []).slice(0, 3);
+  const hasCmsFeatured = featuredServices && featuredServices.length > 0;
 
   return (
     <section id="services" className="relative bg-background py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
         <div className="max-w-2xl">
-          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-purple">Laboratory Services</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-purple">
+            Laboratory Services
+          </span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-navy-deep sm:text-4xl">
             {heading || "A full diagnostic menu, under one careful roof."}
           </h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            {description || "Every sample is barcoded on arrival, processed under strict quality control and reviewed before release — so the result you receive is one you can act on."}
+            {description ||
+              "Every sample is barcoded on arrival, processed under strict quality control and reviewed before release — so the result you receive is one you can act on."}
           </p>
         </div>
 
-        {services.length > 0 ? (
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {services.map((service) => <ServiceCard key={service.id} service={service} />)}
+        {hasCmsFeatured ? (
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {featuredServices!.slice(0, 3).map((s) => (
+              <article key={s.id} className="surface-card group overflow-hidden">
+                <div className="relative h-52 overflow-hidden bg-secondary">
+                  {s.heroImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
+                    <img src={s.heroImageUrl} alt={s.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-muted-foreground">
+                      <FlaskConical className="h-10 w-10" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 to-transparent" aria-hidden="true" />
+                </div>
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-navy-deep">{s.name}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {s.publicDescription ?? "Speak with our team for details on this test."}
+                  </p>
+                  <Link
+                    href={`/services/${s.slug}`}
+                    className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-purple transition-colors hover:text-navy"
+                  >
+                    View details <ArrowUpRight className="h-4 w-4 shrink-0" />
+                  </Link>
+                </div>
+              </article>
+            ))}
           </div>
         ) : (
-          <div className="mt-12 surface-card p-8 text-center">
-            <FlaskConical className="mx-auto h-9 w-9 text-purple" />
-            <h3 className="mt-4 text-lg font-semibold text-navy-deep">Our services are being updated</h3>
-            <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
-              Please explore the full catalogue or contact our team for current test availability.
-            </p>
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {fallbackFeatured.map(({ image, icon: Icon, title, body, href }) => (
+              <article key={title} className="surface-card group overflow-hidden">
+                <div className="relative h-52 overflow-hidden">
+                  <Image
+                    src={image}
+                    alt={title}
+                    loading="lazy"
+                    width={900}
+                    height={700}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 to-transparent" aria-hidden="true" />
+                  <span className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-xl bg-card/90 text-navy backdrop-blur">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                </div>
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-navy-deep">{title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                  <Link href={href} className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-purple transition-colors hover:text-navy">
+                    View tests <ArrowUpRight className="h-4 w-4 shrink-0" />
+                  </Link>
+                </div>
+              </article>
+            ))}
           </div>
         )}
 

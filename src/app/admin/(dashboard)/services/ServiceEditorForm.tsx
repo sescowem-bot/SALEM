@@ -9,7 +9,6 @@ import { createServiceAction, updateServiceAction, type ActionState } from "./ac
 import { slugify } from "@/lib/utils/slug";
 import type { ServiceWithCategory } from "@/lib/data/testCatalog";
 import type { Database } from "@/lib/supabase/database.types";
-import { NARRATIVE_PRESETS, type NarrativeSectionDefinition } from "@/lib/data/reportNarratives";
 
 type TestCategory = Database["public"]["Tables"]["test_categories"]["Row"];
 type TestTemplate = Database["public"]["Tables"]["test_templates"]["Row"];
@@ -53,8 +52,6 @@ function ResultStructureBuilder({
   setColumns,
   rows,
   setRows,
-  narrativeSections,
-  setNarrativeSections,
 }: {
   structureType: "field_based" | "table_based";
   onStructureTypeChange: (v: "field_based" | "table_based") => void;
@@ -64,8 +61,6 @@ function ResultStructureBuilder({
   setColumns: React.Dispatch<React.SetStateAction<string[]>>;
   rows: string[];
   setRows: React.Dispatch<React.SetStateAction<string[]>>;
-  narrativeSections: NarrativeSectionDefinition[];
-  setNarrativeSections: React.Dispatch<React.SetStateAction<NarrativeSectionDefinition[]>>;
 }) {
   return (
     <div className="space-y-4 rounded-xl border border-border bg-secondary/40 p-4">
@@ -213,24 +208,6 @@ function ResultStructureBuilder({
           </div>
         </div>
       )}
-
-      <div className="rounded-lg border border-cyan/30 bg-accent/30 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-navy-deep">Narrative sections</p>
-        <p className="mt-1 text-xs text-muted-foreground">Optional labelled areas for comments, findings, interpretation, conclusion, recommendations or any custom laboratory note.</p>
-        <div className="mt-3 space-y-2">
-          {narrativeSections.map((section, i) => (
-            <div key={`${section.key}-${i}`} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-              <input className={fieldClass} value={section.label} onChange={e => setNarrativeSections(prev => prev.map((x,j) => j===i ? {...x,label:e.target.value}:x))} placeholder="Section title" />
-              <input className={fieldClass} value={section.placeholder} onChange={e => setNarrativeSections(prev => prev.map((x,j) => j===i ? {...x,placeholder:e.target.value}:x))} placeholder="Staff prompt" />
-              <button type="button" onClick={() => setNarrativeSections(prev => prev.filter((_,j) => j!==i))} className="mb-2 text-xs font-semibold text-destructive">Remove</button>
-            </div>
-          ))}
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setNarrativeSections(prev => [...prev, { key: `custom-${Date.now()}`, label: "", placeholder: "Enter the approved narrative…" }])} className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-navy">+ Custom section</button>
-            {NARRATIVE_PRESETS.filter(p => !narrativeSections.some(s => s.key === p.key)).map(p => <button key={p.key} type="button" onClick={() => setNarrativeSections(prev => [...prev, p])} className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-navy">+ {p.label}</button>)}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -279,7 +256,6 @@ export function ServiceEditorForm({
   const [fields, setFields] = useState<CustomField[]>([emptyCustomField()]);
   const [columns, setColumns] = useState<string[]>([""]);
   const [rows, setRows] = useState<string[]>([""]);
-  const [narrativeSections, setNarrativeSections] = useState<NarrativeSectionDefinition[]>(NARRATIVE_PRESETS.slice(0, 3));
   const [serviceImagePreview, setServiceImagePreview] = useState<string | null>(null);
 
   function handleNameChange(value: string) {
@@ -297,7 +273,6 @@ export function ServiceEditorForm({
           <input type="hidden" name="newTemplateFieldsJson" value={JSON.stringify(fields.filter((f) => f.label.trim()).map((f) => ({ ...f, options: f.inputType === "select" ? f.options.split(",").map((v) => v.trim()).filter(Boolean) : [] })))} />
           <input type="hidden" name="newTemplateColumnsJson" value={JSON.stringify(columns.map((c) => c.trim()).filter(Boolean))} />
           <input type="hidden" name="newTemplateRowsJson" value={JSON.stringify(rows.map((r) => r.trim()).filter(Boolean))} />
-          <input type="hidden" name="newTemplateNarrativeSectionsJson" value={JSON.stringify(narrativeSections.filter(s => s.label.trim()).map(s => ({ key: s.key, label: s.label.trim(), placeholder: s.placeholder.trim() })))} />
         </>
       ) : null}
 
@@ -425,8 +400,6 @@ export function ServiceEditorForm({
             setColumns={setColumns}
             rows={rows}
             setRows={setRows}
-            narrativeSections={narrativeSections}
-            setNarrativeSections={setNarrativeSections}
           />
         ) : null}
       </Section>

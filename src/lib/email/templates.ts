@@ -52,7 +52,6 @@ interface TemplateContext {
    * the default two-factor-separation design (module comment above).
    */
   accessCode?: string | null;
-  forceIncludeAccessCode?: boolean;
 }
 
 function wrap(siteSettings: ResolvedSiteSettings, title: string, bodyHtml: string, bodyText: string): EmailTemplate {

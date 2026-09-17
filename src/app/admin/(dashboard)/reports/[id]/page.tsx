@@ -10,7 +10,6 @@ import { getSignedReportPdfUrl } from "@/lib/data/storage";
 import { listApprovers, getActiveApprovalRequest, getApprovalHistory } from "@/lib/data/approvals";
 import { getLatestFinalDocument } from "@/lib/data/reportDocuments";
 import { listReportNotifications } from "@/lib/data/notifications";
-import { parseReportNarrative, parseTemplateNarrativeSections } from "@/lib/data/reportNarratives";
 import { getPatientById } from "@/lib/data/patients";
 import { ReportDetailClient } from "./ReportDetailClient";
 
@@ -28,7 +27,6 @@ export interface ReportTestViewModel {
   fieldValues: { templateFieldId: string; valueText: string | null; valueNumeric: number | null; unit: string | null; referenceRange: string | null; flag: string | null }[];
   tableCells: { rowId: string; columnId: string; value: string | null }[];
   pdfSignedUrl: string | null;
-  narrativeSections: { key: string; label: string; placeholder: string; value: string }[];
 }
 
 export default async function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -65,8 +63,6 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     reportTests.map(async (rt) => {
       const joined = rt as unknown as { tests: { id: string; name: string } | null; pdf_storage_path: string | null };
       const structure = await getTestWithStructure(rt.test_id);
-      const narrativeDefinitions = parseTemplateNarrativeSections(structure?.template.description);
-      const narrativeValues = parseReportNarrative(rt.comment);
       const pdfSignedUrl = joined.pdf_storage_path ? await getSignedReportPdfUrl(joined.pdf_storage_path) : null;
 
       return {
@@ -93,7 +89,6 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             value: tc.value,
           })),
         pdfSignedUrl,
-        narrativeSections: narrativeDefinitions.map((section) => ({ ...section, value: narrativeValues.sections[section.key] ?? "" })),
       };
     })
   );
@@ -163,16 +158,6 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   );
 }
 
-function calculatePatientAgeForDisplay(dateOfBirth: string | null, asOf: string | null): string | null {
-  if (!dateOfBirth) return null;
-  const dob = new Date(`${dateOfBirth}T00:00:00`);
-  const ref = asOf ? new Date(`${asOf}T00:00:00`) : new Date();
-  if (Number.isNaN(dob.getTime()) || Number.isNaN(ref.getTime()) || dob > ref) return null;
-  let age = ref.getFullYear() - dob.getFullYear();
-  if (ref.getMonth() < dob.getMonth() || (ref.getMonth() === dob.getMonth() && ref.getDate() < dob.getDate())) age -= 1;
-  return age >= 0 ? `${age} years` : null;
-}
-
 function ReportSummary({
   report,
   testNames,
@@ -182,7 +167,7 @@ function ReportSummary({
 }) {
   const fields: { label: string; value: string }[] = [
     { label: "Sex", value: report.patient_sex_snapshot ?? "Not specified" },
-    { label: "Age", value: calculatePatientAgeForDisplay(report.patient_dob_snapshot, report.date_reported ?? report.date_collected) ?? "Not specified" },
+    { label: "Date of birth", value: report.patient_dob_snapshot ?? "Not specified" },
     { label: "Requested service(s)", value: testNames.length > 0 ? testNames.join(", ") : "Not specified" },
     { label: "Specimen", value: report.specimen ?? "Not specified" },
     { label: "Date collected", value: report.date_collected ?? "Not specified" },

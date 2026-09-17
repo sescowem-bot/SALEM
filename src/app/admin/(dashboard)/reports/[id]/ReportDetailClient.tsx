@@ -26,10 +26,8 @@ import {
 } from "lucide-react";
 import {
   saveFieldResultAction,
-  saveNarrativeSectionsAction,
   saveTableCellAction,
   uploadPdfAction,
-  uploadOfficialFinalReportAction,
   submitForApprovalAction,
   approveApprovalRequestAction,
   rejectApprovalRequestAction,
@@ -39,7 +37,6 @@ import {
   unlockPublishedReportAction,
   resetAccessCodeAction,
   sendAccessCodeAction,
-  resendPatientResultEmailAction,
   addExistingInvestigationAction,
   removeInvestigationAction,
   reorderInvestigationAction,
@@ -172,45 +169,6 @@ function FlagSelect({ value, disabled }: { value: string; disabled: boolean }) {
       <option value="critical">Critical</option>
       <option value="abnormal">Abnormal</option>
     </select>
-  );
-}
-
-function NarrativeSectionsEditor({
-  labReportId,
-  reportTestId,
-  sections,
-  disabled,
-}: {
-  labReportId: string;
-  reportTestId: string;
-  sections: { key: string; label: string; placeholder: string; value: string }[];
-  disabled: boolean;
-}) {
-  const [state, action] = useActionState(saveNarrativeSectionsAction, initial);
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(sections.map(s => [s.key, s.value])));
-  if (!sections.length) return null;
-  return (
-    <div className="mt-4 rounded-xl border border-cyan/30 bg-accent/30 p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-navy-deep">Narrative report sections</p>
-          <p className="mt-0.5 text-[0.7rem] text-muted-foreground">Complete only the sections that apply. These appear as labelled narrative blocks on the report.</p>
-        </div>
-      </div>
-      <form action={action} className="space-y-3">
-        <input type="hidden" name="labReportId" value={labReportId} />
-        <input type="hidden" name="reportTestId" value={reportTestId} />
-        <input type="hidden" name="sectionsJson" value={JSON.stringify(values)} />
-        {sections.map(section => (
-          <label key={section.key} className="block text-xs font-semibold text-navy-deep">
-            {section.label}
-            <textarea rows={3} disabled={disabled} value={values[section.key] ?? ""} onChange={e => setValues(prev => ({ ...prev, [section.key]: e.target.value }))} placeholder={section.placeholder} className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-normal text-navy-deep outline-none focus:border-cyan disabled:opacity-60" />
-          </label>
-        ))}
-        {!disabled ? <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-semibold text-primary-foreground"><Save className="h-3.5 w-3.5" /> {state.ok ? "Saved" : "Save narrative sections"}</button> : null}
-        {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
-      </form>
-    </div>
   );
 }
 
@@ -353,32 +311,6 @@ function PdfUpload({ reportTestId, labReportId }: { reportTestId: string; labRep
       <PdfUploadButton />
       {state.error ? <p className="w-full text-xs text-destructive">{state.error}</p> : null}
       {state.ok ? <p className="w-full text-xs text-navy">Uploaded.</p> : null}
-    </form>
-  );
-}
-
-function OfficialFinalReportUpload({ labReportId }: { labReportId: string }) {
-  const [state, action] = useActionState(uploadOfficialFinalReportAction, initial);
-  return (
-    <form action={action} className="mt-4 rounded-xl border border-dashed border-border bg-secondary/50 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-navy-deep">Upload signed final report</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Use this when Salem already has a completed signed PDF or scanned PNG/JPEG. It becomes the official patient-download document and stays separate from structured result templates.
-          </p>
-        </div>
-        <UploadCloud className="h-4 w-4 text-purple" />
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <input type="hidden" name="labReportId" value={labReportId} />
-        <input type="file" name="file" accept="application/pdf,image/png,image/jpeg" required className="text-xs" />
-        <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
-          Upload official report
-        </button>
-      </div>
-      {state.error ? <p className="mt-2 text-xs text-destructive">{state.error}</p> : null}
-      {state.ok ? <p className="mt-2 text-xs text-emerald-700">Official patient-download document uploaded.</p> : null}
     </form>
   );
 }
@@ -572,20 +504,6 @@ function WorkflowButton({
  * this is a reissue, not a lookup: the plaintext was never stored anywhere
  * after the one-time reveal at publish, by design.
  */
-function ResendResultEmailControl({ labReportId, disabled }: { labReportId: string; disabled?: boolean }) {
-  const [state, action] = useActionState(resendPatientResultEmailAction, initial);
-  return (
-    <form action={action} className="flex flex-col gap-1">
-      <input type="hidden" name="labReportId" value={labReportId} />
-      <button type="submit" disabled={disabled} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-navy hover:border-cyan hover:bg-accent disabled:opacity-50">
-        <Mail className="h-3.5 w-3.5" /> {state.accessCode ? "Email reissued" : "Resend result email"}
-      </button>
-      {state.accessCode ? <span className="text-[0.65rem] text-emerald-700">New code: <b className="font-mono">{state.accessCode}</b> — previous code is now invalid.</span> : null}
-      {state.error ? <span className="text-[0.65rem] text-destructive">{state.error}</span> : null}
-    </form>
-  );
-}
-
 function ResetAccessCodeControl({
   labReportId,
   labReference,
@@ -1235,7 +1153,7 @@ export function ReportDetailClient({
           <h2 className="text-sm font-semibold text-navy-deep">Document</h2>
           <p className="text-xs text-muted-foreground">
             {finalDocument
-              ? `${finalDocument.source === "uploaded" ? "Official uploaded final report" : `Final PDF generated for version v${finalDocument.versionNumber}`} on ${new Date(finalDocument.generatedAt).toLocaleString()}.`
+              ? `Final PDF generated for version v${finalDocument.versionNumber} on ${new Date(finalDocument.generatedAt).toLocaleString()}.`
               : "No final PDF yet — generated automatically once this report is approved."}
           </p>
         </div>
@@ -1256,9 +1174,6 @@ export function ReportDetailClient({
             </a>
           ) : null}
         </div>
-        {(canDecideApproval || canPublish) && report.status !== "archived" ? (
-          <OfficialFinalReportUpload labReportId={report.id} />
-        ) : null}
       </section>
 
       <section className="surface-card p-5">
@@ -1289,9 +1204,6 @@ export function ReportDetailClient({
                 the access code, it doesn&apos;t change.
               </p>
             </div>
-            {canResetAccessCode ? (
-              <ResendResultEmailControl labReportId={report.id} />
-            ) : null}
             {canResetAccessCode ? (
               <ResetAccessCodeControl
                 labReportId={report.id}
@@ -1431,8 +1343,6 @@ export function ReportDetailClient({
               </table>
             </div>
           )}
-
-          <NarrativeSectionsEditor labReportId={report.id} reportTestId={t.reportTestId} sections={t.narrativeSections} disabled={!canEdit} />
 
           {t.pdfSignedUrl ? (
             <a
