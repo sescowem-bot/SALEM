@@ -35,87 +35,41 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
   const addressLine2 = settings?.addressLine2 ?? siteConfig.address.line2;
   const phonePrimary = settings?.phonePrimary ?? siteConfig.phone.primary;
   const phonePrimaryHref = settings?.phonePrimaryHref ?? siteConfig.phone.primaryHref;
+  const whatsappNumber = settings?.whatsappNumber ?? siteConfig.phone.whatsapp;
   const whatsappHref = settings?.whatsappHref ?? siteConfig.phone.whatsappHref;
   const emailPrimary = settings?.emailPrimary ?? siteConfig.email.general;
   const hoursWeekdays = settings?.hoursWeekdays ?? siteConfig.hours.weekdays;
   const hoursWeekend = settings?.hoursWeekend ?? siteConfig.hours.weekend;
   const instagramUrl = settings?.socialInstagram ?? siteConfig.social.instagramUrl;
-  const instagramHandle = siteConfig.social.instagramHandle;
+  const ctaLabel = content?.ctaLabel || "Chat with us on WhatsApp";
   const mapEmbedUrl = content?.mapEmbedUrl;
   const mapDirectionsUrl = content?.mapDirectionsUrl;
-  const mapsUrl = mapDirectionsUrl || "https://www.google.com/maps/search/?api=1&query=Salem+Medical+Laboratories+Iyana+Cele+Ogun+State";
-  const ctaLabel = content?.ctaLabel || "Chat with us on WhatsApp";
 
   const cards = [
-    {
-      icon: MapPin,
-      title: "Visit the laboratory",
-      lines: [addressLine1, addressLine2],
-      href: mapsUrl,
-      external: true,
-    },
-    {
-      icon: Phone,
-      title: "Call or WhatsApp",
-      lines: [phonePrimary],
-      href: whatsappHref,
-      external: true,
-    },
-    {
-      icon: Mail,
-      title: "Email us",
-      lines: [emailPrimary],
-      href: `mailto:${emailPrimary}`,
-    },
-    {
-      icon: Clock3,
-      title: "Opening hours",
-      lines: [hoursWeekdays, hoursWeekend],
-    },
-    {
-      icon: InstagramIcon,
-      title: "Follow us",
-      lines: [instagramHandle],
-      href: instagramUrl,
-      external: true,
-    },
+    { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2] },
+    { icon: Phone, title: "Call or WhatsApp", lines: [phonePrimary, whatsappNumber] },
+    { icon: Mail, title: "Email us", lines: [emailPrimary, siteConfig.email.results] },
+    { icon: Clock3, title: "Opening hours", lines: [hoursWeekdays, hoursWeekend] },
+    { icon: InstagramIcon, title: "Follow us", lines: [siteConfig.social.instagramHandle] },
   ];
 
   return (
     <section className="bg-background py-14 lg:py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-          {cards.map(({ icon: Icon, title: t, lines, href, external }) => {
-            const content = (
-              <>
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-navy">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <h2 className="mt-4 text-base font-semibold text-navy-deep">{t}</h2>
-                {lines.map((l) => (
-                  <p key={l} className={`mt-1 text-sm leading-relaxed text-muted-foreground ${t === "Email us" || t === "Follow us" ? "break-words" : ""}`}>
-                    {l}
-                  </p>
-                ))}
-              </>
-            );
-
-            return href ? (
-              <a
-                key={t}
-                href={href}
-                target={external ? "_blank" : undefined}
-                rel={external ? "noopener noreferrer" : undefined}
-                className="surface-card block min-w-0 p-6 transition-transform hover:-translate-y-0.5 hover:border-cyan/50 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-cyan/50"
-              >
-                {content}
-              </a>
-            ) : (
-              <div key={t} className="surface-card min-w-0 p-6">
-                {content}
-              </div>
-            );
-          })}
+          {cards.map(({ icon: Icon, title: t, lines }) => (
+            <div key={t} className="surface-card p-6">
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-navy">
+                <Icon className="h-5 w-5" />
+              </span>
+              <h2 className="mt-4 text-base font-semibold text-navy-deep">{t}</h2>
+              {lines.map((l) => (
+                <p key={l} className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {l}
+                </p>
+              ))}
+            </div>
+          ))}
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-start">
