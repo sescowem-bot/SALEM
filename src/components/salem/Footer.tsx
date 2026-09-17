@@ -27,14 +27,6 @@ const columns = [
       { label: "Health blog", href: "/blog" },
     ],
   },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacy policy", href: "/privacy-policy" },
-      { label: "Terms & conditions", href: "/terms-and-conditions" },
-      { label: "Legal information", href: "/legal" },
-    ],
-  },
 ];
 
 export function Footer({ settings, content }: { settings?: ResolvedSiteSettings; content?: FooterContent }) {
@@ -52,7 +44,7 @@ export function Footer({ settings, content }: { settings?: ResolvedSiteSettings;
   return (
     <footer className="bg-navy-deep pb-10 pt-16 text-cyan-soft/70">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.25fr_1fr_1fr_1.15fr]">
+        <div className="grid gap-10 lg:grid-cols-[1.25fr_1fr_1fr_1.35fr] lg:gap-12">
           <div className="min-w-0">
             <SalemLogo inverted logoUrl={logoUrl} />
             <p className="mt-5 max-w-xs text-sm leading-relaxed">{tagline}</p>
@@ -118,8 +110,13 @@ export function Footer({ settings, content }: { settings?: ResolvedSiteSettings;
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} {copyrightText}</p>
+        <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <p>© {new Date().getFullYear()} {copyrightText}</p>
+            <span className="hidden h-3 w-px bg-white/15 sm:block" aria-hidden="true" />
+            <Link href="/privacy" className="transition-colors hover:text-cyan">Privacy Policy</Link>
+            <Link href="/terms-and-conditions" className="transition-colors hover:text-cyan">Terms & Conditions</Link>
+          </div>
           <p>Medical diagnostic laboratory</p>
         </div>
       </div>
