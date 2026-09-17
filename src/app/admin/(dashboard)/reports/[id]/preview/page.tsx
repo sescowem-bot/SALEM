@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getReportPreviewData, getLatestFinalDocument } from "@/lib/data/reportDocuments";
 import { PreviewToolbar } from "./PreviewToolbar";
+import { calculateAge } from "@/lib/utils/age";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           {[
             ["Patient name", report.patientName],
             ["Sex", report.patientSex ?? "—"],
-            ["Date of birth", report.patientDob ?? "—"],
+            ["Age", calculateAge(report.patientDob) ? `${calculateAge(report.patientDob)} years` : "—"],
             ["Lab number", report.labNumber],
             ["Report reference", report.resultReference ?? "Pending publication"],
             ["Document version", `v${report.versionNumber}`],
@@ -173,7 +174,6 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           </div>
         ) : null}
 
-        {!org.letterheadDataUri ? (
         <div className="mt-10 flex justify-start break-inside-avoid">
           {approval ? (
             <div>
@@ -197,7 +197,9 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
             <p className="text-xs italic text-muted-foreground">Pending authorized approval — not yet signed.</p>
           )}
         </div>
-        ) : null}
+        <div className="mt-10 border-t border-border pt-4 text-[0.65rem] text-muted-foreground">
+          {org.orgName} · {org.addressLine1}{org.addressLine2 ? `, ${org.addressLine2}` : ""} · {org.phonePrimary} · {org.emailPrimary}
+        </div>
         </div>
       </div>
       </div>

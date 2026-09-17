@@ -56,12 +56,19 @@ const more = [
   },
 ];
 
+import { PremiumNoImage } from "./PremiumNoImage";
+
 export interface HomepageFeaturedService {
   id: string;
   name: string;
   slug: string;
   publicDescription: string | null;
   heroImageUrl: string | null;
+  categoryName?: string | null;
+  turnaroundTime?: string | null;
+  priceNgn?: number | null;
+  showPrice?: boolean;
+  featured?: boolean;
 }
 
 export function Services({
@@ -98,12 +105,20 @@ export function Services({
                 <div className="relative h-52 overflow-hidden bg-secondary">
                   {s.heroImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
-                    <img src={s.heroImageUrl} alt={s.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center text-muted-foreground">
-                      <FlaskConical className="h-10 w-10" />
-                    </div>
-                  )}
+                    <img
+                      src={s.heroImageUrl}
+                      alt={s.name}
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                        const fallback = event.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (fallback) fallback.style.display = "block";
+                      }}
+                    />
+                  ) : null}
+                  <div className={s.heroImageUrl ? "hidden h-full w-full" : "h-full w-full"}>
+                    <PremiumNoImage name={s.name} category={s.categoryName ?? "Laboratory service"} />
+                  </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 to-transparent" aria-hidden="true" />
                 </div>
                 <div className="p-6">

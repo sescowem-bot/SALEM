@@ -79,9 +79,13 @@ export async function uploadFinalReportPdf(input: {
   const supabase = getServiceRoleClient();
   const path = `${input.labReportId}/final/v${input.versionNumber}.pdf`;
 
+  // Supabase's generated Storage types currently narrow Buffer to ArrayBuffer.
+  // The PDF renderer returns Node's Buffer<ArrayBufferLike>, so pass an ordinary
+  // Uint8Array view to the SDK instead of fighting that generic mismatch.
+  const pdfBytes = new Uint8Array(input.buffer);
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, input.buffer, { contentType: "application/pdf", upsert: true });
+    .upload(path, pdfBytes, { contentType: "application/pdf", upsert: true });
   if (error) throw error;
 
   return path;
@@ -100,7 +104,7 @@ export async function downloadReportPdfBytes(storagePath: string): Promise<Buffe
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.storage.from(BUCKET).download(storagePath);
   if (error) throw error;
-  return Buffer.from(await data.arrayBuffer()) as Buffer<ArrayBuffer>;
+  return Buffer.from(await data.arrayBuffer());
 }
 
 /**

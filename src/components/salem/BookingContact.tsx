@@ -89,7 +89,7 @@ export function Contact({ settings }: { settings?: ResolvedSiteSettings }) {
       title: "Call or WhatsApp",
       lines: [settings?.phonePrimary ?? siteConfig.phone.primary, settings?.whatsappNumber ?? siteConfig.phone.whatsapp],
     },
-    { icon: Mail, title: "Email us", lines: [settings?.emailPrimary ?? siteConfig.email.general, siteConfig.email.results] },
+    { icon: Mail, title: "Email us", lines: [settings?.emailPrimary ?? siteConfig.email.general] },
     {
       icon: Clock3,
       title: "Opening hours",
@@ -116,7 +116,7 @@ export function Contact({ settings }: { settings?: ResolvedSiteSettings }) {
               </span>
               <h3 className="mt-4 text-base font-semibold text-navy-deep">{title}</h3>
               {lines.map((l) => (
-                <p key={l} className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <p key={l} className="mt-1 min-w-0 break-words text-sm leading-relaxed text-muted-foreground">
                   {l}
                 </p>
               ))}

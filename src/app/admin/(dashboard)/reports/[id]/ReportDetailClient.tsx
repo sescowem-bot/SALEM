@@ -37,6 +37,7 @@ import {
   unlockPublishedReportAction,
   resetAccessCodeAction,
   sendAccessCodeAction,
+  resendPatientResultAction,
   addExistingInvestigationAction,
   removeInvestigationAction,
   reorderInvestigationAction,
@@ -378,6 +379,36 @@ function SendAccessCodeEmailButton({ labReportId, accessCode }: { labReportId: s
       <SendAccessCodeSubmit />
       {state.error ? <p className="mt-1 text-[0.6rem] text-destructive">{state.error}</p> : null}
     </form>
+  );
+}
+
+function ResendPatientResultButton({ labReportId }: { labReportId: string }) {
+  const [state, action] = useActionState(resendPatientResultAction, initial);
+  return (
+    <div className="mt-4 rounded-xl border border-cyan/30 bg-accent/50 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold text-navy-deep">Redeliver result to patient</p>
+          <p className="mt-0.5 text-[0.65rem] leading-relaxed text-muted-foreground">
+            Issues a fresh 6-digit access code and emails the lab reference, new code and current PDF.
+          </p>
+        </div>
+        <form action={action}>
+          <input type="hidden" name="labReportId" value={labReportId} />
+          <button
+            type="submit"
+            className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            {state.ok ? "Sent" : "Resend result email"}
+          </button>
+        </form>
+      </div>
+      {state.accessCode ? (
+        <p className="mt-2 rounded-lg border border-cyan/30 bg-card px-3 py-2 font-mono text-xs text-navy-deep">New access code: <strong>{state.accessCode}</strong></p>
+      ) : null}
+      {state.error ? <p className="mt-2 text-xs text-destructive">{state.error}</p> : null}
+    </div>
   );
 }
 
@@ -1214,8 +1245,10 @@ export function ReportDetailClient({
           </div>
         ) : null}
 
+        {report.status === "published" ? <ResendPatientResultButton labReportId={report.id} /> : null}
+
         {notifications.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No notifications recorded for this report yet.</p>
+          <p className="mt-4 text-xs text-muted-foreground">No notifications recorded for this report yet.</p>
         ) : (
           <ul className="divide-y divide-border">
             {notifications.map((n) => (

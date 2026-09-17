@@ -48,7 +48,7 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
   const cards = [
     { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2] },
     { icon: Phone, title: "Call or WhatsApp", lines: [phonePrimary, whatsappNumber] },
-    { icon: Mail, title: "Email us", lines: [emailPrimary, siteConfig.email.results] },
+    { icon: Mail, title: "Email us", lines: [emailPrimary] },
     { icon: Clock3, title: "Opening hours", lines: [hoursWeekdays, hoursWeekend] },
     { icon: InstagramIcon, title: "Follow us", lines: [siteConfig.social.instagramHandle] },
   ];
@@ -64,7 +64,7 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
               </span>
               <h2 className="mt-4 text-base font-semibold text-navy-deep">{t}</h2>
               {lines.map((l) => (
-                <p key={l} className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <p key={l} className="mt-1 min-w-0 break-words text-sm leading-relaxed text-muted-foreground">
                   {l}
                 </p>
               ))}

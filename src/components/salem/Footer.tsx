@@ -27,6 +27,13 @@ const columns = [
       { label: "Health blog", href: "/blog" },
     ],
   },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy Policy", href: "/privacy-policy" },
+      { label: "Terms & Conditions", href: "/terms-and-conditions" },
+    ],
+  },
 ];
 
 export function Footer({ settings, content }: { settings?: ResolvedSiteSettings; content?: FooterContent }) {
@@ -44,7 +51,7 @@ export function Footer({ settings, content }: { settings?: ResolvedSiteSettings;
   return (
     <footer className="bg-navy-deep pb-10 pt-16 text-cyan-soft/70">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+        <div className="grid gap-10 lg:grid-cols-[1.35fr_1fr_1fr_1fr_1.25fr]">
           <div className="min-w-0">
             <SalemLogo inverted logoUrl={logoUrl} />
             <p className="mt-5 max-w-xs text-sm leading-relaxed">{tagline}</p>
@@ -70,18 +77,18 @@ export function Footer({ settings, content }: { settings?: ResolvedSiteSettings;
             <ul className="mt-4 space-y-3 text-sm">
               <li className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan" />
-                {addressLine1}, {addressLine2}
+                <span className="min-w-0 break-words">{addressLine1}{addressLine2 ? `, ${addressLine2}` : ""}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="h-4 w-4 shrink-0 text-cyan" />
                 <a href={phonePrimaryHref} className="hover:text-cyan">
-                  {phonePrimary}
+                  <span className="min-w-0 break-words">{phonePrimary}</span>
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="h-4 w-4 shrink-0 text-cyan" />
                 <a href={`mailto:${emailPrimary}`} className="hover:text-cyan">
-                  {emailPrimary}
+                  <span className="min-w-0 break-all">{emailPrimary}</span>
                 </a>
               </li>
               <li className="flex items-center gap-2.5">

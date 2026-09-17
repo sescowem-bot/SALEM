@@ -1,4 +1,5 @@
 import { Document, Page, View, Text, Image, StyleSheet, Font } from "@react-pdf/renderer";
+import { calculateAge } from "@/lib/utils/age";
 
 /**
  * The single source of truth for what an official Salem report document
@@ -58,7 +59,8 @@ const styles = StyleSheet.create({
   signatureTimestamp: { fontSize: 7, color: "#8592a8", marginTop: 2 },
   pendingNotice: { fontSize: 8, color: "#8592a8", fontStyle: "italic" },
   footer: { position: "absolute", bottom: 18, left: 36, right: 36, borderTopWidth: 1, borderTopColor: "#e5e9f2", paddingTop: 6, flexDirection: "row", justifyContent: "space-between" },
-  footerText: { fontSize: 6.5, color: "#8592a8" },
+  footerText: { fontSize: 6.2, color: "#5b6b85" },
+  footerPage: { fontSize: 6.2, color: "#8592a8" },
 });
 
 export interface ReportPdfFieldValue {
@@ -194,7 +196,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
         <View style={styles.infoGrid}>
           <InfoCell label="Patient name" value={report.patientName} />
           <InfoCell label="Sex" value={report.patientSex} />
-          <InfoCell label="Date of birth" value={report.patientDob} />
+          <InfoCell label="Age" value={calculateAge(report.patientDob) ? `${calculateAge(report.patientDob)} years` : null} />
           <InfoCell label="Report reference" value={report.resultReference} />
           <InfoCell label="Requested service(s)" value={tests.map((t) => t.testName).join(", ") || null} />
           <InfoCell label="Specimen" value={report.specimen} />
@@ -303,10 +305,10 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
         </View>
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
-            {org.orgName} · {isFinal ? "Official laboratory report" : "Internal preview — not a final document"}
+            {org.orgName} · {org.addressLine1}{org.addressLine2 ? `, ${org.addressLine2}` : ""} · {org.phonePrimary} · {org.emailPrimary}
           </Text>
           <Text
-            style={styles.footerText}
+            style={styles.footerPage}
             render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
           />
         </View>

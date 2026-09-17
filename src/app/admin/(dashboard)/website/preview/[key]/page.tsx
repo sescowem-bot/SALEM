@@ -87,11 +87,11 @@ async function PreviewBody({
         slug: s.slug,
         publicDescription: s.public_description,
         heroImageUrl: s.hero_image_path ? getServiceImagePublicUrl(s.hero_image_path) : null,
-        categoryName: s.category?.name ?? "",
-        turnaroundTime: s.turnaround_time ?? null,
-        priceNgn: s.price_ngn ?? null,
-        showPrice: s.show_price ?? false,
-        featured: s.featured ?? false,
+        categoryName: s.category?.name ?? null,
+        turnaroundTime: s.turnaround_time,
+        priceNgn: s.price_ngn,
+        showPrice: s.show_price,
+        featured: s.featured,
       }));
     return (
       <>
