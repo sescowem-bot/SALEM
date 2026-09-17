@@ -87,6 +87,7 @@ async function PreviewBody({
         slug: s.slug,
         publicDescription: s.public_description,
         heroImageUrl: s.hero_image_path ? getServiceImagePublicUrl(s.hero_image_path) : null,
+        categoryName: s.category?.name ?? null,
       }));
     return (
       <>

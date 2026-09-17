@@ -1,14 +1,7 @@
 import Link from "next/link";
-import {
-  Droplet,
-  Microscope,
-  Dna,
-  HeartPulse,
-  FlaskConical,
-  Baby,
-  ArrowUpRight,
-} from "lucide-react";
+import { Droplet, Microscope, Dna, HeartPulse, FlaskConical, Baby, ArrowUpRight } from "lucide-react";
 import Image from "next/image";
+import { ServiceImageFallback } from "./ServiceImageFallback";
 
 const svcBlood = "/images/svc-blood.jpg";
 const svcMicro = "/images/svc-micro.jpg";
@@ -63,10 +56,6 @@ export interface HomepageFeaturedService {
   publicDescription: string | null;
   heroImageUrl: string | null;
   categoryName?: string | null;
-  turnaroundTime?: string | null;
-  priceNgn?: number | null;
-  showPrice?: boolean;
-  featured?: boolean;
 }
 
 export function Services({
@@ -105,9 +94,7 @@ export function Services({
                     // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
                     <img src={s.heroImageUrl} alt={s.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   ) : (
-                    <div className="grid h-full w-full place-items-center text-muted-foreground">
-                      <FlaskConical className="h-10 w-10" />
-                    </div>
+                    <ServiceImageFallback category={s.categoryName} compact />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 to-transparent" aria-hidden="true" />
                 </div>

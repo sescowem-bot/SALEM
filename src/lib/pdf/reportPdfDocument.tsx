@@ -1,5 +1,4 @@
 import { Document, Page, View, Text, Image, StyleSheet, Font } from "@react-pdf/renderer";
-import { calculateAge } from "@/lib/utils/age";
 
 /**
  * The single source of truth for what an official Salem report document
@@ -195,7 +194,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
         <View style={styles.infoGrid}>
           <InfoCell label="Patient name" value={report.patientName} />
           <InfoCell label="Sex" value={report.patientSex} />
-          <InfoCell label="Age" value={calculateAge(report.patientDob) ? `${calculateAge(report.patientDob)} years` : null} />
+          <InfoCell label="Date of birth" value={report.patientDob} />
           <InfoCell label="Report reference" value={report.resultReference} />
           <InfoCell label="Requested service(s)" value={tests.map((t) => t.testName).join(", ") || null} />
           <InfoCell label="Specimen" value={report.specimen} />
@@ -304,7 +303,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
         </View>
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
-            {org.orgName} · {org.addressLine1}{org.addressLine2 ? `, ${org.addressLine2}` : ""} · {org.phonePrimary} · {org.emailPrimary}
+            {org.orgName} · {isFinal ? "Official laboratory report" : "Internal preview — not a final document"}
           </Text>
           <Text
             style={styles.footerText}

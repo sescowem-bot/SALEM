@@ -79,11 +79,9 @@ export async function uploadFinalReportPdf(input: {
   const supabase = getServiceRoleClient();
   const path = `${input.labReportId}/final/v${input.versionNumber}.pdf`;
 
-  const arrayBuffer = new ArrayBuffer(input.buffer.byteLength);
-  new Uint8Array(arrayBuffer).set(input.buffer);
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, arrayBuffer, { contentType: "application/pdf", upsert: true });
+    .upload(path, input.buffer, { contentType: "application/pdf", upsert: true });
   if (error) throw error;
 
   return path;

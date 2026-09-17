@@ -45,11 +45,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: { card: "summary_large_image", title: orgName, description },
     icons: {
-      icon: [
-        { url: "/favicon.ico?v=5", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" },
-        { url: "/icon-32.png?v=5", type: "image/png", sizes: "32x32" },
-      ],
-      apple: "/apple-icon.png?v=5",
+      icon: [{ url: "/favicon.ico?v=20260917", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" }],
+      apple: "/apple-icon.png?v=20260917",
     },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,

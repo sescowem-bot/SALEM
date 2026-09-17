@@ -197,7 +197,7 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
   if (fvError) throw fvError;
   if (tcError) throw tcError;
 
-  type JoinedReportTest = { id: string; test_id: string; comment: string | null; pdf_storage_path: string | null; tests: { name: string } | null };
+  type JoinedReportTest = { id: string; comment: string | null; pdf_storage_path: string | null; tests: { name: string } | null };
   type JoinedFieldValue = {
     report_test_id: string;
     value_text: string | null;
