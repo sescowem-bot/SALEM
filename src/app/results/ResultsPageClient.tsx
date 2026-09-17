@@ -262,6 +262,12 @@ function ReportPreview({ result, reference, code }: { result: PublishedResultDto
               </div>
             ) : null}
 
+            {test.narrativeSections?.filter((section) => section.value).map(section => (
+              <div key={section.key} className="border-t border-border bg-secondary/40 px-4 py-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">{section.label}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-navy-deep">{section.value}</p>
+              </div>
+            ))}
             {test.comment ? (
               <p className="border-t border-border px-4 py-3 text-sm italic text-muted-foreground">{test.comment}</p>
             ) : null}

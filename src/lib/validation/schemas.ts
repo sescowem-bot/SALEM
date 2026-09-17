@@ -262,6 +262,7 @@ export const serviceEditorSchema = z
     newTemplateFields: z.array(customInvestigationFieldSchema).max(30).optional().default([]),
     newTemplateColumns: z.array(z.string().trim().min(1).max(100)).max(20).optional().default([]),
     newTemplateRows: z.array(z.string().trim().min(1).max(200)).max(50).optional().default([]),
+    newTemplateNarrativeSections: z.array(z.object({ key: z.string().trim().max(80), label: z.string().trim().min(1).max(120), placeholder: z.string().trim().max(240) })).max(12).optional().default([]),
     slug: z
       .string()
       .trim()

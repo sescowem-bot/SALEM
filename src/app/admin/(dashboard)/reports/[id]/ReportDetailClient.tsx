@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import {
   saveFieldResultAction,
+  saveNarrativeSectionsAction,
   saveTableCellAction,
   uploadPdfAction,
   uploadOfficialFinalReportAction,
@@ -38,6 +39,7 @@ import {
   unlockPublishedReportAction,
   resetAccessCodeAction,
   sendAccessCodeAction,
+  resendPatientResultEmailAction,
   addExistingInvestigationAction,
   removeInvestigationAction,
   reorderInvestigationAction,
@@ -170,6 +172,45 @@ function FlagSelect({ value, disabled }: { value: string; disabled: boolean }) {
       <option value="critical">Critical</option>
       <option value="abnormal">Abnormal</option>
     </select>
+  );
+}
+
+function NarrativeSectionsEditor({
+  labReportId,
+  reportTestId,
+  sections,
+  disabled,
+}: {
+  labReportId: string;
+  reportTestId: string;
+  sections: { key: string; label: string; placeholder: string; value: string }[];
+  disabled: boolean;
+}) {
+  const [state, action] = useActionState(saveNarrativeSectionsAction, initial);
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(sections.map(s => [s.key, s.value])));
+  if (!sections.length) return null;
+  return (
+    <div className="mt-4 rounded-xl border border-cyan/30 bg-accent/30 p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-navy-deep">Narrative report sections</p>
+          <p className="mt-0.5 text-[0.7rem] text-muted-foreground">Complete only the sections that apply. These appear as labelled narrative blocks on the report.</p>
+        </div>
+      </div>
+      <form action={action} className="space-y-3">
+        <input type="hidden" name="labReportId" value={labReportId} />
+        <input type="hidden" name="reportTestId" value={reportTestId} />
+        <input type="hidden" name="sectionsJson" value={JSON.stringify(values)} />
+        {sections.map(section => (
+          <label key={section.key} className="block text-xs font-semibold text-navy-deep">
+            {section.label}
+            <textarea rows={3} disabled={disabled} value={values[section.key] ?? ""} onChange={e => setValues(prev => ({ ...prev, [section.key]: e.target.value }))} placeholder={section.placeholder} className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-normal text-navy-deep outline-none focus:border-cyan disabled:opacity-60" />
+          </label>
+        ))}
+        {!disabled ? <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-semibold text-primary-foreground"><Save className="h-3.5 w-3.5" /> {state.ok ? "Saved" : "Save narrative sections"}</button> : null}
+        {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
+      </form>
+    </div>
   );
 }
 
@@ -531,6 +572,20 @@ function WorkflowButton({
  * this is a reissue, not a lookup: the plaintext was never stored anywhere
  * after the one-time reveal at publish, by design.
  */
+function ResendResultEmailControl({ labReportId, disabled }: { labReportId: string; disabled?: boolean }) {
+  const [state, action] = useActionState(resendPatientResultEmailAction, initial);
+  return (
+    <form action={action} className="flex flex-col gap-1">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <button type="submit" disabled={disabled} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-navy hover:border-cyan hover:bg-accent disabled:opacity-50">
+        <Mail className="h-3.5 w-3.5" /> {state.accessCode ? "Email reissued" : "Resend result email"}
+      </button>
+      {state.accessCode ? <span className="text-[0.65rem] text-emerald-700">New code: <b className="font-mono">{state.accessCode}</b> — previous code is now invalid.</span> : null}
+      {state.error ? <span className="text-[0.65rem] text-destructive">{state.error}</span> : null}
+    </form>
+  );
+}
+
 function ResetAccessCodeControl({
   labReportId,
   labReference,
@@ -1235,6 +1290,9 @@ export function ReportDetailClient({
               </p>
             </div>
             {canResetAccessCode ? (
+              <ResendResultEmailControl labReportId={report.id} />
+            ) : null}
+            {canResetAccessCode ? (
               <ResetAccessCodeControl
                 labReportId={report.id}
                 labReference={report.result_reference ?? undefined}
@@ -1373,6 +1431,8 @@ export function ReportDetailClient({
               </table>
             </div>
           )}
+
+          <NarrativeSectionsEditor labReportId={report.id} reportTestId={t.reportTestId} sections={t.narrativeSections} disabled={!canEdit} />
 
           {t.pdfSignedUrl ? (
             <a

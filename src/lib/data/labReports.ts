@@ -8,6 +8,7 @@ import { hasPermission, permissionForReportTransition, type StaffRole } from "@/
 import { logAudit } from "./audit";
 import { dispatchReportNotification } from "./notifications";
 import { slugify } from "@/lib/utils/slug";
+import { encodeReportNarrative, parseReportNarrative } from "./reportNarratives";
 
 type LabReport = Database["public"]["Tables"]["lab_reports"]["Row"];
 type LabReportInsert = Database["public"]["Tables"]["lab_reports"]["Insert"];
@@ -127,6 +128,39 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
   });
 
   return report;
+}
+
+export async function saveReportNarrativeSections(input: {
+  labReportId: string;
+  reportTestId: string;
+  sections: Record<string, string>;
+  actorRole: StaffRole;
+  actorId?: string;
+}): Promise<void> {
+  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
+    throw new Error(`Forbidden: role "${input.actorRole}" cannot edit report narrative sections.`);
+  }
+  await assertReportIsEditable(input.labReportId);
+  const supabase = getServiceRoleClient();
+  const { data: current, error: currentError } = await supabase
+    .from("report_tests")
+    .select("id, lab_report_id, comment")
+    .eq("id", input.reportTestId)
+    .eq("lab_report_id", input.labReportId)
+    .single();
+  if (currentError) throw currentError;
+  const parsed = parseReportNarrative(current.comment);
+  const encoded = encodeReportNarrative(input.sections, parsed.legacyComment);
+  const { error } = await supabase.from("report_tests").update({ comment: encoded }).eq("id", input.reportTestId);
+  if (error) throw error;
+  await logAudit({
+    action: "RESULT_UPDATED",
+    entityType: "report_tests",
+    entityId: input.reportTestId,
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    metadata: { labReportId: input.labReportId, narrativeSections: Object.keys(input.sections).length },
+  });
 }
 
 export async function addTestToReport(
@@ -1041,6 +1075,7 @@ export async function sendAccessCodeToPatientNow(
     recipientPatientId: report.patient_id,
     accessCodePlaintext,
     forceIncludeAccessCode: true,
+    attachFinalReport: true,
   });
 
   // dispatchReportNotification's own NOTIFICATION_CREATED/SENT/FAILED audit

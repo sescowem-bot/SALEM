@@ -13,6 +13,7 @@ import {
   uploadFinalReportPdf,
 } from "./storage";
 import { logAudit } from "./audit";
+import { parseReportNarrative, parseTemplateNarrativeSections } from "./reportNarratives";
 import {
   ReportPdfDocument,
   type ReportPdfInput,
@@ -69,9 +70,11 @@ async function buildReportPdfData(input: {
     reportTests.map(async (rt) => {
       const joined = rt as unknown as { tests: { id: string; name: string } | null; comment: string | null };
       const structure = await getTestWithStructure(rt.test_id);
+      const narrativeDefinitions = parseTemplateNarrativeSections(structure?.template.description);
+      const narrativeValues = parseReportNarrative(rt.comment);
 
       if (!structure) {
-        return { testName: joined.tests?.name ?? "Unknown test", comment: rt.comment, structureType: "field_based" as const, fields: [], tableColumns: [], tableRows: [] };
+        return { testName: joined.tests?.name ?? "Unknown test", comment: narrativeValues.legacyComment, narrativeSections: narrativeDefinitions.map((section) => ({ ...section, value: narrativeValues.sections[section.key] ?? "" })), structureType: "field_based" as const, fields: [], tableColumns: [], tableRows: [] };
       }
 
       if (structure.template.structure_type === "field_based") {
@@ -89,7 +92,7 @@ async function buildReportPdfData(input: {
               flag: fv?.flag ?? null,
             };
           });
-        return { testName: joined.tests?.name ?? structure.name, comment: rt.comment, structureType: "field_based" as const, fields, tableColumns: [], tableRows: [] };
+        return { testName: joined.tests?.name ?? structure.name, comment: narrativeValues.legacyComment, narrativeSections: narrativeDefinitions.map((section) => ({ ...section, value: narrativeValues.sections[section.key] ?? "" })), structureType: "field_based" as const, fields, tableColumns: [], tableRows: [] };
       }
 
       const columns = structure.tableColumns.slice().sort((a, b) => a.sort_order - b.sort_order);
@@ -105,7 +108,8 @@ async function buildReportPdfData(input: {
         }));
       return {
         testName: joined.tests?.name ?? structure.name,
-        comment: rt.comment,
+        comment: narrativeValues.legacyComment,
+        narrativeSections: narrativeDefinitions.map((section) => ({ ...section, value: narrativeValues.sections[section.key] ?? "" })),
         structureType: "table_based" as const,
         fields: [],
         tableColumns: columns.map((c) => c.column_label),
@@ -192,7 +196,36 @@ export async function getReportPreviewData(labReportId: string, actorRole: Staff
   if (!hasPermission(actorRole, "reports.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot preview report documents.`);
   }
-  return buildReportPdfData({ labReportId, approvalInfo: null, isFinal: false });
+
+  const supabase = getServiceRoleClient();
+  const { data: approval, error } = await supabase
+    .from("approval_requests")
+    .select("id, decided_by, decided_at, status")
+    .eq("lab_report_id", labReportId)
+    .eq("status", "approved")
+    .not("decided_by", "is", null)
+    .not("decided_at", "is", null)
+    .order("decided_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+
+  let approvalInfo: { approverStaffId: string; approverName: string; decidedAt: string } | null = null;
+  if (approval?.decided_by && approval.decided_at) {
+    const { data: approver, error: approverError } = await supabase
+      .from("staff_profiles")
+      .select("full_name")
+      .eq("id", approval.decided_by)
+      .maybeSingle();
+    if (approverError) throw approverError;
+    approvalInfo = {
+      approverStaffId: approval.decided_by,
+      approverName: approver?.full_name ?? "Authorized approver",
+      decidedAt: approval.decided_at,
+    };
+  }
+
+  return buildReportPdfData({ labReportId, approvalInfo, isFinal: false });
 }
 
 /**
@@ -317,17 +350,22 @@ export async function getFinalDocumentForDownload(
     throw new Error(`Forbidden: role "${actorRole}" cannot access report documents.`);
   }
   const supabase = getServiceRoleClient();
-  const [{ data: finalDoc }, { data: report }] = await Promise.all([
-    supabase
-      .from("report_final_documents")
-      .select("storage_path")
-      .eq("lab_report_id", labReportId)
-      .order("version_number", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase.from("lab_reports").select("lab_number").eq("id", labReportId).maybeSingle(),
-  ]);
-  if (!finalDoc?.storage_path || !report?.lab_number) return null;
+  const { data: report, error: reportError } = await supabase
+    .from("lab_reports")
+    .select("lab_number, current_version_number")
+    .eq("id", labReportId)
+    .maybeSingle();
+  if (reportError) throw reportError;
+  if (!report?.lab_number) return null;
+
+  const { data: finalDoc, error: finalDocError } = await supabase
+    .from("report_final_documents")
+    .select("storage_path")
+    .eq("lab_report_id", labReportId)
+    .eq("version_number", report.current_version_number)
+    .maybeSingle();
+  if (finalDocError) throw finalDocError;
+  if (!finalDoc?.storage_path) return null;
   return { storagePath: finalDoc.storage_path, labNumber: report.lab_number };
 }
 

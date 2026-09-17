@@ -10,6 +10,7 @@ import { getSignedReportPdfUrl } from "@/lib/data/storage";
 import { listApprovers, getActiveApprovalRequest, getApprovalHistory } from "@/lib/data/approvals";
 import { getLatestFinalDocument } from "@/lib/data/reportDocuments";
 import { listReportNotifications } from "@/lib/data/notifications";
+import { parseReportNarrative, parseTemplateNarrativeSections } from "@/lib/data/reportNarratives";
 import { getPatientById } from "@/lib/data/patients";
 import { ReportDetailClient } from "./ReportDetailClient";
 
@@ -27,6 +28,7 @@ export interface ReportTestViewModel {
   fieldValues: { templateFieldId: string; valueText: string | null; valueNumeric: number | null; unit: string | null; referenceRange: string | null; flag: string | null }[];
   tableCells: { rowId: string; columnId: string; value: string | null }[];
   pdfSignedUrl: string | null;
+  narrativeSections: { key: string; label: string; placeholder: string; value: string }[];
 }
 
 export default async function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -63,6 +65,8 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     reportTests.map(async (rt) => {
       const joined = rt as unknown as { tests: { id: string; name: string } | null; pdf_storage_path: string | null };
       const structure = await getTestWithStructure(rt.test_id);
+      const narrativeDefinitions = parseTemplateNarrativeSections(structure?.template.description);
+      const narrativeValues = parseReportNarrative(rt.comment);
       const pdfSignedUrl = joined.pdf_storage_path ? await getSignedReportPdfUrl(joined.pdf_storage_path) : null;
 
       return {
@@ -89,6 +93,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             value: tc.value,
           })),
         pdfSignedUrl,
+        narrativeSections: narrativeDefinitions.map((section) => ({ ...section, value: narrativeValues.sections[section.key] ?? "" })),
       };
     })
   );

@@ -51,6 +51,7 @@ export async function generateMetadata(): Promise<Metadata> {
       ],
       apple: "/apple-icon.png?v=salem-20260917",
     },
+    manifest: "/site.webmanifest",
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
   };

@@ -10,6 +10,18 @@ import { decodeCloudinaryAsset, destroyCloudinaryAsset, encodeCloudinaryAsset, i
 const BUCKET = "lab-report-pdfs";
 const SIGNED_URL_TTL_SECONDS = 300; // 5 minutes — short-lived per Phase 4 §11
 
+function looksLikePdf(bytes: Buffer): boolean {
+  return bytes.length >= 5 && bytes.subarray(0, 5).toString("ascii") === "%PDF-";
+}
+
+function looksLikePng(bytes: Buffer): boolean {
+  return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+}
+
+function looksLikeJpeg(bytes: Buffer): boolean {
+  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
 /**
  * Uploads a report PDF to the PRIVATE lab-report-pdfs bucket. The bucket has
  * no public/anon/authenticated storage policies at all (see migration
@@ -83,6 +95,11 @@ export async function uploadUploadedFinalReport(input: {
     throw new Error("The uploaded report must be 15MB or smaller.");
   }
 
+  if (input.file instanceof File && input.file.type === "application/pdf") {
+    const bytes = Buffer.from(await input.file.arrayBuffer());
+    if (!looksLikePdf(bytes)) throw new Error("The selected PDF does not contain a valid PDF header.");
+  }
+
   const supabase = getServiceRoleClient();
   const { data: report } = await supabase
     .from("lab_reports")
@@ -93,6 +110,16 @@ export async function uploadUploadedFinalReport(input: {
   if (report.status === "archived") throw new Error("Archived reports cannot receive a new official document.");
 
   const bytes = Buffer.from(await input.file.arrayBuffer());
+  if (input.file.type === "application/pdf" && !looksLikePdf(bytes)) {
+    throw new Error("The selected PDF does not contain a valid PDF header.");
+  }
+  if (input.file.type === "image/png" && !looksLikePng(bytes)) {
+    throw new Error("The selected PNG file is not a valid PNG image.");
+  }
+  if (input.file.type === "image/jpeg" && !looksLikeJpeg(bytes)) {
+    throw new Error("The selected JPEG file is not a valid JPEG image.");
+  }
+
   let pdfBytes = bytes;
   if (input.file.type !== "application/pdf") {
     const dataUri = `data:${input.file.type};base64,${bytes.toString("base64")}`;

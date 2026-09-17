@@ -1,8 +1,10 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
+import { getTestWithStructure } from "./testCatalog";
 import { verifyAccessCode } from "./security";
 import { getSignedReportPdfUrl, downloadReportPdfBytes } from "./storage";
+import { parseReportNarrative, parseTemplateNarrativeSections } from "./reportNarratives";
 import { logAudit } from "./audit";
 import { renderCurrentFinalReportPdfBuffer } from "./reportDocuments";
 
@@ -54,6 +56,7 @@ export interface PublishedResultDto {
   tests: {
     testName: string;
     comment: string | null;
+    narrativeSections: { key: string; label: string; placeholder: string; value: string }[];
     fields: { label: string; value: string; unit: string | null; referenceRange: string | null; flag: string | null }[];
     table: { rowLabel: string; columnLabel: string; value: string | null }[];
     pdfSignedUrl: string | null;
@@ -222,6 +225,9 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
   const tests = await Promise.all(
     typedReportTests.map(async (rt) => {
       const testName = rt.tests?.name ?? "Unknown test";
+      const structure = await getTestWithStructure(rt.test_id);
+      const narrativeDefinitions = parseTemplateNarrativeSections(structure?.template.description);
+      const narrativeValues = parseReportNarrative(rt.comment);
 
       const fields = typedFieldValues
         .filter((fv) => fv.report_test_id === rt.id)
@@ -243,7 +249,7 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
 
       const pdfSignedUrl = rt.pdf_storage_path ? await getSignedReportPdfUrl(rt.pdf_storage_path) : null;
 
-      return { testName, comment: rt.comment, fields, table, pdfSignedUrl };
+      return { testName, comment: narrativeValues.legacyComment, narrativeSections: narrativeDefinitions.map((section) => ({ ...section, value: narrativeValues.sections[section.key] ?? "" })), fields, table, pdfSignedUrl };
     })
   );
 

@@ -8,6 +8,7 @@ import {
   returnForCorrection,
   publishReport,
   syncReportPatientSnapshot,
+  saveReportNarrativeSections,
   unlockPublishedReportForCorrection,
   resetPatientAccessCode,
   sendAccessCodeToPatientNow,
@@ -24,7 +25,7 @@ import {
   getLatestApprovedApprovalRequest,
 } from "@/lib/data/approvals";
 import { uploadReportPdf, uploadUploadedFinalReport } from "@/lib/data/storage";
-import { generateFinalReportPdf } from "@/lib/data/reportDocuments";
+import { generateFinalReportPdf, getFinalDocumentForDownload } from "@/lib/data/reportDocuments";
 import { dispatchReportNotification } from "@/lib/data/notifications";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import {
@@ -54,6 +55,22 @@ function friendlyError(err: unknown): string {
     return err.message;
   }
   return "Something went wrong.";
+}
+
+export async function saveNarrativeSectionsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const labReportId = String(formData.get("labReportId") ?? "");
+  const reportTestId = String(formData.get("reportTestId") ?? "");
+  let sections: unknown = {};
+  try { sections = JSON.parse(String(formData.get("sectionsJson") ?? "{}")); }
+  catch { return { error: "The narrative sections could not be read. Please try again." }; }
+  if (!labReportId || !reportTestId || !sections || typeof sections !== "object" || Array.isArray(sections)) return { error: "Invalid narrative section data." };
+  try {
+    await saveReportNarrativeSections({ labReportId, reportTestId, sections: sections as Record<string, string>, actorRole: staff.role, actorId: staff.userId });
+  } catch (err) { return { error: friendlyError(err) }; }
+  revalidatePath(`/admin/reports/${labReportId}`);
+  revalidatePath(`/admin/reports/${labReportId}/preview`);
+  return { ok: true };
 }
 
 export async function saveFieldResultAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -439,6 +456,28 @@ export async function sendAccessCodeAction(_prev: ActionState, formData: FormDat
 // ---------------------------------------------------------------------------
 
 /** Adds an existing catalogue investigation to an already-created report. */
+export async function resendPatientResultEmailAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const labReportId = String(formData.get("labReportId") ?? "");
+  if (!labReportId) return { error: "Missing report." };
+  try {
+    const finalDocument = await getFinalDocumentForDownload(labReportId, staff.role);
+    if (!finalDocument) return { error: "There is no official final report document to attach yet. Approve or upload the final report first." };
+    const { report, accessCodePlaintext } = await resetPatientAccessCode(labReportId, staff.role, staff.userId);
+    await dispatchReportNotification({
+      eventType: "patient_result_available",
+      labReportId,
+      recipientType: "patient",
+      recipientPatientId: report.patient_id,
+      accessCodePlaintext,
+      forceIncludeAccessCode: true,
+      attachFinalReport: true,
+    });
+    revalidatePath(`/admin/reports/${labReportId}`);
+    return { ok: true, accessCode: accessCodePlaintext };
+  } catch (err) { return { error: friendlyError(err) }; }
+}
+
 export async function addExistingInvestigationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireStaff();
   const parsed = addExistingTestSchema.safeParse({

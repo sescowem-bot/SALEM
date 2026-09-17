@@ -72,7 +72,7 @@ export async function dispatchReportNotification(input: {
 
   const { data: report, error: reportError } = await supabase
     .from("lab_reports")
-    .select("id, lab_number, result_reference, patient_name_snapshot")
+    .select("id, lab_number, result_reference, patient_name_snapshot, current_version_number")
     .eq("id", input.labReportId)
     .maybeSingle();
   if (reportError) throw reportError;
@@ -146,7 +146,7 @@ export async function dispatchReportNotification(input: {
       .from("report_final_documents")
       .select("storage_path, version_number")
       .eq("lab_report_id", input.labReportId)
-      .order("version_number", { ascending: false })
+      .eq("version_number", report.current_version_number)
       .limit(1)
       .maybeSingle();
 
