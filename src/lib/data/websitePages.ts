@@ -25,7 +25,10 @@ export async function getWebsitePage(pageKey: WebsitePageKey, actorRole: StaffRo
 export async function getPublishedPageContent<T extends object>(pageKey: WebsitePageKey): Promise<T> {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.from("website_pages").select("published_content").eq("page_key", pageKey).maybeSingle();
-  if (error) throw error;
+  if (error) {
+    console.error(`[Salem] public CMS read failed for ${pageKey}; using component defaults:`, error.message);
+    return {} as T;
+  }
   return (data?.published_content as T) ?? ({} as T);
 }
 

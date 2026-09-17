@@ -11,7 +11,6 @@ import { listApprovers, getActiveApprovalRequest, getApprovalHistory } from "@/l
 import { getLatestFinalDocument } from "@/lib/data/reportDocuments";
 import { listReportNotifications } from "@/lib/data/notifications";
 import { getPatientById } from "@/lib/data/patients";
-import { calculateAge } from "@/lib/utils/age";
 import { ReportDetailClient } from "./ReportDetailClient";
 
 export const metadata: Metadata = {
@@ -168,7 +167,7 @@ function ReportSummary({
 }) {
   const fields: { label: string; value: string }[] = [
     { label: "Sex", value: report.patient_sex_snapshot ?? "Not specified" },
-    { label: "Age", value: calculateAge(report.patient_dob_snapshot) ? `${calculateAge(report.patient_dob_snapshot)} years` : "Not specified" },
+    { label: "Date of birth", value: report.patient_dob_snapshot ?? "Not specified" },
     { label: "Requested service(s)", value: testNames.length > 0 ? testNames.join(", ") : "Not specified" },
     { label: "Specimen", value: report.specimen ?? "Not specified" },
     { label: "Date collected", value: report.date_collected ?? "Not specified" },

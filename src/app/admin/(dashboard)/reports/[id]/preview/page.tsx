@@ -197,9 +197,6 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
             <p className="text-xs italic text-muted-foreground">Pending authorized approval — not yet signed.</p>
           )}
         </div>
-        <div className="mt-10 border-t border-border pt-4 text-[0.65rem] text-muted-foreground">
-          {org.orgName} · {org.addressLine1}{org.addressLine2 ? `, ${org.addressLine2}` : ""} · {org.phonePrimary} · {org.emailPrimary}
-        </div>
         </div>
       </div>
       </div>

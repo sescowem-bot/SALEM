@@ -43,8 +43,10 @@ export async function listTestCategories(): Promise<TestCategory[]> {
       .eq("is_active", true),
   ]);
 
-  if (categoryError) throw categoryError;
-  if (testsError) throw testsError;
+  if (categoryError || testsError) {
+    console.error("[Salem] public category read failed; using empty categories:", categoryError?.message || testsError?.message);
+    return [];
+  }
 
   const visibleCategoryIds = new Set((publishedTests ?? []).map((test) => test.category_id));
   return (categories ?? []).filter((category) => visibleCategoryIds.has(category.id));
@@ -194,8 +196,10 @@ export async function listAllServicesForAdmin(actorRole: StaffRole): Promise<Ser
     supabase.from("tests").select("*").order("sort_order", { ascending: true }),
     supabase.from("test_categories").select("*"),
   ]);
-  if (testsError) throw testsError;
-  if (catError) throw catError;
+  if (testsError || catError) {
+    console.error("[Salem] public service catalogue read failed; using built-in service cards:", testsError?.message || catError?.message);
+    return [];
+  }
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   return (tests ?? []).map((t) => ({ ...t, category: categoryById.get(t.category_id) ?? null }));
@@ -592,8 +596,10 @@ export async function listPublishedServices(): Promise<ServiceWithCategory[]> {
     supabase.from("tests").select("*").eq("content_status", "published").eq("is_active", true).order("sort_order", { ascending: true }),
     supabase.from("test_categories").select("*").eq("is_active", true),
   ]);
-  if (testsError) throw testsError;
-  if (catError) throw catError;
+  if (testsError || catError) {
+    console.error("[Salem] public service catalogue read failed; using built-in service cards:", testsError?.message || catError?.message);
+    return [];
+  }
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   return (tests ?? []).map((t) => ({ ...t, category: categoryById.get(t.category_id) ?? null }));

@@ -180,9 +180,8 @@ export function buildPatientResultAvailableTemplate(ctx: TemplateContext): Email
     <p style="margin:0 0 12px;font-size:14px;line-height:1.6;"><strong>Lab reference:</strong> ${report.resultReference ?? report.labNumber}</p>
     ${codeHtml}
     <a href="${resultsLink}" style="display:inline-block;background-color:#0f2a52;color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;">View my result</a>
-    <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#5b6b85;"><strong>Your laboratory report is attached to this email as a PDF.</strong> You can also use the reference and access code above to view or download it securely online.</p>
     ${instructionHtml}
   `;
-  const bodyText = `Dear ${report.patientName},\n\nYour laboratory result is now available for secure viewing and download.\n\nLab reference: ${report.resultReference ?? report.labNumber}${codeText}\n\nYour laboratory report is attached to this email as a PDF. You can also use the reference and access code above to view or download it securely online.\n\nVisit ${resultsLink} — ${instructionText}`;
+  const bodyText = `Dear ${report.patientName},\n\nYour laboratory result is now available for secure viewing and download.\n\nLab reference: ${report.resultReference ?? report.labNumber}${codeText}\n\nVisit ${resultsLink} — ${instructionText}`;
   return wrap(siteSettings, title, bodyHtml, bodyText);
 }

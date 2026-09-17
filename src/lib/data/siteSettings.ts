@@ -119,7 +119,10 @@ function resolve(row: SiteSettingsRow | null): ResolvedSiteSettings {
 export async function getSiteSettings(): Promise<ResolvedSiteSettings> {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.from("site_settings").select("*").eq("id", true).maybeSingle();
-  if (error) throw error;
+  if (error) {
+    console.error("[Salem] site_settings public read failed; using static defaults:", error.message);
+    return resolve(null);
+  }
   return resolve(data);
 }
 

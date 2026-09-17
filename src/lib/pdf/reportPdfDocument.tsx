@@ -59,8 +59,7 @@ const styles = StyleSheet.create({
   signatureTimestamp: { fontSize: 7, color: "#8592a8", marginTop: 2 },
   pendingNotice: { fontSize: 8, color: "#8592a8", fontStyle: "italic" },
   footer: { position: "absolute", bottom: 18, left: 36, right: 36, borderTopWidth: 1, borderTopColor: "#e5e9f2", paddingTop: 6, flexDirection: "row", justifyContent: "space-between" },
-  footerText: { fontSize: 6.2, color: "#5b6b85" },
-  footerPage: { fontSize: 6.2, color: "#8592a8" },
+  footerText: { fontSize: 6.5, color: "#8592a8" },
 });
 
 export interface ReportPdfFieldValue {
@@ -308,7 +307,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
             {org.orgName} · {org.addressLine1}{org.addressLine2 ? `, ${org.addressLine2}` : ""} · {org.phonePrimary} · {org.emailPrimary}
           </Text>
           <Text
-            style={styles.footerPage}
+            style={styles.footerText}
             render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
           />
         </View>

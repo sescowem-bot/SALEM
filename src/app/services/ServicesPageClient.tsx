@@ -2,15 +2,49 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search, ArrowUpRight, Star, ShieldCheck, Clock, FlaskConical } from "lucide-react";
+import { Search, ArrowUpRight, Star, ShieldCheck, Clock, FlaskConical, Droplet, Microscope, Dna, HeartPulse, Baby, ScanLine, Activity } from "lucide-react";
 import type { Database } from "@/lib/supabase/database.types";
 import type { ServiceWithCategory } from "@/lib/data/testCatalog";
-import { PremiumNoImage } from "@/components/salem/PremiumNoImage";
 
 type TestCategory = Database["public"]["Tables"]["test_categories"]["Row"];
 type ServiceWithImage = ServiceWithCategory & { heroImageUrl: string | null };
 
 const ALL = "All services";
+
+function CategoryIcon({ category }: { category: string }) {
+  const value = category.toLowerCase();
+  if (value.includes("haemat") || value.includes("blood")) return Droplet;
+  if (value.includes("micro")) return Microscope;
+  if (value.includes("horm") || value.includes("endocr")) return Activity;
+  if (value.includes("fertility") || value.includes("obstetric")) return Baby;
+  if (value.includes("ultrasound") || value.includes("scan")) return ScanLine;
+  if (value.includes("ecg") || value.includes("cardiac")) return HeartPulse;
+  if (value.includes("serology") || value.includes("immun")) return Dna;
+  return FlaskConical;
+}
+
+function PremiumNoImage({ service }: { service: ServiceWithImage }) {
+  const Icon = CategoryIcon({ category: service.category?.name ?? "Laboratory" });
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-purple/80">
+      <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full border border-white/10" />
+      <div className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full border border-cyan/20" />
+      <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,white_1px,transparent_1px)] [background-size:18px_18px]" />
+      <div className="relative flex h-full flex-col justify-between p-6 text-white">
+        <div className="flex items-center justify-between">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
+            <Icon className="h-6 w-6 text-cyan-soft" />
+          </span>
+          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-soft">Salem Diagnostics</span>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-soft/80">{service.category?.name ?? "Laboratory service"}</p>
+          <p className="mt-2 max-w-[15rem] text-xl font-semibold leading-tight">Professional diagnostic service</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ServiceCard({ service }: { service: ServiceWithImage }) {
   return (
@@ -18,20 +52,10 @@ function ServiceCard({ service }: { service: ServiceWithImage }) {
       <div className="aspect-[16/9] w-full bg-secondary">
         {service.heroImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
-          <img
-            src={service.heroImageUrl}
-            alt={service.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-              const fallback = event.currentTarget.nextElementSibling as HTMLElement | null;
-              if (fallback) fallback.style.display = "block";
-            }}
-          />
-        ) : null}
-        <div className={service.heroImageUrl ? "hidden h-full w-full" : "h-full w-full"}>
-          <PremiumNoImage name={service.name} category={service.category?.name ?? "Laboratory service"} />
-        </div>
+          <img src={service.heroImageUrl} alt={service.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+        ) : (
+          <PremiumNoImage service={service} />
+        )}
       </div>
       <div className="flex flex-1 flex-col p-6">
         <span className="flex items-center gap-2">

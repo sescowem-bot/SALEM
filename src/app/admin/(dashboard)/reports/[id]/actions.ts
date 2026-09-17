@@ -399,35 +399,6 @@ export async function sendAccessCodeAction(_prev: ActionState, formData: FormDat
   return { ok: true };
 }
 
-/**
- * Manual patient redelivery. The existing plaintext access code is never
- * recoverable from storage, so a resend intentionally rotates the code. The
- * patient receives the new numeric code, the unchanged lab reference and the
- * latest official PDF in the same branded email.
- */
-export async function resendPatientResultAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const staff = await requireStaff();
-  const labReportId = String(formData.get("labReportId") ?? "");
-  if (!labReportId) return { error: "Missing report." };
-
-  try {
-    const { accessCodePlaintext } = await resetPatientAccessCode(labReportId, staff.role, staff.userId);
-    await dispatchReportNotification({
-      eventType: "patient_result_available",
-      labReportId,
-      recipientType: "patient",
-      recipientPatientId: (await getServiceRoleClient().from("lab_reports").select("patient_id").eq("id", labReportId).single()).data?.patient_id ?? undefined,
-      accessCodePlaintext,
-      forceIncludeAccessCode: true,
-      attachFinalReport: true,
-    });
-    revalidatePath(`/admin/reports/${labReportId}`);
-    return { ok: true, accessCode: accessCodePlaintext };
-  } catch (err) {
-    return { error: friendlyError(err) };
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Advanced 7 — Dynamic Lab Result & Report Builder
 // ---------------------------------------------------------------------------

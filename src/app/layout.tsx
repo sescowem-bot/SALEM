@@ -44,15 +44,12 @@ export async function generateMetadata(): Promise<Metadata> {
       images: settings?.ogImageUrl ? [settings.ogImageUrl] : undefined,
     },
     twitter: { card: "summary_large_image", title: orgName, description },
-    // Deliberately use one local, versioned Salem brand mark for the browser icon.
-    // Do not read the old Supabase favicon_path here: stale CMS favicon assets were
-    // the reason browsers kept falling back to the previous tab icon.
     icons: {
       icon: [
-        { url: "/favicon.ico?v=20260917", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" },
-        { url: "/icon.svg?v=20260917", type: "image/svg+xml" },
+        { url: "/favicon.ico?v=5", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" },
+        { url: "/icon-32.png?v=5", type: "image/png", sizes: "32x32" },
       ],
-      apple: "/apple-icon.png?v=20260917",
+      apple: "/apple-icon.png?v=5",
     },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
