@@ -43,6 +43,20 @@ import {
  *     later amendment/re-approval produces a new row, never an overwrite.
  */
 
+
+function calculatePatientAge(dateOfBirth: string | null, asOf: string | null): string | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(`${dateOfBirth}T00:00:00`);
+  const reference = asOf ? new Date(`${asOf}T00:00:00`) : new Date();
+  if (Number.isNaN(dob.getTime()) || Number.isNaN(reference.getTime()) || dob > reference) return null;
+  let age = reference.getFullYear() - dob.getFullYear();
+  const beforeBirthday =
+    reference.getMonth() < dob.getMonth() ||
+    (reference.getMonth() === dob.getMonth() && reference.getDate() < dob.getDate());
+  if (beforeBirthday) age -= 1;
+  return age >= 0 ? `${age} years` : null;
+}
+
 async function buildReportPdfData(input: {
   labReportId: string;
   approvalInfo?: { approverStaffId: string; approverName: string; decidedAt: string } | null;
@@ -145,6 +159,7 @@ async function buildReportPdfData(input: {
       patientName: report.patient_name_snapshot,
       patientSex: report.patient_sex_snapshot,
       patientDob: report.patient_dob_snapshot,
+      patientAge: calculatePatientAge(report.patient_dob_snapshot, report.date_reported ?? report.date_collected),
       request: report.request,
       specimen: report.specimen,
       dateCollected: report.date_collected,
@@ -321,6 +336,7 @@ export interface FinalDocumentSummary {
   versionNumber: number;
   generatedAt: string;
   signedUrl: string;
+  source: "uploaded" | "generated";
 }
 
 /** Latest finalized document for a report, if any — for the Admin report screen's "Download Final PDF". */
@@ -344,6 +360,7 @@ export async function getLatestFinalDocument(labReportId: string, actorRole: Sta
     versionNumber: data.version_number,
     generatedAt: data.generated_at,
     signedUrl: await getSignedReportPdfUrl(data.storage_path),
+    source: data.storage_path.includes("/uploaded-final/") ? "uploaded" : "generated",
   };
 }
 

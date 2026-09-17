@@ -28,8 +28,9 @@ type ReportTest = Database["public"]["Tables"]["report_tests"]["Row"];
 // ---------------------------------------------------------------------------
 // Create
 // ---------------------------------------------------------------------------
-// Keep draft/reviewed reports aligned with the current patient record.
-// Historical published/archived reports retain their issued snapshot.
+// Keep every report aligned with the current patient record. The patient
+// record is authoritative for identity corrections; report_versions remain
+// historical workflow snapshots.
 export async function syncReportPatientSnapshot(labReportId: string): Promise<LabReport> {
   const supabase = getServiceRoleClient();
   const { data: report, error: reportError } = await supabase
@@ -38,8 +39,6 @@ export async function syncReportPatientSnapshot(labReportId: string): Promise<La
     .eq("id", labReportId)
     .single();
   if (reportError) throw reportError;
-
-  if (report.status === "published" || report.status === "archived") return report;
 
   const patient = await getPatientByIdForReport(report.patient_id);
   if (!patient) throw new Error("The patient linked to this report no longer exists.");
@@ -1153,19 +1152,17 @@ export async function getReportDetail(labReportId: string) {
     .single();
   if (reportError) throw reportError;
 
-  // Draft/reviewed screens always reflect the latest patient record. Once a
-  // report is published or archived, its issued snapshot becomes immutable.
+  // Always reflect the latest patient record. This prevents a corrected
+  // patient name/sex/date of birth from becoming stale on an existing report.
   let reportForView = report;
-  if (report.status !== "published" && report.status !== "archived") {
-    const patient = await getPatientByIdForReport(report.patient_id);
-    if (patient) {
-      reportForView = {
-        ...report,
-        patient_name_snapshot: patient.full_name,
-        patient_sex_snapshot: patient.sex,
-        patient_dob_snapshot: patient.date_of_birth,
-      };
-    }
+  const patient = await getPatientByIdForReport(report.patient_id);
+  if (patient) {
+    reportForView = {
+      ...report,
+      patient_name_snapshot: patient.full_name,
+      patient_sex_snapshot: patient.sex,
+      patient_dob_snapshot: patient.date_of_birth,
+    };
   }
 
   const { data: reportTests, error: rtError } = await supabase

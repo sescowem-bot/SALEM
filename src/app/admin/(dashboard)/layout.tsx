@@ -14,7 +14,8 @@ import { AdminBrandingProvider } from "@/lib/auth/adminBrandingContext";
  * The real site logo is fetched here (once, server-side) and provided via
  * AdminBrandingProvider so AdminShell.tsx — a Client Component rendered
  * from ~20 different pages — can show the actual uploaded Salem logo
- * using the current Salem brand asset when CMS branding is unavailable.
+ * instead of the built-in placeholder mark it previously always fell back
+ * to (Advanced 7 QA §1).
  */
 export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {
   await requireStaff();
@@ -25,7 +26,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
     logoUrl = settings.logoUrl;
   } catch {
     // Never let a settings-fetch hiccup break the admin area — fall back
-    // to the local Salem brand asset, same posture as the public root layout.
+    // to the placeholder mark, same posture as the public root layout.
   }
 
   return <AdminBrandingProvider logoUrl={logoUrl}>{children}</AdminBrandingProvider>;

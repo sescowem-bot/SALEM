@@ -1,5 +1,7 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
+import * as React from "react";
+import { Document, Page, Image as PdfImage, renderToBuffer } from "@react-pdf/renderer";
 import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
 import type { Database } from "@/lib/supabase/database.types";
 import { logAudit } from "./audit";
@@ -65,6 +67,82 @@ export async function uploadReportPdf(input: {
  * number always gets its own row and its own path here, never an overwrite
  * of a prior version's file.
  */
+export async function uploadUploadedFinalReport(input: {
+  labReportId: string;
+  file: File;
+  actorRole: StaffRole;
+  actorId?: string;
+}): Promise<string> {
+  if (!hasPermission(input.actorRole, "reports.review")) {
+    throw new Error(`Forbidden: role "${input.actorRole}" cannot upload an official final report.`);
+  }
+  if (!["application/pdf", "image/png", "image/jpeg"].includes(input.file.type)) {
+    throw new Error("Upload a PDF, PNG, or JPEG signed report.");
+  }
+  if (input.file.size > 15 * 1024 * 1024) {
+    throw new Error("The uploaded report must be 15MB or smaller.");
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data: report } = await supabase
+    .from("lab_reports")
+    .select("status, current_version_number")
+    .eq("id", input.labReportId)
+    .single();
+  if (!report) throw new Error("Report not found.");
+  if (report.status === "archived") throw new Error("Archived reports cannot receive a new official document.");
+
+  const bytes = Buffer.from(await input.file.arrayBuffer());
+  let pdfBytes = bytes;
+  if (input.file.type !== "application/pdf") {
+    const dataUri = `data:${input.file.type};base64,${bytes.toString("base64")}`;
+    pdfBytes = await renderToBuffer(
+      React.createElement(
+        Document,
+        { title: "Salem Laboratory Report" },
+        React.createElement(
+          Page,
+          { size: "A4", style: { padding: 0, backgroundColor: "#ffffff" } },
+          React.createElement(PdfImage, { src: dataUri, style: { width: "100%", height: "100%", objectFit: "contain" } })
+        )
+      )
+    );
+  }
+
+  const path = `${input.labReportId}/uploaded-final/v${report.current_version_number}-${Date.now()}.pdf`;
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, pdfBytes, {
+    contentType: "application/pdf",
+    upsert: false,
+  });
+  if (uploadError) throw uploadError;
+
+  const { error: documentError } = await supabase
+    .from("report_final_documents")
+    .upsert(
+      {
+        lab_report_id: input.labReportId,
+        version_number: report.current_version_number,
+        storage_path: path,
+        generated_by: input.actorId ?? null,
+        approval_request_id: null,
+        signatory_id: null,
+      },
+      { onConflict: "lab_report_id,version_number" }
+    );
+  if (documentError) throw documentError;
+
+  await logAudit({
+    action: "RESULT_UPLOADED",
+    entityType: "lab_reports",
+    entityId: input.labReportId,
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    metadata: { fileType: input.file.type, officialFinalDocument: true },
+  });
+
+  return path;
+}
+
 export async function uploadFinalReportPdf(input: {
   labReportId: string;
   versionNumber: number;

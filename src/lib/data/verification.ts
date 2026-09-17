@@ -24,6 +24,7 @@ type AccessOutcome =
         result_reference: string | null;
         patient_name_snapshot: string;
         patient_sex_snapshot: string | null;
+        patient_dob_snapshot: string | null;
         request: string | null;
         specimen: string | null;
         date_collected: string | null;
@@ -40,16 +41,15 @@ export type VerifyResultOutcome =
   | { ok: false; reason: "rate_limited" | "not_found" | "invalid_code" | "not_published" };
 
 export interface PublishedResultDto {
-  labNumber: string;
   resultReference: string;
   patientName: string;
   patientSex: string | null;
+  patientAge: string | null;
   request: string | null;
   specimen: string | null;
   dateCollected: string | null;
   dateReported: string | null;
   publishedAt: string | null;
-  documentVersion: number;
   hasFinalPdf: boolean;
   tests: {
     testName: string;
@@ -58,6 +58,20 @@ export interface PublishedResultDto {
     table: { rowLabel: string; columnLabel: string; value: string | null }[];
     pdfSignedUrl: string | null;
   }[];
+}
+
+
+function calculatePatientAge(dateOfBirth: string | null, asOf: string | null): string | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(`${dateOfBirth}T00:00:00`);
+  const reference = asOf ? new Date(`${asOf}T00:00:00`) : new Date();
+  if (Number.isNaN(dob.getTime()) || Number.isNaN(reference.getTime()) || dob > reference) return null;
+  let age = reference.getFullYear() - dob.getFullYear();
+  const beforeBirthday =
+    reference.getMonth() < dob.getMonth() ||
+    (reference.getMonth() === dob.getMonth() && reference.getDate() < dob.getDate());
+  if (beforeBirthday) age -= 1;
+  return age >= 0 ? `${age} years` : null;
 }
 
 function hashIp(ip: string): string {
@@ -105,7 +119,7 @@ async function authenticatePatientAccess(input: VerifyResultInput): Promise<Acce
   const { data: report, error } = await supabase
     .from("lab_reports")
     .select(
-      "id, lab_number, result_reference, access_code_hash, patient_name_snapshot, patient_sex_snapshot, request, specimen, date_collected, date_reported, status, published_at, current_version_number"
+      "id, lab_number, result_reference, access_code_hash, patient_name_snapshot, patient_sex_snapshot, patient_dob_snapshot, request, specimen, date_collected, date_reported, status, published_at, current_version_number"
     )
     .eq("result_reference", input.resultReference)
     .maybeSingle();
@@ -146,28 +160,15 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
     metadata: { resultReference: input.resultReference },
   });
 
-  // Advanced 6 §3/§4 — use the ALREADY-generated official final PDF
-  // (Advanced 5's report_final_documents), matched to this exact published
-  // version, never a freshly generated or independent document.
+  // Use the official final document recorded for this exact published version.
+  // It may be the system-generated PDF or a staff-uploaded signed artifact.
   const supabase = getServiceRoleClient();
-  const [{ data: finalDoc }, { data: approvedRequest }] = await Promise.all([
-    supabase
-      .from("report_final_documents")
-      .select("storage_path")
-      .eq("lab_report_id", report.id)
-      .eq("version_number", report.current_version_number)
-      .maybeSingle(),
-    supabase
-      .from("approval_requests")
-      .select("id")
-      .eq("lab_report_id", report.id)
-      .eq("status", "approved")
-      .not("decided_by", "is", null)
-      .not("decided_at", "is", null)
-      .order("decided_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  const { data: finalDoc } = await supabase
+    .from("report_final_documents")
+    .select("storage_path")
+    .eq("lab_report_id", report.id)
+    .eq("version_number", report.current_version_number)
+    .maybeSingle();
 
   const { data: reportTests, error: rtError } = await supabase
     .from("report_tests")
@@ -249,17 +250,16 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
   return {
     ok: true,
     result: {
-      labNumber: report.lab_number,
       resultReference: report.result_reference ?? input.resultReference,
       patientName: report.patient_name_snapshot,
       patientSex: report.patient_sex_snapshot,
+      patientAge: calculatePatientAge(report.patient_dob_snapshot, report.date_reported ?? report.date_collected),
       request: report.request,
       specimen: report.specimen,
       dateCollected: report.date_collected,
       dateReported: report.date_reported,
       publishedAt: report.published_at,
-      documentVersion: report.current_version_number,
-      hasFinalPdf: Boolean(finalDoc?.storage_path || approvedRequest?.id),
+      hasFinalPdf: Boolean(finalDoc?.storage_path),
       tests,
     },
   };
@@ -290,21 +290,26 @@ export async function downloadPatientFinalPdf(input: VerifyResultInput): Promise
     .eq("version_number", report.current_version_number)
     .maybeSingle();
 
-  // Prefer a fresh render using the current official letterhead/signatory.
-  // This also allows a published report to remain downloadable if the
-  // original storage write failed during approval generation.
-  let currentBuffer: Buffer | null = null;
-  try {
-    currentBuffer = await renderCurrentFinalReportPdfBuffer(report.id);
-  } catch (error) {
-    console.error("[verification] current final PDF render failed", report.id, error);
-  }
-
-  if (!currentBuffer && !finalDoc?.storage_path) {
+  if (!finalDoc?.storage_path) {
     return { ok: false, reason: "no_final_document" };
   }
 
-  const buffer = currentBuffer ?? (await downloadReportPdfBytes(finalDoc!.storage_path));
+  const isUploadedFinal = finalDoc.storage_path.includes("/uploaded-final/");
+  let buffer: Buffer;
+  if (isUploadedFinal) {
+    // A staff-uploaded signed report is the explicit official artifact and
+    // must be delivered unchanged.
+    buffer = await downloadReportPdfBytes(finalDoc.storage_path);
+  } else {
+    // Generated reports use the current patient/letterhead/signatory data so
+    // approved patient corrections do not leave a stale generated PDF.
+    try {
+      buffer = (await renderCurrentFinalReportPdfBuffer(report.id)) ?? (await downloadReportPdfBytes(finalDoc.storage_path));
+    } catch (error) {
+      console.error("[verification] current final PDF render failed", report.id, error);
+      buffer = await downloadReportPdfBytes(finalDoc.storage_path);
+    }
+  }
 
   await logAudit({
     action: "PATIENT_PDF_DOWNLOADED",

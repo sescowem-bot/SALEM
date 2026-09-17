@@ -23,7 +23,7 @@ import {
   returnApprovalRequestForCorrection,
   getLatestApprovedApprovalRequest,
 } from "@/lib/data/approvals";
-import { uploadReportPdf } from "@/lib/data/storage";
+import { uploadReportPdf, uploadUploadedFinalReport } from "@/lib/data/storage";
 import { generateFinalReportPdf } from "@/lib/data/reportDocuments";
 import { dispatchReportNotification } from "@/lib/data/notifications";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
@@ -154,6 +154,28 @@ export async function uploadPdfAction(_prev: ActionState, formData: FormData): P
   return { ok: true };
 }
 
+export async function uploadOfficialFinalReportAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const labReportId = String(formData.get("labReportId") ?? "");
+  const file = formData.get("file");
+  if (!labReportId || !(file instanceof File) || file.size === 0) {
+    return { error: "Choose the signed final report file first." };
+  }
+  try {
+    await uploadUploadedFinalReport({
+      labReportId,
+      file,
+      actorRole: staff.role,
+      actorId: staff.userId,
+    });
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+  revalidatePath(`/admin/reports/${labReportId}`);
+  revalidatePath(`/admin/reports/${labReportId}/preview`);
+  return { ok: true };
+}
+
 /** Advanced 4 — submit a draft for approval to a specific, chosen authorized approver. */
 export async function submitForApprovalAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireStaff();
@@ -276,7 +298,8 @@ export async function publishAction(_prev: ActionState, formData: FormData): Pro
   if (!parsed.success) return { error: "Invalid report." };
 
   try {
-    // Freeze the latest patient information at the moment of publication.
+    // Sync the latest patient information before publication so the released
+    // document always uses the corrected patient record.
     await syncReportPatientSnapshot(parsed.data.labReportId);
     const { report, accessCodePlaintext } = await publishReport(parsed.data.labReportId, staff.role, staff.userId);
 
@@ -292,15 +315,27 @@ export async function publishAction(_prev: ActionState, formData: FormData): Pro
       .eq("id", approval.decided_by)
       .single();
 
-    await generateFinalReportPdf({
-      labReportId: parsed.data.labReportId,
-      approvalRequestId: approval.id,
-      approverStaffId: approval.decided_by,
-      approverName: approverProfile?.full_name ?? "Authorized approver",
-      decidedAt: approval.decided_at ?? new Date().toISOString(),
-      actorRole: staff.role,
-      actorId: staff.userId,
-    });
+    const { data: existingFinalDocument } = await supabaseApproval
+      .from("report_final_documents")
+      .select("storage_path")
+      .eq("lab_report_id", parsed.data.labReportId)
+      .eq("version_number", report.current_version_number)
+      .maybeSingle();
+
+    // If staff already uploaded a completed signed report for this version,
+    // keep that artifact as the official document instead of overwriting it
+    // with a newly generated PDF. Otherwise generate the standard Salem PDF.
+    if (!existingFinalDocument?.storage_path?.includes("/uploaded-final/")) {
+      await generateFinalReportPdf({
+        labReportId: parsed.data.labReportId,
+        approvalRequestId: approval.id,
+        approverStaffId: approval.decided_by,
+        approverName: approverProfile?.full_name ?? "Authorized approver",
+        decidedAt: approval.decided_at ?? new Date().toISOString(),
+        actorRole: staff.role,
+        actorId: staff.userId,
+      });
+    }
 
     // Automatic patient delivery: once publication and final-PDF generation
     // are complete, send the finished report to the patient's saved email.

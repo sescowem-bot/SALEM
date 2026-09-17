@@ -28,6 +28,7 @@ import {
   saveFieldResultAction,
   saveTableCellAction,
   uploadPdfAction,
+  uploadOfficialFinalReportAction,
   submitForApprovalAction,
   approveApprovalRequestAction,
   rejectApprovalRequestAction,
@@ -311,6 +312,32 @@ function PdfUpload({ reportTestId, labReportId }: { reportTestId: string; labRep
       <PdfUploadButton />
       {state.error ? <p className="w-full text-xs text-destructive">{state.error}</p> : null}
       {state.ok ? <p className="w-full text-xs text-navy">Uploaded.</p> : null}
+    </form>
+  );
+}
+
+function OfficialFinalReportUpload({ labReportId }: { labReportId: string }) {
+  const [state, action] = useActionState(uploadOfficialFinalReportAction, initial);
+  return (
+    <form action={action} className="mt-4 rounded-xl border border-dashed border-border bg-secondary/50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-navy-deep">Upload signed final report</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Use this when Salem already has a completed signed PDF or scanned PNG/JPEG. It becomes the official patient-download document and stays separate from structured result templates.
+          </p>
+        </div>
+        <UploadCloud className="h-4 w-4 text-purple" />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input type="hidden" name="labReportId" value={labReportId} />
+        <input type="file" name="file" accept="application/pdf,image/png,image/jpeg" required className="text-xs" />
+        <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+          Upload official report
+        </button>
+      </div>
+      {state.error ? <p className="mt-2 text-xs text-destructive">{state.error}</p> : null}
+      {state.ok ? <p className="mt-2 text-xs text-emerald-700">Official patient-download document uploaded.</p> : null}
     </form>
   );
 }
@@ -1153,7 +1180,7 @@ export function ReportDetailClient({
           <h2 className="text-sm font-semibold text-navy-deep">Document</h2>
           <p className="text-xs text-muted-foreground">
             {finalDocument
-              ? `Final PDF generated for version v${finalDocument.versionNumber} on ${new Date(finalDocument.generatedAt).toLocaleString()}.`
+              ? `${finalDocument.source === "uploaded" ? "Official uploaded final report" : `Final PDF generated for version v${finalDocument.versionNumber}`} on ${new Date(finalDocument.generatedAt).toLocaleString()}.`
               : "No final PDF yet — generated automatically once this report is approved."}
           </p>
         </div>
@@ -1174,6 +1201,9 @@ export function ReportDetailClient({
             </a>
           ) : null}
         </div>
+        {(canDecideApproval || canPublish) && report.status !== "archived" ? (
+          <OfficialFinalReportUpload labReportId={report.id} />
+        ) : null}
       </section>
 
       <section className="surface-card p-5">

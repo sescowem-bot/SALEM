@@ -200,13 +200,13 @@ function ReportPreview({ result, reference, code }: { result: PublishedResultDto
           </p>
           <h2 className="mt-2 text-xl font-semibold text-navy-deep sm:text-2xl">{result.patientName}</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Lab number {result.labNumber} &middot; Reference {result.resultReference}
+            Reference {result.resultReference}
             {result.dateReported ? <> &middot; Reported {result.dateReported}</> : null}
           </p>
           <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+            <span><b className="text-navy-deep">Age:</b> {result.patientAge || "—"}</span>
             <span><b className="text-navy-deep">Specimen:</b> {result.specimen || "—"}</span>
             <span><b className="text-navy-deep">Collected:</b> {result.dateCollected || "—"}</span>
-            <span><b className="text-navy-deep">Request:</b> {result.request || "—"}</span>
           </div>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">

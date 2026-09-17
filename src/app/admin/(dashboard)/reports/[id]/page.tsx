@@ -158,6 +158,16 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   );
 }
 
+function calculatePatientAgeForDisplay(dateOfBirth: string | null, asOf: string | null): string | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(`${dateOfBirth}T00:00:00`);
+  const ref = asOf ? new Date(`${asOf}T00:00:00`) : new Date();
+  if (Number.isNaN(dob.getTime()) || Number.isNaN(ref.getTime()) || dob > ref) return null;
+  let age = ref.getFullYear() - dob.getFullYear();
+  if (ref.getMonth() < dob.getMonth() || (ref.getMonth() === dob.getMonth() && ref.getDate() < dob.getDate())) age -= 1;
+  return age >= 0 ? `${age} years` : null;
+}
+
 function ReportSummary({
   report,
   testNames,
@@ -167,7 +177,7 @@ function ReportSummary({
 }) {
   const fields: { label: string; value: string }[] = [
     { label: "Sex", value: report.patient_sex_snapshot ?? "Not specified" },
-    { label: "Date of birth", value: report.patient_dob_snapshot ?? "Not specified" },
+    { label: "Age", value: calculatePatientAgeForDisplay(report.patient_dob_snapshot, report.date_reported ?? report.date_collected) ?? "Not specified" },
     { label: "Requested service(s)", value: testNames.length > 0 ? testNames.join(", ") : "Not specified" },
     { label: "Specimen", value: report.specimen ?? "Not specified" },
     { label: "Date collected", value: report.date_collected ?? "Not specified" },

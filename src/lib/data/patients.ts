@@ -118,6 +118,23 @@ export async function updatePatient(
   const { data, error } = await supabase.from("patients").update(input).eq("id", patientId).select().single();
   if (error) throw error;
 
+  // Keep every linked report aligned with the patient's current record so
+  // report previews, generated PDFs and patient-facing result retrievals
+  // never show stale name/sex/date-of-birth data after a patient correction.
+  // report_versions remain historical workflow snapshots; the live report row
+  // is the authoritative current patient identity used for report rendering.
+  const { error: reportSyncError } = await supabase
+    .from("lab_reports")
+    .update({
+      patient_name_snapshot: data.full_name,
+      patient_sex_snapshot: data.sex,
+      patient_dob_snapshot: data.date_of_birth,
+      last_modified_at: new Date().toISOString(),
+      last_modified_by: actorId ?? null,
+    })
+    .eq("patient_id", patientId);
+  if (reportSyncError) throw reportSyncError;
+
   await logAudit({
     action: "PATIENT_UPDATED",
     entityType: "patients",

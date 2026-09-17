@@ -1,11 +1,12 @@
 {
   "name": "Salem Medical Laboratories",
-  "short_name": "Salem Medical",
+  "short_name": "Salem Medical Laboratories",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {"src":"/icon-192.png?v=salem-20260917","sizes":"192x192","type":"image/png"},
+    {"src":"/icon-512.png?v=salem-20260917","sizes":"512x512","type":"image/png"},
+    {"src":"/icon-180.png?v=salem-20260917","sizes":"180x180","type":"image/png"}
   ],
-  "theme_color": "#102a72",
+  "theme_color": "#10235f",
   "background_color": "#ffffff",
   "display": "standalone"
 }

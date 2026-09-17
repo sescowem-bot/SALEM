@@ -87,7 +87,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           {[
             ["Patient name", report.patientName],
             ["Sex", report.patientSex ?? "—"],
-            ["Date of birth", report.patientDob ?? "—"],
+            ["Age", report.patientAge ?? "—"],
             ["Lab number", report.labNumber],
             ["Report reference", report.resultReference ?? "Pending publication"],
             ["Document version", `v${report.versionNumber}`],

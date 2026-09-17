@@ -122,6 +122,7 @@ export interface ReportPdfInput {
     patientName: string;
     patientSex: string | null;
     patientDob: string | null;
+    patientAge: string | null;
     request: string | null;
     specimen: string | null;
     dateCollected: string | null;
@@ -194,7 +195,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfInput }) {
         <View style={styles.infoGrid}>
           <InfoCell label="Patient name" value={report.patientName} />
           <InfoCell label="Sex" value={report.patientSex} />
-          <InfoCell label="Date of birth" value={report.patientDob} />
+          <InfoCell label="Age" value={report.patientAge} />
           <InfoCell label="Report reference" value={report.resultReference} />
           <InfoCell label="Requested service(s)" value={tests.map((t) => t.testName).join(", ") || null} />
           <InfoCell label="Specimen" value={report.specimen} />
