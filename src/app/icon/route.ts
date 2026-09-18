@@ -19,10 +19,7 @@ export async function GET() {
 
     if (!imageUrl) {
       const file = await readFile(join(process.cwd(), "public", "salem-favicon.png"));
-      return new Response(file, {
-        status: 200,
-        headers: { "Content-Type": "image/png", "Cache-Control": "no-store, max-age=0" },
-      });
+      return new Response(file, { status: 200, headers: { "Content-Type": "image/png", "Cache-Control": "no-store, max-age=0" } });
     }
 
     // Serve the current CMS asset through our own /icon endpoint instead of
