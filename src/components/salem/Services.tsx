@@ -62,7 +62,7 @@ export interface HomepageFeaturedService {
   slug: string;
   publicDescription: string | null;
   heroImageUrl: string | null;
-  categoryName: string | null;
+  categoryName: string;
   turnaroundTime: string | null;
   priceNgn: number | null;
   showPrice: boolean;
@@ -105,14 +105,20 @@ export function Services({
                     // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
                     <img src={s.heroImageUrl} alt={s.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   ) : (
-                    <div className="grid h-full w-full place-items-center text-muted-foreground">
-                      <FlaskConical className="h-10 w-10" />
+                    <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-purple/80">
+                      <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full border border-white/10" />
+                      <div className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full border border-cyan/20" />
+                      <div className="relative flex h-full flex-col justify-between p-6 text-white">
+                        <span className="grid h-11 w-11 place-items-center rounded-xl border border-white/15 bg-white/10"><FlaskConical className="h-5 w-5 text-cyan-soft" /></span>
+                        <div><p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-cyan-soft/90">{s.categoryName}</p><p className="mt-2 text-xl font-semibold leading-tight">Professional diagnostic service</p></div>
+                      </div>
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 to-transparent" aria-hidden="true" />
                 </div>
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-navy-deep">{s.name}</h3>
+                  <span className="inline-flex rounded-full bg-accent px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-navy">{s.categoryName}</span>
+                  <h3 className="mt-4 text-lg font-semibold text-navy-deep">{s.name}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     {s.publicDescription ?? "Speak with our team for details on this test."}
                   </p>

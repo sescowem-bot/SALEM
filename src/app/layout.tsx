@@ -47,13 +47,10 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: settings?.faviconUrl
         ? [{ url: `${settings.faviconUrl}${settings.faviconUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || "custom")}` }]
-        : [
-            { url: "/favicon.ico?v=4", type: "image/x-icon", sizes: "16x16 32x32 48x48 64x64" },
-            { url: "/icon.svg?v=4", type: "image/svg+xml" },
-          ],
+        : [{ url: "/icon?v=salem", type: "image/png" }],
       apple: settings?.faviconUrl
         ? `${settings.faviconUrl}${settings.faviconUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || "custom")}`
-        : "/apple-icon.png?v=4",
+        : "/icon?v=salem",
     },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
