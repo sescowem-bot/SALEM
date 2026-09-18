@@ -33,6 +33,7 @@ export default async function HomePage() {
 
   const featuredServices: HomepageFeaturedService[] = services
     .filter((s) => s.featured)
+    .sort((a, b) => a.featured_home_order - b.featured_home_order || a.sort_order - b.sort_order)
     .map((s) => ({
       id: s.id,
       name: s.name,

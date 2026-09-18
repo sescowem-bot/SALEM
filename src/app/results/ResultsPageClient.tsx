@@ -216,6 +216,14 @@ function ReportPreview({ result, reference, code }: { result: PublishedResultDto
       </div>
 
       <div className="space-y-6 p-6 sm:p-8">
+        {result.tests.length === 0 && result.investigationName ? (
+          <div className="rounded-2xl border border-border bg-secondary p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-purple">Uploaded result</p>
+            <h3 className="mt-1 text-base font-semibold text-navy-deep">{result.investigationName}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">This result was supplied as a completed laboratory PDF. Use the Download PDF button above to retrieve the official document.</p>
+          </div>
+        ) : null}
+
         {result.tests.map((test) => (
           <div key={test.testName} className="overflow-hidden rounded-2xl border border-dashed border-border">
             <div className="bg-secondary px-4 py-2.5 text-sm font-semibold text-navy-deep">{test.testName}</div>

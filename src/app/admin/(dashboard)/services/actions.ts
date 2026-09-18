@@ -12,6 +12,7 @@ import {
   archiveService,
   setServiceFeatured,
   reorderService,
+  reorderFeaturedService,
   isServiceSlugTaken,
   type ServiceEditableFields,
 } from "@/lib/data/testCatalog";
@@ -313,5 +314,17 @@ export async function removeServiceImageAction(_prev: ActionState, formData: For
 
   revalidatePath(`/admin/services/${testId}`);
   revalidatePath("/services");
+  return { ok: true };
+}
+
+export async function reorderFeaturedServiceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const testId = String(formData.get("testId") ?? "");
+  const direction = String(formData.get("direction") ?? "") as "up" | "down";
+  if (!testId || !["up", "down"].includes(direction)) return { error: "Missing homepage reorder details." };
+  try { await reorderFeaturedService(testId, direction, staff.role, staff.userId); }
+  catch (err) { return { error: err instanceof Error ? err.message : "Could not reorder homepage service." }; }
+  revalidatePath("/admin/services");
+  revalidatePath("/");
   return { ok: true };
 }

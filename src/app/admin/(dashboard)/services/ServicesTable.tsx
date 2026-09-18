@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/salem/StatusBadge";
 import {
   toggleFeaturedAction,
   reorderServiceAction,
+  reorderFeaturedServiceAction,
   publishServiceAction,
   unpublishServiceAction,
   archiveServiceAction,
@@ -145,12 +146,12 @@ export function ServicesTable({ services }: { services: ServiceWithCategory[] })
 
               <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                 <InlineActionForm action={reorderServiceAction} hidden={{ testId: s.id, direction: "up" }}>
-                  <span className={iconBtn()} aria-label="Move up">
+                  <span className={iconBtn()} title="Move up in catalogue" aria-label="Move up in catalogue">
                     <ArrowUp className="h-3.5 w-3.5" />
                   </span>
                 </InlineActionForm>
                 <InlineActionForm action={reorderServiceAction} hidden={{ testId: s.id, direction: "down" }}>
-                  <span className={iconBtn()} aria-label="Move down">
+                  <span className={iconBtn()} title="Move down in catalogue" aria-label="Move down in catalogue">
                     <ArrowDown className="h-3.5 w-3.5" />
                   </span>
                 </InlineActionForm>
@@ -159,6 +160,16 @@ export function ServicesTable({ services }: { services: ServiceWithCategory[] })
                     <Star className={`h-3.5 w-3.5 ${s.featured ? "fill-current" : ""}`} />
                   </span>
                 </InlineActionForm>
+                {s.featured ? (
+                  <>
+                    <InlineActionForm action={reorderFeaturedServiceAction} hidden={{ testId: s.id, direction: "up" }}>
+                      <span className={iconBtn()} title="Move earlier on homepage" aria-label="Move earlier on homepage"><ArrowUp className="h-3.5 w-3.5" /></span>
+                    </InlineActionForm>
+                    <InlineActionForm action={reorderFeaturedServiceAction} hidden={{ testId: s.id, direction: "down" }}>
+                      <span className={iconBtn()} title="Move later on homepage" aria-label="Move later on homepage"><ArrowDown className="h-3.5 w-3.5" /></span>
+                    </InlineActionForm>
+                  </>
+                ) : null}
                 <Link href={`/admin/services/${s.id}/preview`} className={iconBtn()} aria-label="Preview">
                   <Eye className="h-3.5 w-3.5" />
                 </Link>

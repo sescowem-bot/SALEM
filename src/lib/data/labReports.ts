@@ -79,6 +79,8 @@ export interface CreateLabReportInput {
   patientDobSnapshot?: string | null;
   labNumber: string;
   request?: string;
+  sourceInvestigationName?: string;
+  reportComment?: string;
   specimen?: string;
   dateCollected?: string;
   createdBy?: string; // auth.users id of the actor, for audit fields
@@ -99,6 +101,8 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     patient_dob_snapshot: input.patientDobSnapshot ?? null,
     lab_number: input.labNumber,
     request: input.request,
+    source_investigation_name: input.sourceInvestigationName ?? null,
+    report_comment: input.reportComment ?? null,
     specimen: input.specimen,
     date_collected: input.dateCollected,
     status: "draft",

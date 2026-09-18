@@ -37,6 +37,8 @@ import {
   unlockPublishedReportAction,
   resetAccessCodeAction,
   sendAccessCodeAction,
+  archiveReportAction,
+  uploadSourceDocumentAction,
   addExistingInvestigationAction,
   removeInvestigationAction,
   reorderInvestigationAction,
@@ -72,6 +74,16 @@ interface VersionHistoryRow {
   change_type: string;
   changed_by: string | null;
   changed_at: string;
+}
+
+interface UploadedReportDocumentSummary {
+  id: string;
+  versionNumber: number;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+  signedUrl: string;
 }
 
 interface NotificationRow {
@@ -311,6 +323,44 @@ function PdfUpload({ reportTestId, labReportId }: { reportTestId: string; labRep
       <PdfUploadButton />
       {state.error ? <p className="w-full text-xs text-destructive">{state.error}</p> : null}
       {state.ok ? <p className="w-full text-xs text-navy">Uploaded.</p> : null}
+    </form>
+  );
+}
+
+function SourceDocumentUpload({ labReportId }: { labReportId: string }) {
+  const [state, action] = useActionState(uploadSourceDocumentAction, initial);
+  return (
+    <form action={action} className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <input name="file" type="file" accept="application/pdf,.pdf" required className="max-w-full text-xs" />
+      <button type="submit" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-navy hover:border-cyan hover:bg-accent">
+        <UploadCloud className="h-3.5 w-3.5" /> Replace supplied PDF
+      </button>
+      {state.error ? <p className="w-full text-xs text-destructive">{state.error}</p> : null}
+      {state.ok ? <p className="w-full text-xs font-medium text-emerald-700">Supplied PDF uploaded for the current correction version.</p> : null}
+    </form>
+  );
+}
+
+function ArchiveReportForm({ labReportId }: { labReportId: string }) {
+  const [state, action] = useActionState(archiveReportAction, initial);
+  const [open, setOpen] = useState(false);
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-destructive/30 px-5 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10">
+        <XCircle className="h-4 w-4" /> Archive report
+      </button>
+    );
+  }
+  return (
+    <form action={action} className="flex flex-col gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3">
+      <input type="hidden" name="labReportId" value={labReportId} />
+      <label className="text-xs font-semibold text-navy-deep">Reason for archiving<input name="comment" required maxLength={1000} className={fieldClass} placeholder="e.g. Superseded by corrected report" /></label>
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className="inline-flex items-center gap-2 rounded-full bg-destructive px-4 py-2 text-xs font-semibold text-white">Archive</button>
+        <button type="button" onClick={() => setOpen(false)} className="rounded-full border border-border px-4 py-2 text-xs font-semibold text-navy">Cancel</button>
+      </div>
+      {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
     </form>
   );
 }
@@ -1118,6 +1168,7 @@ export function ReportDetailClient({
   approvalHistory,
   versionHistory,
   finalDocument,
+  uploadedDocument,
   notifications,
   patientPhone,
   availableTests,
@@ -1136,6 +1187,7 @@ export function ReportDetailClient({
   approvalHistory: ApprovalHistoryRow[];
   versionHistory: VersionHistoryRow[];
   finalDocument: FinalDocumentSummary | null;
+  uploadedDocument: UploadedReportDocumentSummary | null;
   notifications: NotificationRow[];
   patientPhone: string | null;
   availableTests: Test[];
@@ -1152,9 +1204,11 @@ export function ReportDetailClient({
         <div>
           <h2 className="text-sm font-semibold text-navy-deep">Document</h2>
           <p className="text-xs text-muted-foreground">
-            {finalDocument
-              ? `Final PDF generated for version v${finalDocument.versionNumber} on ${new Date(finalDocument.generatedAt).toLocaleString()}.`
-              : "No final PDF yet — generated automatically once this report is approved."}
+            {uploadedDocument
+              ? `Supplied PDF · ${uploadedDocument.fileName} · version v${uploadedDocument.versionNumber}.`
+              : finalDocument
+                ? `Final PDF generated for version v${finalDocument.versionNumber} on ${new Date(finalDocument.generatedAt).toLocaleString()}.`
+                : "No final document yet — one will become available after approval and publication."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1165,14 +1219,20 @@ export function ReportDetailClient({
           >
             <Eye className="h-3.5 w-3.5" /> Preview
           </Link>
-          {finalDocument ? (
+          {(finalDocument || uploadedDocument) ? (
             <a
               href={`/admin/reports/${report.id}/download`}
               className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft"
             >
-              <Download className="h-3.5 w-3.5" /> Download final PDF
+              <Download className="h-3.5 w-3.5" /> Download document
             </a>
           ) : null}
+          {uploadedDocument ? (
+            <a href={uploadedDocument.signedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-navy hover:border-cyan hover:bg-accent">
+              <FileText className="h-3.5 w-3.5" /> Open supplied PDF
+            </a>
+          ) : null}
+          {canEdit && uploadedDocument ? <SourceDocumentUpload labReportId={report.id} /> : null}
         </div>
       </section>
 
@@ -1388,6 +1448,8 @@ export function ReportDetailClient({
         ) : null}
 
         {canUnlockPublished ? <UnlockPublishedForm labReportId={report.id} /> : null}
+
+        {report.status === "published" && canUnlockPublished ? <ArchiveReportForm labReportId={report.id} /> : null}
 
         {!canEdit &&
         !canDecideApproval &&

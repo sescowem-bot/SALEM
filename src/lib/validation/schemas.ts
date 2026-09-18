@@ -421,3 +421,20 @@ export const verifyResultSchema = z.object({
     .regex(/^SML-[A-Z0-9]{4}-[A-Z0-9]{4}$/, "Enter a valid result reference (e.g. SML-XXXX-XXXX)"),
   accessCode: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit access code"),
 });
+
+/** Phase 1 — finished laboratory result supplied as an external PDF. */
+export const standaloneUploadedResultSchema = z.object({
+  patientMode: z.enum(["existing", "new"]),
+  patientId: z.string().uuid().optional().or(z.literal("")),
+  fullName: z.string().trim().min(2, "Full name is required").max(200).optional().or(z.literal("")),
+  sex: z.enum(["Male", "Female"]).optional().or(z.literal("")),
+  dateOfBirth: z.string().date().optional().or(z.literal("")),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+  email: z.string().trim().email().optional().or(z.literal("")),
+  labNumber: z.string().trim().min(2, "Lab number is required").max(100),
+  investigationName: z.string().trim().min(2, "Investigation name is required").max(200),
+  request: z.string().trim().max(500).optional().or(z.literal("")),
+  specimen: z.string().trim().max(200).optional().or(z.literal("")),
+  dateCollected: z.string().date().optional().or(z.literal("")),
+  reportComment: z.string().trim().max(2000).optional().or(z.literal("")),
+});

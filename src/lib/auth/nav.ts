@@ -30,30 +30,21 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   if (can(staff, "home_collection.manage") || can(staff, "home_collection.view_assigned")) {
     operations.push({ href: "/admin/home-collection", label: "Home collection" });
   }
-  if (can(staff, "reports.view")) {
-    operations.push({ href: "/admin/results-entry", label: "Results entry" });
-  }
-  if (can(staff, "reports.view")) {
-    operations.push({ href: "/admin/reports", label: "Report Management" });
-  }
-  if (can(staff, "reports.create_draft")) {
-    operations.push({ href: "/admin/results-entry", label: "Create Report" });
-  }
-  if (can(staff, "reports.edit_draft")) {
-    operations.push({ href: "/admin/upload-results", label: "Upload Result" });
-  }
+  const reports: AdminNavItem[] = [];
+  if (can(staff, "reports.view")) reports.push({ href: "/admin/reports", label: "Report Management" });
+  if (can(staff, "reports.create_draft")) reports.push({ href: "/admin/results-entry", label: "New Report" });
+  if (can(staff, "reports.create_draft")) reports.push({ href: "/admin/upload-results", label: "Upload Existing Result" });
+  if (can(staff, "reports.review")) reports.push({ href: "/admin/review", label: "Approval Queue" });
+  if (reports.length > 0) sections.push({ label: "Reports", items: reports });
   if (can(staff, "reports.create_draft") || can(staff, "reports.edit_draft")) {
     operations.push({ href: "/admin/workspace", label: "My workspace" });
-  }
-  if (can(staff, "reports.review")) {
-    operations.push({ href: "/admin/review", label: "Approval queue" });
   }
   if (operations.length > 0) sections.push({ label: "Operations", items: operations });
 
   const services: AdminNavItem[] = [];
   if (can(staff, "catalogue.manage")) {
     services.push(
-      { href: "/admin/services", label: "Investigations & Services" },
+      { href: "/admin/services", label: "Services & Tests" },
       { href: "/admin/services/templates", label: "Report Templates" }
     );
   }
@@ -71,7 +62,7 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
       { href: "/admin/website", label: "Overview" },
       { href: "/admin/website/homepage", label: "Homepage" },
       { href: "/admin/website/about", label: "About" },
-      { href: "/admin/services", label: "Services" },
+      { href: "/admin/services", label: "Services & Tests" },
       { href: "/admin/website/contact", label: "Contact" },
       { href: "/admin/website/footer", label: "Footer" },
       { href: "/admin/website/seo", label: "SEO" },

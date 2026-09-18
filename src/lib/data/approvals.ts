@@ -81,6 +81,26 @@ export async function submitReportForApproval(input: {
     throw new Error("The selected approver is not currently authorized to review reports.");
   }
 
+  const { data: reportForSubmission, error: reportForSubmissionError } = await supabase
+    .from("lab_reports")
+    .select("status, submitted_for_review, source_investigation_name, current_version_number")
+    .eq("id", input.labReportId)
+    .single();
+  if (reportForSubmissionError) throw reportForSubmissionError;
+  if (reportForSubmission.source_investigation_name) {
+    const { data: sourceDocument, error: sourceError } = await supabase
+      .from("report_uploaded_documents")
+      .select("version_number")
+      .eq("lab_report_id", input.labReportId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sourceError) throw sourceError;
+    if (!sourceDocument || sourceDocument.version_number !== reportForSubmission.current_version_number) {
+      throw new Error("Upload the corrected source PDF for the current report version before submitting this report for approval.");
+    }
+  }
+
   // Reuses the existing submit-for-review transition as-is (sets
   // submitted_for_review = true, writes its own RESULT_SUBMITTED_FOR_REVIEW
   // audit entry) — this function only adds the routing on top.

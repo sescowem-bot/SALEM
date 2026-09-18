@@ -97,8 +97,8 @@ export function Services({
         </div>
 
         {hasCmsFeatured ? (
-          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {featuredServices!.slice(0, 3).map((s) => (
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredServices!.map((s) => (
               <article key={s.id} className="surface-card group overflow-hidden">
                 <div className="relative h-52 overflow-hidden bg-secondary">
                   {s.heroImageUrl ? (
@@ -133,7 +133,7 @@ export function Services({
             ))}
           </div>
         ) : (
-          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {fallbackFeatured.map(({ image, icon: Icon, title, body, href }) => (
               <article key={title} className="surface-card group overflow-hidden">
                 <div className="relative h-52 overflow-hidden">

@@ -11,6 +11,7 @@ import {
   unlockPublishedReportForCorrection,
   resetPatientAccessCode,
   sendAccessCodeToPatientNow,
+  transitionReportStatus,
   addTestToReport,
   removeTestFromReport,
   reorderReportTest,
@@ -24,6 +25,7 @@ import {
   getLatestApprovedApprovalRequest,
 } from "@/lib/data/approvals";
 import { uploadReportPdf } from "@/lib/data/storage";
+import { uploadStandaloneReportDocument } from "@/lib/data/uploadedReportDocuments";
 import { generateFinalReportPdf } from "@/lib/data/reportDocuments";
 import { dispatchReportNotification } from "@/lib/data/notifications";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
@@ -150,6 +152,46 @@ export async function uploadPdfAction(_prev: ActionState, formData: FormData): P
     return { error: friendlyError(err) };
   }
 
+  revalidatePath(`/admin/reports/${labReportId}`);
+  return { ok: true };
+}
+
+
+export async function archiveReportAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const parsed = reportTransitionSchema.safeParse({
+    labReportId: formData.get("labReportId"),
+    comment: formData.get("comment") || "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid report." };
+  if (!parsed.data.comment) return { error: "Please state why this report is being archived." };
+
+  try {
+    await transitionReportStatus(parsed.data.labReportId, "archived", staff.userId, staff.role, parsed.data.comment);
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
+
+  revalidatePath(`/admin/reports/${parsed.data.labReportId}`);
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin/review");
+  return { ok: true };
+}
+
+export async function uploadSourceDocumentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireStaff();
+  const labReportId = String(formData.get("labReportId") ?? "");
+  const file = formData.get("file");
+  if (!labReportId) return { error: "Missing report." };
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a PDF file." };
+  if (file.type !== "application/pdf") return { error: "Only PDF files are accepted." };
+  if (file.size > 15 * 1024 * 1024) return { error: "PDF must be 15MB or smaller." };
+
+  try {
+    await uploadStandaloneReportDocument({ labReportId, file, actorRole: staff.role, actorId: staff.userId });
+  } catch (err) {
+    return { error: friendlyError(err) };
+  }
   revalidatePath(`/admin/reports/${labReportId}`);
   return { ok: true };
 }
@@ -286,21 +328,30 @@ export async function publishAction(_prev: ActionState, formData: FormData): Pro
     }
 
     const supabaseApproval = getServiceRoleClient();
-    const { data: approverProfile } = await supabaseApproval
-      .from("staff_profiles")
-      .select("full_name")
-      .eq("id", approval.decided_by)
-      .single();
+    const { data: uploadedSource } = await supabaseApproval
+      .from("report_uploaded_documents")
+      .select("id")
+      .eq("lab_report_id", parsed.data.labReportId)
+      .limit(1)
+      .maybeSingle();
 
-    await generateFinalReportPdf({
-      labReportId: parsed.data.labReportId,
-      approvalRequestId: approval.id,
-      approverStaffId: approval.decided_by,
-      approverName: approverProfile?.full_name ?? "Authorized approver",
-      decidedAt: approval.decided_at ?? new Date().toISOString(),
-      actorRole: staff.role,
-      actorId: staff.userId,
-    });
+    if (!uploadedSource) {
+      const { data: approverProfile } = await supabaseApproval
+        .from("staff_profiles")
+        .select("full_name")
+        .eq("id", approval.decided_by)
+        .single();
+
+      await generateFinalReportPdf({
+        labReportId: parsed.data.labReportId,
+        approvalRequestId: approval.id,
+        approverStaffId: approval.decided_by,
+        approverName: approverProfile?.full_name ?? "Authorized approver",
+        decidedAt: approval.decided_at ?? new Date().toISOString(),
+        actorRole: staff.role,
+        actorId: staff.userId,
+      });
+    }
 
     // Automatic patient delivery: once publication and final-PDF generation
     // are complete, send the finished report to the patient's saved email.

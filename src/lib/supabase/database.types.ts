@@ -34,6 +34,7 @@ export type AuditAction =
   | "RESULT_CREATED"
   | "RESULT_UPDATED"
   | "RESULT_UPLOADED"
+  | "SOURCE_DOCUMENT_UPLOADED"
   | "RESULT_SUBMITTED_FOR_REVIEW"
   | "RESULT_RETURNED"
   | "RESULT_APPROVED"
@@ -130,6 +131,44 @@ export type WebsiteContentStatus = "draft" | "published";
 export interface Database {
   public: {
     Tables: {
+      report_uploaded_documents: {
+        Row: {
+          id: string;
+          lab_report_id: string;
+          version_number: number;
+          storage_path: string;
+          file_name: string;
+          content_type: string;
+          size_bytes: number;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["report_uploaded_documents"]["Row"]> & {
+          lab_report_id: string;
+          version_number: number;
+          storage_path: string;
+          file_name: string;
+          content_type?: string;
+          size_bytes: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["report_uploaded_documents"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "report_uploaded_documents_lab_report_id_fkey";
+            columns: ["lab_report_id"];
+            isOneToOne: false;
+            referencedRelation: "lab_reports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_uploaded_documents_uploaded_by_fkey";
+            columns: ["uploaded_by"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       test_categories: {
         Row: {
           id: string;
@@ -260,6 +299,7 @@ export interface Database {
           requirements: string | null;
           turnaround_time: string | null;
           featured: boolean;
+          featured_home_order: number;
           cta_label: string | null;
           cta_destination: string | null;
           seo_title: string | null;
@@ -356,6 +396,7 @@ export interface Database {
           patient_sex_snapshot: Sex | null;
           patient_dob_snapshot: string | null;
           request: string | null;
+          source_investigation_name: string | null;
           specimen: string | null;
           date_collected: string | null;
           date_reported: string | null;
