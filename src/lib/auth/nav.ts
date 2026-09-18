@@ -31,10 +31,10 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
     operations.push({ href: "/admin/home-collection", label: "Home collection" });
   }
   if (can(staff, "reports.view")) {
-    operations.push({ href: "/admin/results-entry", label: "Results entry" });
+    operations.push({ href: "/admin/results-entry", label: "Create report" });
   }
   if (can(staff, "reports.view")) {
-    operations.push({ href: "/admin/reports", label: "Reports" });
+    operations.push({ href: "/admin/reports", label: "Report management" });
   }
   if (can(staff, "reports.create_draft") || can(staff, "reports.edit_draft")) {
     operations.push({ href: "/admin/workspace", label: "My workspace" });
@@ -46,7 +46,8 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
 
   const services: AdminNavItem[] = [];
   if (can(staff, "catalogue.manage")) {
-    services.push({ href: "/admin/services", label: "Investigations & Services" });
+    services.push({ href: "/admin/services", label: "Services catalogue" },
+      { href: "/admin/services/templates", label: "Report templates" });
   }
   if (services.length > 0) sections.push({ label: "Services", items: services });
 
