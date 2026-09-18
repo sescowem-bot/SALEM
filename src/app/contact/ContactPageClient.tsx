@@ -46,41 +46,30 @@ export function ContactPageClient({ content, settings }: { content?: ContactCont
   const mapDirectionsUrl = content?.mapDirectionsUrl;
 
   const cards = [
-    { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2], href: mapDirectionsUrl, external: true },
-    { icon: Phone, title: "Call or WhatsApp", lines: [phonePrimary], href: whatsappHref, external: true },
-    { icon: Mail, title: "Email us", lines: [emailPrimary], href: `mailto:${emailPrimary}`, external: false },
-    { icon: Clock3, title: "Opening hours", lines: [hoursWeekdays, hoursWeekend], href: undefined, external: false },
-    { icon: InstagramIcon, title: "Follow us", lines: [siteConfig.social.instagramHandle], href: instagramUrl, external: true },
+    { icon: MapPin, title: "Visit the laboratory", lines: [addressLine1, addressLine2] },
+    { icon: Phone, title: "Call or WhatsApp", lines: [phonePrimary, whatsappNumber] },
+    { icon: Mail, title: "Email us", lines: [emailPrimary, siteConfig.email.results] },
+    { icon: Clock3, title: "Opening hours", lines: [hoursWeekdays, hoursWeekend] },
+    { icon: InstagramIcon, title: "Follow us", lines: [siteConfig.social.instagramHandle] },
   ];
 
   return (
     <section className="bg-background py-14 lg:py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-          {cards.map(({ icon: Icon, title: t, lines, href, external }) => {
-            const body = (
-              <>
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-navy">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <h2 className="mt-4 text-base font-semibold text-navy-deep">{t}</h2>
-                <div className="mt-1.5 space-y-1">
-                  {lines.map((l) => (
-                    <p key={l} className="break-words text-sm leading-relaxed text-muted-foreground">
-                      {l}
-                    </p>
-                  ))}
-                </div>
-              </>
-            );
-            return href ? (
-              <a key={t} href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} className="surface-card block min-w-0 p-6 transition-transform hover:-translate-y-0.5 hover:border-cyan">
-                {body}
-              </a>
-            ) : (
-              <div key={t} className="surface-card min-w-0 p-6">{body}</div>
-            );
-          })}
+          {cards.map(({ icon: Icon, title: t, lines }) => (
+            <div key={t} className="surface-card p-6">
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-navy">
+                <Icon className="h-5 w-5" />
+              </span>
+              <h2 className="mt-4 text-base font-semibold text-navy-deep">{t}</h2>
+              {lines.map((l) => (
+                <p key={l} className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {l}
+                </p>
+              ))}
+            </div>
+          ))}
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-start">
