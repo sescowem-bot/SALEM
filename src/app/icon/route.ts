@@ -1,6 +1,4 @@
 import { getSiteSettings } from "@/lib/data/siteSettings";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,8 +16,10 @@ export async function GET() {
     const imageUrl = settings?.logoUrl || settings?.faviconUrl;
 
     if (!imageUrl) {
-      const file = await readFile(join(process.cwd(), "public", "salem-favicon.png"));
-      return new Response(file, { status: 200, headers: { "Content-Type": "image/png", "Cache-Control": "no-store, max-age=0" } });
+      return new Response("Favicon is not configured.", {
+        status: 404,
+        headers: { "Cache-Control": "no-store, max-age=0" },
+      });
     }
 
     // Serve the current CMS asset through our own /icon endpoint instead of

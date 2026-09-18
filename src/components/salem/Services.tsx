@@ -99,30 +99,35 @@ export function Services({
         {hasCmsFeatured ? (
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {featuredServices!.slice(0, 3).map((s) => (
-              <article key={s.id} className="surface-card group flex flex-col overflow-hidden p-0">
-                <div className="aspect-[16/9] w-full bg-secondary">
+              <article key={s.id} className="surface-card group overflow-hidden">
+                <div className="relative h-52 overflow-hidden bg-secondary">
                   {s.heroImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.heroImageUrl} alt={s.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                    // eslint-disable-next-line @next/next/no-img-element -- storage-hosted marketing image
+                    <img src={s.heroImageUrl} alt={s.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   ) : (
                     <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-purple/80">
                       <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full border border-white/10" />
                       <div className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full border border-cyan/20" />
                       <div className="relative flex h-full flex-col justify-between p-6 text-white">
-                        <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-white/10"><FlaskConical className="h-6 w-6 text-cyan-soft" /></div>
-                        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-soft/80">{s.categoryName}</p><p className="mt-2 max-w-[15rem] text-xl font-semibold leading-tight">Professional diagnostic service</p></div>
+                        <span className="grid h-11 w-11 place-items-center rounded-xl border border-white/15 bg-white/10"><FlaskConical className="h-5 w-5 text-cyan-soft" /></span>
+                        <div><p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-cyan-soft/90">{s.categoryName}</p><p className="mt-2 text-xl font-semibold leading-tight">Professional diagnostic service</p></div>
                       </div>
                     </div>
                   )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 to-transparent" aria-hidden="true" />
                 </div>
-                <div className="flex flex-1 flex-col p-6">
-                  <span className="w-fit rounded-full bg-accent px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-navy">{s.categoryName}</span>
+                <div className="p-6">
+                  <span className="inline-flex rounded-full bg-accent px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-navy">{s.categoryName}</span>
                   <h3 className="mt-4 text-lg font-semibold text-navy-deep">{s.name}</h3>
-                  <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">{s.publicDescription ?? "Speak with our team for details on this test."}</p>
-                  <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-                    <div>{s.turnaroundTime ? <p className="text-xs text-muted-foreground">{s.turnaroundTime}</p> : null}{s.showPrice && s.priceNgn != null ? <p className="mt-1 text-sm font-semibold text-navy-deep">₦{s.priceNgn.toLocaleString()}</p> : null}</div>
-                    <Link href={`/services/${s.slug}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-purple hover:text-navy">View details <ArrowUpRight className="h-4 w-4 shrink-0" /></Link>
-                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {s.publicDescription ?? "Speak with our team for details on this test."}
+                  </p>
+                  <Link
+                    href={`/services/${s.slug}`}
+                    className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-purple transition-colors hover:text-navy"
+                  >
+                    View details <ArrowUpRight className="h-4 w-4 shrink-0" />
+                  </Link>
                 </div>
               </article>
             ))}

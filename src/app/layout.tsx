@@ -44,7 +44,14 @@ export async function generateMetadata(): Promise<Metadata> {
       images: settings?.ogImageUrl ? [settings.ogImageUrl] : undefined,
     },
     twitter: { card: "summary_large_image", title: orgName, description },
-    icons: { icon: [{ url: "/icon?v=salem-20260918", type: "image/png" }], apple: "/icon?v=salem-20260918" },
+    icons: {
+      icon: settings?.faviconUrl
+        ? [{ url: `${settings.faviconUrl}${settings.faviconUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || "custom")}` }]
+        : [{ url: "/icon?v=salem", type: "image/png" }],
+      apple: settings?.faviconUrl
+        ? `${settings.faviconUrl}${settings.faviconUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || "custom")}`
+        : "/icon?v=salem",
+    },
     robots: seo.robotsIndex === false ? { index: false, follow: false } : { index: true, follow: true },
     verification: seo.googleSiteVerification ? { google: seo.googleSiteVerification } : undefined,
   };

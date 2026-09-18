@@ -39,10 +39,10 @@ export default async function HomePage() {
       slug: s.slug,
       publicDescription: s.public_description,
       heroImageUrl: s.hero_image_path ? getServiceImagePublicUrl(s.hero_image_path) : null,
-      categoryName: s.category?.name ?? "Laboratory service",
+      categoryName: s.category_name ?? "Diagnostic Services",
       turnaroundTime: s.turnaround_time,
       priceNgn: s.price_ngn,
-      showPrice: s.show_price,
+      showPrice: s.show_price ?? false,
       featured: s.featured,
     }));
 

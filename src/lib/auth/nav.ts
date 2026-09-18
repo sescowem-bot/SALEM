@@ -31,11 +31,16 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
     operations.push({ href: "/admin/home-collection", label: "Home collection" });
   }
   if (can(staff, "reports.view")) {
-    operations.push({ href: "/admin/results-entry", label: "Create / Upload Report" });
+    operations.push({ href: "/admin/results-entry", label: "Results entry" });
   }
   if (can(staff, "reports.view")) {
     operations.push({ href: "/admin/reports", label: "Report Management" });
-    if (can(staff, "reports.edit_draft")) operations.push({ href: "/admin/upload-results", label: "Upload Result" });
+  }
+  if (can(staff, "reports.create_draft")) {
+    operations.push({ href: "/admin/results-entry", label: "Create Report" });
+  }
+  if (can(staff, "reports.edit_draft")) {
+    operations.push({ href: "/admin/upload-results", label: "Upload Result" });
   }
   if (can(staff, "reports.create_draft") || can(staff, "reports.edit_draft")) {
     operations.push({ href: "/admin/workspace", label: "My workspace" });
@@ -47,8 +52,10 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
 
   const services: AdminNavItem[] = [];
   if (can(staff, "catalogue.manage")) {
-    services.push({ href: "/admin/services", label: "Services Catalogue" });
-    services.push({ href: "/admin/services/templates", label: "Report Templates" });
+    services.push(
+      { href: "/admin/services", label: "Investigations & Services" },
+      { href: "/admin/services/templates", label: "Report Templates" }
+    );
   }
   if (services.length > 0) sections.push({ label: "Services", items: services });
 
