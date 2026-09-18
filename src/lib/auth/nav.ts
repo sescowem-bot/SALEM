@@ -31,10 +31,10 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
     operations.push({ href: "/admin/home-collection", label: "Home collection" });
   }
   if (can(staff, "reports.view")) {
-    operations.push({ href: "/admin/results-entry", label: "Create report" });
+    operations.push({ href: "/admin/results-entry", label: "Create / Upload Report" });
   }
   if (can(staff, "reports.view")) {
-    operations.push({ href: "/admin/reports", label: "Report management" });
+    operations.push({ href: "/admin/reports", label: "Report Management" });
   }
   if (can(staff, "reports.create_draft") || can(staff, "reports.edit_draft")) {
     operations.push({ href: "/admin/workspace", label: "My workspace" });
@@ -46,8 +46,8 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
 
   const services: AdminNavItem[] = [];
   if (can(staff, "catalogue.manage")) {
-    services.push({ href: "/admin/services", label: "Services catalogue" },
-      { href: "/admin/services/templates", label: "Report templates" });
+    services.push({ href: "/admin/services", label: "Services Catalogue" },
+      { href: "/admin/services/templates", label: "Report Templates" });
   }
   if (services.length > 0) sections.push({ label: "Services", items: services });
 
@@ -63,7 +63,7 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
       { href: "/admin/website", label: "Overview" },
       { href: "/admin/website/homepage", label: "Homepage" },
       { href: "/admin/website/about", label: "About" },
-      { href: "/admin/services", label: "Services" },
+      { href: "/admin/services", label: "Services Catalogue" },
       { href: "/admin/website/contact", label: "Contact" },
       { href: "/admin/website/footer", label: "Footer" },
       { href: "/admin/website/seo", label: "SEO" },

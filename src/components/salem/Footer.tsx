@@ -27,7 +27,6 @@ const columns = [
       { label: "Health blog", href: "/blog" },
     ],
   },
-,
   {
     title: "Legal",
     links: [
@@ -52,7 +51,7 @@ export function Footer({ settings, content }: { settings?: ResolvedSiteSettings;
   return (
     <footer className="bg-navy-deep pb-10 pt-16 text-cyan-soft/70">
       <div className="mx-auto max-w-7xl px-5 sm:px-6">
-        <div className="grid gap-10 lg:grid-cols-[1.35fr_1fr_1fr_1fr_1.25fr]">
+        <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1.25fr]">
           <div className="min-w-0">
             <SalemLogo inverted logoUrl={logoUrl} />
             <p className="mt-5 max-w-xs text-sm leading-relaxed">{tagline}</p>

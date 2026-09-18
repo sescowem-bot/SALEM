@@ -97,6 +97,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
         />
+        {settings?.faviconUrl ? (
+          <link
+            rel="icon"
+            href={`${settings.faviconUrl}${settings.faviconUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(settings.faviconPath || "custom")}`}
+          />
+        ) : null}
       </head>
       <body className="antialiased">
         {seo.googleAnalyticsId ? (
