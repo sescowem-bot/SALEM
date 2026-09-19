@@ -45,6 +45,7 @@ export function TemplateBuilderForm({ returnTo }: { returnTo: string }) {
       <h2 className="text-sm font-semibold text-navy-deep">Template identity</h2>
       <p className="mt-1 text-xs text-muted-foreground">Create the result structure once, then reuse it for every report that uses this investigation.</p>
       <label className="mt-4 block text-sm font-medium text-navy-deep">Template name<input required name="name" className={inputClass} placeholder="e.g. Complete Blood Count (CBC)" /></label>
+      <label className="mt-4 block text-sm font-medium text-navy-deep">Internal description<textarea name="description" rows={3} className={inputClass} placeholder="When should staff use this template?" /></label>
     </section>
 
     <section className="surface-card p-6 sm:p-7">

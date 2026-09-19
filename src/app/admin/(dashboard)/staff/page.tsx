@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AdminShell } from "@/components/salem/AdminShell";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getAdminNavItems } from "@/lib/auth/nav";
-import { listStaffProfiles } from "@/lib/data/staff";
+import { listDepartments, listStaffProfiles } from "@/lib/data/staff";
 import { StaffClient } from "./StaffClient";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export default async function StaffPage() {
   }
 
   const canManage = can(staff, "staff.manage");
-  const directory = await listStaffProfiles(staff.role);
+  const [directory, departments] = await Promise.all([listStaffProfiles(staff.role), listDepartments(staff.role)]);
 
   return (
     <AdminShell
@@ -44,7 +44,7 @@ export default async function StaffPage() {
       staffRole={staff.role}
       navItems={navItems}
     >
-      <StaffClient directory={directory} canManage={canManage} currentUserId={staff.userId} />
+      <StaffClient directory={directory} departments={departments} canManage={canManage} currentUserId={staff.userId} />
     </AdminShell>
   );
 }

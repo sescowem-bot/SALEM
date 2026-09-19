@@ -78,8 +78,10 @@ export interface CreateLabReportInput {
   patientNameSnapshot: string;
   patientSexSnapshot?: Database["public"]["Tables"]["patients"]["Row"]["sex"];
   patientDobSnapshot?: string | null;
-  labNumber: string;
+  labNumber?: string;
   request?: string;
+  sourceInvestigationName?: string;
+  reportComment?: string;
   specimen?: string;
   dateCollected?: string;
   createdBy?: string; // auth.users id of the actor, for audit fields
@@ -98,8 +100,10 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     patient_name_snapshot: input.patientNameSnapshot,
     patient_sex_snapshot: input.patientSexSnapshot ?? null,
     patient_dob_snapshot: input.patientDobSnapshot ?? null,
-    lab_number: input.labNumber,
+    ...(input.labNumber ? { lab_number: input.labNumber } : {}),
     request: input.request,
+    source_investigation_name: input.sourceInvestigationName ?? null,
+    report_comment: input.reportComment ?? null,
     specimen: input.specimen,
     date_collected: input.dateCollected,
     status: "draft",
@@ -117,7 +121,7 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     entityId: report.id,
     actorId: input.createdBy,
     actorRole: input.actorRole,
-    metadata: { patientId: input.patientId, labNumber: input.labNumber },
+    metadata: { patientId: input.patientId, labNumber: report.lab_number },
   });
   await logAudit({
     action: "LAB_CODE_GENERATED",

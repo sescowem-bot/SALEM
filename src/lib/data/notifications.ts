@@ -152,10 +152,27 @@ export async function dispatchReportNotification(input: {
       .maybeSingle();
 
     if (finalDocumentError) throw finalDocumentError;
-    if (finalDocument?.storage_path) {
-      const pdfBytes = await downloadReportPdfBytes(finalDocument.storage_path);
+    let attachmentPath = finalDocument?.storage_path ?? null;
+    let attachmentName = `Salem-Laboratory-Report-${report.result_reference ?? report.lab_number}.pdf`;
+
+    // Standalone externally completed reports use their privately stored
+    // source document rather than generating an empty system report PDF.
+    if (!attachmentPath) {
+      const { data: uploadedSource } = await supabase
+        .from("report_uploaded_documents")
+        .select("storage_path, file_name")
+        .eq("lab_report_id", input.labReportId)
+        .order("version_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      attachmentPath = uploadedSource?.storage_path ?? null;
+      if (uploadedSource?.file_name) attachmentName = uploadedSource.file_name;
+    }
+
+    if (attachmentPath) {
+      const pdfBytes = await downloadReportPdfBytes(attachmentPath);
       attachments = [{
-        filename: `Salem-Laboratory-Report-${report.result_reference ?? report.lab_number}.pdf`,
+        filename: attachmentName,
         contentBase64: pdfBytes.toString("base64"),
         contentType: "application/pdf",
       }];

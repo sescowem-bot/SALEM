@@ -9,6 +9,7 @@ import { getTestWithStructure, listActiveTests, listTestCategories, type TestWit
 import { getSignedReportPdfUrl } from "@/lib/data/storage";
 import { listApprovers, getActiveApprovalRequest, getApprovalHistory } from "@/lib/data/approvals";
 import { getLatestFinalDocument } from "@/lib/data/reportDocuments";
+import { getLatestUploadedReportDocument, type UploadedReportDocumentSummary } from "@/lib/data/uploadedReportDocuments";
 import { listReportNotifications } from "@/lib/data/notifications";
 import { getPatientById } from "@/lib/data/patients";
 import { ReportDetailClient } from "./ReportDetailClient";
@@ -105,13 +106,14 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   const canResetAccessCode =
     can(staff, "reports.publish") && report.status === "published" && Boolean(report.access_code_hash);
 
-  const [approvers, activeApprovalRequest, approvalHistory, versionHistory, finalDocument, notifications, patient, catalogueTests, testCategories] =
+  const [approvers, activeApprovalRequest, approvalHistory, versionHistory, finalDocument, uploadedDocument, notifications, patient, catalogueTests, testCategories] =
     await Promise.all([
       canEdit ? listApprovers() : Promise.resolve([]),
       canDecideApproval || report.submitted_for_review ? getActiveApprovalRequest(report.id) : Promise.resolve(null),
       getApprovalHistory(report.id),
       getReportVersionHistory(report.id),
       getLatestFinalDocument(report.id, staff.role),
+      getLatestUploadedReportDocument(report.id, staff.role),
       listReportNotifications(report.id, staff.role),
       report.patient_id ? getPatientById(report.patient_id) : Promise.resolve(null),
       canEdit ? listActiveTests() : Promise.resolve([]),
@@ -128,8 +130,8 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
       eyebrow="Results System · Staff Area"
       title={`Report — ${report.patient_name_snapshot}`}
       lead={`Lab number ${report.lab_number}`}
-      backTo="/admin/results-entry"
-      backLabel="Back to results"
+      backTo="/admin/reports"
+      backLabel="Back to reports"
       staffName={staff.fullName}
       staffRole={staff.role}
       navItems={navItems}
@@ -149,6 +151,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         approvalHistory={approvalHistory}
         versionHistory={versionHistory}
         finalDocument={finalDocument}
+        uploadedDocument={uploadedDocument}
         notifications={notifications}
         patientPhone={patient?.phone ?? null}
         availableTests={availableTests}
@@ -168,7 +171,7 @@ function ReportSummary({
   const fields: { label: string; value: string }[] = [
     { label: "Sex", value: report.patient_sex_snapshot ?? "Not specified" },
     { label: "Date of birth", value: report.patient_dob_snapshot ?? "Not specified" },
-    { label: "Requested service(s)", value: testNames.length > 0 ? testNames.join(", ") : "Not specified" },
+    { label: "Requested service(s)", value: testNames.length > 0 ? testNames.join(", ") : report.source_investigation_name ?? "Not specified" },
     { label: "Specimen", value: report.specimen ?? "Not specified" },
     { label: "Date collected", value: report.date_collected ?? "Not specified" },
     { label: "Date reported", value: report.date_reported ?? "Not yet published" },

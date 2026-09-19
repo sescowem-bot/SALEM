@@ -11,7 +11,7 @@ export const registerPatientSchema = z.object({
 
 export const createVisitSchema = z.object({
   patientId: z.string().uuid(),
-  labNumber: z.string().trim().min(1, "Lab number is required").max(50),
+  labNumber: z.string().trim().max(50).optional().or(z.literal("")),
   request: z.string().trim().max(500).optional().or(z.literal("")),
   specimen: z.string().trim().max(200).optional().or(z.literal("")),
   dateCollected: z.string().date().optional().or(z.literal("")),
@@ -420,4 +420,48 @@ export const verifyResultSchema = z.object({
     .toUpperCase()
     .regex(/^SML-[A-Z0-9]{4}-[A-Z0-9]{4}$/, "Enter a valid result reference (e.g. SML-XXXX-XXXX)"),
   accessCode: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit access code"),
+});
+
+/** Phase 1 — finished laboratory result supplied as an external PDF. */
+export const standaloneUploadedResultSchema = z.object({
+  patientMode: z.enum(["existing", "new"]),
+  patientId: z.string().uuid().optional().or(z.literal("")),
+  fullName: z.string().trim().min(2, "Full name is required").max(200).optional().or(z.literal("")),
+  sex: z.enum(["Male", "Female"]).optional().or(z.literal("")),
+  dateOfBirth: z.string().date().optional().or(z.literal("")),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+  email: z.string().trim().email().optional().or(z.literal("")),
+  labNumber: z.string().trim().max(100).optional().or(z.literal("")),
+  investigationName: z.string().trim().min(2, "Investigation name is required").max(200),
+  request: z.string().trim().max(500).optional().or(z.literal("")),
+  specimen: z.string().trim().max(200).optional().or(z.literal("")),
+  dateCollected: z.string().date().optional().or(z.literal("")),
+  reportComment: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+// ---------------------------------------------------------------------------
+// Department & Function Management
+// ---------------------------------------------------------------------------
+
+export const departmentSchema = z.object({
+  departmentId: z.string().uuid().optional(),
+  name: z.string().trim().min(2, "Department name is required").max(150),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const departmentStatusSchema = z.object({
+  departmentId: z.string().uuid(),
+  active: z.enum(["true", "false"]),
+});
+
+export const departmentFunctionSchema = z.object({
+  functionId: z.string().uuid().optional(),
+  departmentId: z.string().uuid("Choose a department"),
+  name: z.string().trim().min(2, "Function name is required").max(150),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const departmentFunctionStatusSchema = z.object({
+  functionId: z.string().uuid(),
+  active: z.enum(["true", "false"]),
 });

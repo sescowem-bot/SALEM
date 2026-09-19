@@ -78,6 +78,12 @@ export const ALL_PERMISSIONS = [
   // action — attaching a signature to an identity — that shouldn't
   // silently widen if staff.manage is ever extended to another role.
   "documents.manage",
+  // Department & Function Management — its own permission rather than
+  // reusing staff.manage: creating/editing/deactivating a department or a
+  // function is an org-structure change, not staff account administration,
+  // and both Super Admin and Admin hold it by default. Also covers viewing
+  // the department/function directory.
+  "departments.manage",
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -104,6 +110,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "settings.manage": "Manage site/org settings and the website CMS",
   "enquiries.manage": "Manage contact-form enquiries",
   "documents.manage": "Manage signatories & report signatures",
+  "departments.manage": "Manage departments and their functions",
 };
 
 /** Groups permissions by resource area, for a tidier /admin/roles layout. */
@@ -128,6 +135,7 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
   },
   { label: "Services catalogue", permissions: ["catalogue.manage"] },
   { label: "Website & settings", permissions: ["settings.manage", "documents.manage"] },
+  { label: "Organisation", permissions: ["departments.manage"] },
   { label: "Communications", permissions: ["enquiries.manage"] },
   { label: "Reporting", permissions: ["analytics.view", "audit.view"] },
 ];
@@ -160,6 +168,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "settings.manage",
     "enquiries.manage",
     "documents.manage",
+    "departments.manage",
   ],
   pathologist: ["patients.view", "reports.view", "reports.review", "reports.publish"],
   laboratory_staff: [

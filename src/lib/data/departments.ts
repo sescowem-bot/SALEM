@@ -1,7 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 
 /**
@@ -35,8 +36,8 @@ export interface DepartmentWithFunctions extends Department {
   functions: DepartmentFunctionRow[];
 }
 
-const assertManage = (role: StaffRole) => {
-  if (!hasPermission(role, "departments.manage")) {
+const assertManage = async (role: StaffRole) => {
+  if (!(await hasPermission(role, "departments.manage"))) {
     throw new Error(`Forbidden: role "${role}" cannot manage departments or functions.`);
   }
 };
@@ -47,7 +48,7 @@ const assertManage = (role: StaffRole) => {
 
 /** Full department directory (active + inactive) for the management screen. */
 export async function listAllDepartmentsForManagement(actorRole: StaffRole): Promise<Department[]> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { data, error } = await getServiceRoleClient().from("departments").select("*").order("name");
   if (error) throw error;
   return data ?? [];
@@ -61,7 +62,7 @@ export async function listAllDepartmentsForManagement(actorRole: StaffRole): Pro
  * would nest a to-many relationship.
  */
 export async function listDepartmentsWithFunctions(actorRole: StaffRole): Promise<DepartmentWithFunctions[]> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const supabase = getServiceRoleClient();
   const [{ data: departments, error: deptError }, { data: functions, error: fnError }] = await Promise.all([
     supabase.from("departments").select("*").order("name"),
@@ -86,7 +87,7 @@ export async function createDepartment(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<Department> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { data, error } = await getServiceRoleClient()
     .from("departments")
     .insert({ name: input.name.trim(), description: input.description?.trim() || null })
@@ -112,7 +113,7 @@ export async function updateDepartment(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<Department> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { data, error } = await getServiceRoleClient()
     .from("departments")
     .update({ name: input.name.trim(), description: input.description?.trim() || null })
@@ -142,14 +143,14 @@ export async function updateDepartment(
  * department should no longer be used at all.
  */
 export async function deactivateDepartment(departmentId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { error } = await getServiceRoleClient().from("departments").update({ is_active: false }).eq("id", departmentId);
   if (error) throw error;
   await logAudit({ action: "DEPARTMENT_DEACTIVATED", entityType: "departments", entityId: departmentId, actorId, actorRole });
 }
 
 export async function reactivateDepartment(departmentId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { error } = await getServiceRoleClient().from("departments").update({ is_active: true }).eq("id", departmentId);
   if (error) throw error;
   await logAudit({ action: "DEPARTMENT_REACTIVATED", entityType: "departments", entityId: departmentId, actorId, actorRole });
@@ -161,7 +162,7 @@ export async function reactivateDepartment(departmentId: string, actorRole: Staf
 
 /** Full function directory (active + inactive, any department) for the management screen. */
 export async function listAllDepartmentFunctions(actorRole: StaffRole): Promise<DepartmentFunctionRow[]> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { data, error } = await getServiceRoleClient().from("department_functions").select("*").order("name");
   if (error) throw error;
   return data ?? [];
@@ -178,7 +179,7 @@ export async function createDepartmentFunction(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<DepartmentFunctionRow> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { data, error } = await getServiceRoleClient()
     .from("department_functions")
     .insert({
@@ -215,7 +216,7 @@ export async function updateDepartmentFunction(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<DepartmentFunctionRow> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const supabase = getServiceRoleClient();
 
   const { data: existing, error: fetchError } = await supabase
@@ -253,14 +254,14 @@ export async function updateDepartmentFunction(
 }
 
 export async function deactivateDepartmentFunction(functionId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { error } = await getServiceRoleClient().from("department_functions").update({ is_active: false }).eq("id", functionId);
   if (error) throw error;
   await logAudit({ action: "DEPARTMENT_FUNCTION_DEACTIVATED", entityType: "department_functions", entityId: functionId, actorId, actorRole });
 }
 
 export async function reactivateDepartmentFunction(functionId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  assertManage(actorRole);
+  await assertManage(actorRole);
   const { error } = await getServiceRoleClient().from("department_functions").update({ is_active: true }).eq("id", functionId);
   if (error) throw error;
   await logAudit({ action: "DEPARTMENT_FUNCTION_REACTIVATED", entityType: "department_functions", entityId: functionId, actorId, actorRole });

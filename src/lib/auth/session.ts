@@ -2,23 +2,24 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { getSessionClient } from "@/lib/supabase/server-client";
 import type { Permission, StaffRole } from "./permissions";
-import { getPermissionsForRole } from "./rolePermissions";
+import { getPermissionsForRoles } from "./rolePermissions";
 
 export interface CurrentStaff {
   userId: string;
   email: string | null;
   fullName: string;
   role: StaffRole;
+  roles: StaffRole[];
+  departmentId: string | null;
+  departmentName: string | null;
   qualification: string | null;
   designation: string | null;
   isActive: boolean;
   /**
-   * The live permission set for this staff member's role, resolved once
-   * per request from the DB-backed role_permissions matrix (see
-   * ./rolePermissions.ts). can() below reads this synchronously — it's
-   * resolved here, once, so every can(staff, ...) call site across ~40
-   * pages/components doesn't need to become async just because the
-   * permission matrix moved from hardcoded to editable.
+   * The live permission set across all of this staff member's roles,
+   * resolved once per request from the DB-backed role_permissions matrix
+   * (see ./rolePermissions.ts). can() reads it synchronously so the many
+   * can(staff, ...) call sites don't need to become async.
    */
   permissions: Permission[];
 }
@@ -41,19 +42,31 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
 
   const { data: profile, error } = await supabase
     .from("staff_profiles")
-    .select("full_name, role, qualification, designation, is_active")
+    .select("full_name, role, qualification, designation, is_active, department_id, departments(name)")
     .eq("id", user.id)
     .single();
 
   if (error || !profile || !profile.is_active) return null;
 
-  const permissions = await getPermissionsForRole(profile.role);
+  const { data: assignments } = await supabase
+    .from("staff_role_assignments")
+    .select("role")
+    .eq("staff_id", user.id);
+  const roles = Array.from(new Set<StaffRole>([
+    profile.role as StaffRole,
+    ...((assignments ?? []).map((row) => row.role as StaffRole)),
+  ]));
+  const department = Array.isArray(profile.departments) ? profile.departments[0] : profile.departments;
+  const permissions = await getPermissionsForRoles(roles);
 
   return {
     userId: user.id,
     email: user.email ?? null,
     fullName: profile.full_name,
     role: profile.role,
+    roles,
+    departmentId: profile.department_id ?? null,
+    departmentName: department?.name ?? null,
     qualification: profile.qualification,
     designation: profile.designation,
     isActive: profile.is_active,
@@ -90,9 +103,8 @@ export async function requirePermission(permission: Permission): Promise<Current
 }
 
 /**
- * Synchronous by design — see the `permissions` field comment on
- * CurrentStaff above. Reads the already-resolved, request-fresh
- * permission set; it does not itself touch the database.
+ * Synchronous by design — reads the already-resolved, request-fresh
+ * permission set on CurrentStaff; it does not itself touch the database.
  */
 export function can(staff: CurrentStaff | null, permission: Permission): boolean {
   if (!staff) return false;

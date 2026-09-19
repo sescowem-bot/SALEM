@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getFinalDocumentForDownload, renderCurrentFinalReportPdfBuffer } from "@/lib/data/reportDocuments";
 import { downloadReportPdfBytes } from "@/lib/data/storage";
+import { getLatestUploadedReportDocumentPath } from "@/lib/data/uploadedReportDocuments";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff();
@@ -11,7 +12,21 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const uploadedSource = await getLatestUploadedReportDocumentPath(id);
   const doc = await getFinalDocumentForDownload(id, staff.role);
+
+  if (uploadedSource) {
+    const buffer = await downloadReportPdfBytes(uploadedSource.storagePath);
+    return new NextResponse(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${uploadedSource.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   if (!doc) {
     return NextResponse.json({ error: "No final document is available for this report yet." }, { status: 404 });
   }

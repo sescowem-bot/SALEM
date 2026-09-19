@@ -61,6 +61,23 @@ export async function getPermissionsForRole(role: StaffRole): Promise<Permission
 }
 
 /**
+ * Multi-role support: a staff member can hold their primary role plus any
+ * extra roles from staff_role_assignments. Their effective permissions are
+ * the union across every role they hold.
+ */
+export async function getPermissionsForRoles(roles: readonly StaffRole[]): Promise<Permission[]> {
+  if (roles.includes("super_admin")) return [...ALL_PERMISSIONS];
+  const matrix = await getRolePermissionsMatrix();
+  return [...new Set(roles.flatMap((role) => matrix[role] ?? []))];
+}
+
+export async function hasAnyPermission(roles: readonly StaffRole[], permission: Permission): Promise<boolean> {
+  if (roles.includes("super_admin")) return true;
+  const matrix = await getRolePermissionsMatrix();
+  return roles.some((role) => matrix[role]?.includes(permission));
+}
+
+/**
  * Overwrites the full permission set for one role. super_admin-only (both
  * here and in the role_permissions RLS policy — defence in depth), and
  * super_admin's own row set can never be targeted: it must stay

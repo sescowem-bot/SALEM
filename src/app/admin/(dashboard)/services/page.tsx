@@ -34,7 +34,7 @@ export default async function ServicesAdminPage() {
     <AdminShell
       eyebrow="Services · Staff Area"
       title="Services"
-      lead={`${services.length} service${services.length === 1 ? "" : "s"} in the catalogue. Controls what shows on the public /services directory — separate from whether a test is active for booking and result entry.`}
+      lead={`${services.length} service${services.length === 1 ? "" : "s"} in the catalogue. Manages the same diagnostic tests used for result entry and the public services catalogue. Use Featured to place a service on the homepage.`}
       backTo="/admin"
       staffName={staff.fullName}
       staffRole={staff.role}

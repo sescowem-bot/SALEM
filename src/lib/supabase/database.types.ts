@@ -34,6 +34,7 @@ export type AuditAction =
   | "RESULT_CREATED"
   | "RESULT_UPDATED"
   | "RESULT_UPLOADED"
+  | "SOURCE_DOCUMENT_UPLOADED"
   | "RESULT_SUBMITTED_FOR_REVIEW"
   | "RESULT_RETURNED"
   | "RESULT_APPROVED"
@@ -96,7 +97,18 @@ export type AuditAction =
   | "REPORT_TEST_REORDERED"
   | "CUSTOM_TEST_CREATED"
   | "APPOINTMENT_RESCHEDULED"
-  | "HOME_COLLECTION_PAYMENT_UPDATED";
+  | "HOME_COLLECTION_PAYMENT_UPDATED"
+  // Department & Function Management — see
+  // supabase/migrations/20260920090002_department_function_audit_actions.sql
+  | "DEPARTMENT_CREATED"
+  | "DEPARTMENT_UPDATED"
+  | "DEPARTMENT_DEACTIVATED"
+  | "DEPARTMENT_REACTIVATED"
+  | "DEPARTMENT_FUNCTION_CREATED"
+  | "DEPARTMENT_FUNCTION_UPDATED"
+  | "DEPARTMENT_FUNCTION_REASSIGNED"
+  | "DEPARTMENT_FUNCTION_DEACTIVATED"
+  | "DEPARTMENT_FUNCTION_REACTIVATED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type HomeCollectionPaymentStatus = "unpaid" | "pending" | "paid" | "waived";
 export type ServiceStatus = "draft" | "published" | "archived";
@@ -131,6 +143,44 @@ export type WebsiteContentStatus = "draft" | "published";
 export interface Database {
   public: {
     Tables: {
+      report_uploaded_documents: {
+        Row: {
+          id: string;
+          lab_report_id: string;
+          version_number: number;
+          storage_path: string;
+          file_name: string;
+          content_type: string;
+          size_bytes: number;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["report_uploaded_documents"]["Row"]> & {
+          lab_report_id: string;
+          version_number: number;
+          storage_path: string;
+          file_name: string;
+          content_type?: string;
+          size_bytes: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["report_uploaded_documents"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "report_uploaded_documents_lab_report_id_fkey";
+            columns: ["lab_report_id"];
+            isOneToOne: false;
+            referencedRelation: "lab_reports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_uploaded_documents_uploaded_by_fkey";
+            columns: ["uploaded_by"];
+            isOneToOne: false;
+            referencedRelation: "staff_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       test_categories: {
         Row: {
           id: string;
@@ -261,6 +311,7 @@ export interface Database {
           requirements: string | null;
           turnaround_time: string | null;
           featured: boolean;
+          featured_home_order: number;
           cta_label: string | null;
           cta_destination: string | null;
           seo_title: string | null;
@@ -357,6 +408,7 @@ export interface Database {
           patient_sex_snapshot: Sex | null;
           patient_dob_snapshot: string | null;
           request: string | null;
+          source_investigation_name: string | null;
           specimen: string | null;
           date_collected: string | null;
           date_reported: string | null;
@@ -379,7 +431,6 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]> & {
           patient_id: string;
-          lab_number: string;
           patient_name_snapshot: string;
         };
         Update: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]>;
@@ -654,23 +705,50 @@ export interface Database {
       };
       staff_profiles: {
         Row: {
+          id: string; full_name: string; role: StaffRoleDb; qualification: string | null;
+          designation: string | null; phone: string | null; department_id: string | null;
+          is_active: boolean; created_at: string; updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]> & { id: string; full_name: string; role: StaffRoleDb };
+        Update: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]>;
+        Relationships: [{ foreignKeyName: "staff_profiles_department_id_fkey"; columns: ["department_id"]; isOneToOne: false; referencedRelation: "departments"; referencedColumns: ["id"] }];
+      };
+      departments: {
+        Row: { id: string; name: string; description: string | null; is_active: boolean; created_at: string; updated_at: string };
+        Insert: Partial<Database["public"]["Tables"]["departments"]["Row"]> & { name: string };
+        Update: Partial<Database["public"]["Tables"]["departments"]["Row"]>;
+        Relationships: [];
+      };
+      department_functions: {
+        Row: {
           id: string;
-          full_name: string;
-          role: StaffRoleDb;
-          qualification: string | null;
-          designation: string | null;
-          phone: string | null;
+          department_id: string;
+          name: string;
+          description: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]> & {
-          id: string;
-          full_name: string;
-          role: StaffRoleDb;
+        Insert: Partial<Database["public"]["Tables"]["department_functions"]["Row"]> & {
+          department_id: string;
+          name: string;
         };
-        Update: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]>;
-        Relationships: [];
+        Update: Partial<Database["public"]["Tables"]["department_functions"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "department_functions_department_id_fkey";
+            columns: ["department_id"];
+            isOneToOne: false;
+            referencedRelation: "departments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      staff_role_assignments: {
+        Row: { staff_id: string; role: StaffRoleDb; is_primary: boolean; created_at: string };
+        Insert: Partial<Database["public"]["Tables"]["staff_role_assignments"]["Row"]> & { staff_id: string; role: StaffRoleDb };
+        Update: Partial<Database["public"]["Tables"]["staff_role_assignments"]["Row"]>;
+        Relationships: [{ foreignKeyName: "staff_role_assignments_staff_id_fkey"; columns: ["staff_id"]; isOneToOne: false; referencedRelation: "staff_profiles"; referencedColumns: ["id"] }];
       };
       role_permissions: {
         Row: {
@@ -950,19 +1028,12 @@ export interface Database {
     Functions: {
       book_appointment_slot: {
         Args: {
-          p_full_name: string;
-          p_phone: string;
-          p_email: string | null;
-          p_test_or_package: string | null;
-          p_preferred_date: string;
-          p_preferred_time: string;
-          p_location_type: string | null;
-          p_notes: string | null;
-          p_booking_reference: string;
-          p_max_per_slot: number;
+          p_full_name: string; p_phone: string; p_email: string; p_test_or_package: string;
+          p_preferred_date: string; p_preferred_time: string; p_location_type: string;
+          p_address: string; p_landmark: string; p_notes: string; p_booking_reference: string;
         };
         Returns: { id: string }[];
-      };
+      }
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

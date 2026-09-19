@@ -1,6 +1,7 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 import { downloadReportPdfBytes, getSignedReportPdfUrl } from "./storage";
 
@@ -22,7 +23,7 @@ export async function uploadStandaloneReportDocument(input: {
   actorRole: StaffRole;
   actorId: string;
 }): Promise<UploadedReportDocumentSummary> {
-  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
+  if (!(await hasPermission(input.actorRole, "reports.edit_draft"))) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot upload report documents.`);
   }
   if (input.file.type !== "application/pdf") throw new Error("Only PDF files are accepted.");
@@ -123,7 +124,7 @@ export async function getLatestUploadedReportDocument(
   labReportId: string,
   actorRole: StaffRole
 ): Promise<UploadedReportDocumentSummary | null> {
-  if (!hasPermission(actorRole, "reports.view")) {
+  if (!(await hasPermission(actorRole, "reports.view"))) {
     throw new Error(`Forbidden: role "${actorRole}" cannot access uploaded report documents.`);
   }
   const supabase = getServiceRoleClient();

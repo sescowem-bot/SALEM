@@ -88,7 +88,7 @@ export async function createVisitAction(_prev: ActionState, formData: FormData):
       patientNameSnapshot: patient.full_name,
       patientSexSnapshot: (patient.sex ?? undefined) as "Male" | "Female" | undefined,
       patientDobSnapshot: patient.date_of_birth ?? undefined,
-      labNumber: parsed.data.labNumber,
+      labNumber: parsed.data.labNumber || undefined,
       request: parsed.data.request || undefined,
       specimen: parsed.data.specimen || undefined,
       dateCollected: parsed.data.dateCollected || undefined,
