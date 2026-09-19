@@ -99,7 +99,6 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     patient_name_snapshot: input.patientNameSnapshot,
     patient_sex_snapshot: input.patientSexSnapshot ?? null,
     patient_dob_snapshot: input.patientDobSnapshot ?? null,
-    ...(input.labNumber ? { lab_number: input.labNumber } : {}),
     request: input.request,
     source_investigation_name: input.sourceInvestigationName ?? null,
     report_comment: input.reportComment ?? null,
@@ -128,7 +127,7 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     entityId: report.id,
     actorId: input.createdBy,
     actorRole: input.actorRole,
-    metadata: { labNumber: input.labNumber },
+    metadata: { labNumber: report.lab_number },
   });
 
   return report;

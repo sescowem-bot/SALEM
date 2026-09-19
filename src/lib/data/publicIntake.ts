@@ -65,9 +65,9 @@ export async function submitAppointmentRequest(
   const supabase = getServiceRoleClient();
   const bookingReference = generateBookingReference("APT");
 
-  // Keep creation atomic at the database boundary. The function deliberately
-  // does not enforce a hard per-slot capacity because the current workflow
-  // allows multiple requests for the same date/time for front-desk review.
+  // Use the database-side atomic booking function. It preserves address and
+  // landmark fields and serializes submissions for the same date/time without
+  // rejecting multiple patient requests for that slot.
   const { data, error } = await supabase.rpc("book_appointment_slot", {
     p_full_name: input.full_name,
     p_phone: input.phone,
@@ -76,12 +76,13 @@ export async function submitAppointmentRequest(
     p_preferred_date: input.preferred_date,
     p_preferred_time: input.preferred_time,
     p_location_type: input.location_type ?? null,
+    p_address: input.address ?? null,
+    p_landmark: input.landmark ?? null,
     p_notes: input.notes ?? null,
     p_booking_reference: bookingReference,
-    p_max_per_slot: null,
   });
 
-  if (error || !data?.[0]?.id) {
+  if (error) {
     await recordFormAttempt("appointment", ipHash, false);
     return { ok: false, reason: "error" };
   }
@@ -90,7 +91,7 @@ export async function submitAppointmentRequest(
   await logAudit({
     action: "BOOKING_CREATED",
     entityType: "appointment_requests",
-    entityId: data[0].id,
+    entityId: data.id,
     metadata: { bookingReference },
   });
 

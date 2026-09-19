@@ -189,10 +189,11 @@ export function NewVisitClient({
           <section className="surface-card p-6 sm:p-8">
             <h2 className="text-base font-semibold text-navy-deep">2. Visit details</h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="block text-sm font-medium text-navy-deep">
-                Lab number
-                <input className={fieldClass} name="labNumber" placeholder="e.g. 034" required />
-              </label>
+              <div className="rounded-xl border border-border bg-secondary/60 px-3.5 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lab number</p>
+                <p className="mt-1 text-sm font-semibold text-navy-deep">Automatically generated</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Salem assigns the next unique SML number when the visit is created.</p>
+              </div>
               <label className="block text-sm font-medium text-navy-deep">
                 Date collected
                 <input type="date" className={fieldClass} name="dateCollected" />

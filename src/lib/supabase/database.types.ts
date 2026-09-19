@@ -982,9 +982,10 @@ export interface Database {
           p_preferred_date: string;
           p_preferred_time: string;
           p_location_type: string | null;
+          p_address: string | null;
+          p_landmark: string | null;
           p_notes: string | null;
           p_booking_reference: string;
-          p_max_per_slot: number | null;
         };
         Returns: { id: string }[];
       };
