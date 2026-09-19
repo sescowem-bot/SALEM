@@ -3,7 +3,7 @@
 import { type ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, LogOut, Menu, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, LogOut, Menu, X } from "lucide-react";
 import { SalemLogo } from "./Logo";
 import { signOutAction } from "@/app/admin/login/actions";
 import { ROLE_LABELS, type StaffRole } from "@/lib/auth/permissions";
@@ -49,8 +49,7 @@ function SidebarNav({ sections, pathname, onNavigate }: { sections: AdminNavSect
                       : "text-muted-foreground hover:bg-accent hover:text-navy"
                   }`}
                 >
-                  {item.label}
-                </Link>
+                  <span>{item.label}</span><ChevronRight className={`h-3.5 w-3.5 transition-transform ${active ? "opacity-100" : "opacity-0 group-hover:opacity-50"}`} /></Link>
               );
             })}
           </div>
@@ -190,7 +189,7 @@ export function AdminShell({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-10 sm:px-6 lg:py-14">
+        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-7 sm:px-6 sm:py-9 lg:px-8 lg:py-11">
           <Link
             href={backTo}
             className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-navy"
@@ -198,7 +197,7 @@ export function AdminShell({
             <ArrowLeft className="h-4 w-4 shrink-0" /> {backLabel}
           </Link>
 
-          <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+          <div className="mt-4 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
             <div className="max-w-2xl">
               <span className="text-xs font-semibold uppercase tracking-[0.22em] text-purple">{eyebrow}</span>
               <h1 className="mt-3 text-2xl font-semibold tracking-tight text-navy-deep sm:text-3xl">{title}</h1>
@@ -207,7 +206,7 @@ export function AdminShell({
             {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
           </div>
 
-          <div className="mt-8">{children}</div>
+          <div className="mt-6 sm:mt-8">{children}</div>
         </main>
       </div>
     </div>

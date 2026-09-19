@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireStaff, can } from "@/lib/auth/session";
 import { renderReportPreviewPdfBuffer } from "@/lib/data/reportDocuments";
+import { getLatestUploadedReportDocumentPath } from "@/lib/data/uploadedReportDocuments";
+import { downloadReportPdfBytes } from "@/lib/data/storage";
 
 /**
  * On-demand PDF for the Report Preview screen (Advanced 5 §1) — never
@@ -16,6 +18,19 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   if (!can(staff, "reports.view")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const uploadedSource = await getLatestUploadedReportDocumentPath(id);
+  if (uploadedSource) {
+    const buffer = await downloadReportPdfBytes(uploadedSource.storagePath);
+    return new NextResponse(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${uploadedSource.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}"`,
+        "Cache-Control": "no-store",
+      },
+    });
   }
 
   let buffer: Buffer;

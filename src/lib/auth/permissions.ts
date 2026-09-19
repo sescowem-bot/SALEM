@@ -128,6 +128,15 @@ export function hasPermission(role: StaffRole, permission: Permission): boolean 
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
+/** Permissions granted by any of a staff member's assigned roles. */
+export function hasAnyPermission(roles: readonly StaffRole[], permission: Permission): boolean {
+  return roles.some((role) => hasPermission(role, permission));
+}
+
+export function getPermissionsForRoles(roles: readonly StaffRole[]): Permission[] {
+  return [...new Set(roles.flatMap((role) => getPermissionsForRole(role)))];
+}
+
 /**
  * Maps a lab_reports status transition to the permission required to
  * perform it. Used to gate lib/data/labReports.ts `transitionReportStatus`

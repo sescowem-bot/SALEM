@@ -419,7 +419,6 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]> & {
           patient_id: string;
-          lab_number: string;
           patient_name_snapshot: string;
         };
         Update: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]>;
@@ -694,23 +693,25 @@ export interface Database {
       };
       staff_profiles: {
         Row: {
-          id: string;
-          full_name: string;
-          role: StaffRoleDb;
-          qualification: string | null;
-          designation: string | null;
-          phone: string | null;
-          is_active: boolean;
-          created_at: string;
-          updated_at: string;
+          id: string; full_name: string; role: StaffRoleDb; qualification: string | null;
+          designation: string | null; phone: string | null; department_id: string | null;
+          is_active: boolean; created_at: string; updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]> & {
-          id: string;
-          full_name: string;
-          role: StaffRoleDb;
-        };
+        Insert: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]]> & { id: string; full_name: string; role: StaffRoleDb };
         Update: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]>;
+        Relationships: [{ foreignKeyName: "staff_profiles_department_id_fkey"; columns: ["department_id"]; isOneToOne: false; referencedRelation: "departments"; referencedColumns: ["id"] }];
+      };
+      departments: {
+        Row: { id: string; name: string; description: string | null; is_active: boolean; created_at: string; updated_at: string };
+        Insert: Partial<Database["public"]["Tables"]["departments"]["Row"]]> & { name: string };
+        Update: Partial<Database["public"]["Tables"]["departments"]["Row"]>;
         Relationships: [];
+      };
+      staff_role_assignments: {
+        Row: { staff_id: string; role: StaffRoleDb; is_primary: boolean; created_at: string };
+        Insert: Partial<Database["public"]["Tables"]["staff_role_assignments"]["Row"]]> & { staff_id: string; role: StaffRoleDb };
+        Update: Partial<Database["public"]["Tables"]["staff_role_assignments"]["Row"]>;
+        Relationships: [{ foreignKeyName: "staff_role_assignments_staff_id_fkey"; columns: ["staff_id"]; isOneToOne: false; referencedRelation: "staff_profiles"; referencedColumns: ["id"] }];
       };
       audit_logs: {
         Row: {

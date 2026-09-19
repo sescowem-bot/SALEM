@@ -1,13 +1,16 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { getSessionClient } from "@/lib/supabase/server-client";
-import { hasPermission, type Permission, type StaffRole } from "./permissions";
+import { hasPermission, hasAnyPermission, type Permission, type StaffRole } from "./permissions";
 
 export interface CurrentStaff {
   userId: string;
   email: string | null;
   fullName: string;
   role: StaffRole;
+  roles: StaffRole[];
+  departmentId: string | null;
+  departmentName: string | null;
   qualification: string | null;
   designation: string | null;
   isActive: boolean;
@@ -31,17 +34,30 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
 
   const { data: profile, error } = await supabase
     .from("staff_profiles")
-    .select("full_name, role, qualification, designation, is_active")
+    .select("full_name, role, qualification, designation, is_active, department_id, departments(name)")
     .eq("id", user.id)
     .single();
 
   if (error || !profile || !profile.is_active) return null;
+
+  const { data: assignments } = await supabase
+    .from("staff_role_assignments")
+    .select("role")
+    .eq("staff_id", user.id);
+  const roles = Array.from(new Set<StaffRole>([
+    profile.role as StaffRole,
+    ...((assignments ?? []).map((row) => row.role as StaffRole)),
+  ]));
+  const department = Array.isArray(profile.departments) ? profile.departments[0] : profile.departments;
 
   return {
     userId: user.id,
     email: user.email ?? null,
     fullName: profile.full_name,
     role: profile.role,
+    roles,
+    departmentId: profile.department_id ?? null,
+    departmentName: department?.name ?? null,
     qualification: profile.qualification,
     designation: profile.designation,
     isActive: profile.is_active,
@@ -70,7 +86,7 @@ export async function requireStaff(): Promise<CurrentStaff> {
  */
 export async function requirePermission(permission: Permission): Promise<CurrentStaff> {
   const staff = await requireStaff();
-  if (!hasPermission(staff.role, permission)) {
+  if (!hasAnyPermission(staff.roles, permission)) {
     throw new Error(`Forbidden: role "${staff.role}" lacks permission "${permission}".`);
   }
   return staff;
@@ -78,5 +94,5 @@ export async function requirePermission(permission: Permission): Promise<Current
 
 export function can(staff: CurrentStaff | null, permission: Permission): boolean {
   if (!staff) return false;
-  return hasPermission(staff.role, permission);
+  return hasAnyPermission(staff.roles, permission);
 }
