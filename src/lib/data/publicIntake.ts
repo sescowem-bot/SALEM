@@ -121,7 +121,7 @@ export async function submitHomeCollectionRequest(
   await logAudit({
     action: "HOME_COLLECTION_CREATED",
     entityType: "home_collection_requests",
-    entityId: data[0]?.id,
+    entityId: data?.id,
     metadata: { bookingReference },
   });
 
