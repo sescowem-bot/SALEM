@@ -1,19 +1,67 @@
 import type { Metadata } from "next";
-import { ShieldCheck, Users } from "lucide-react";
 import { AdminShell } from "@/components/salem/AdminShell";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getAdminNavItems } from "@/lib/auth/nav";
-import { STAFF_ROLES, ROLE_LABELS, getPermissionsForRole } from "@/lib/auth/permissions";
+import { STAFF_ROLES, ALL_PERMISSIONS } from "@/lib/auth/permissions";
+import { getRolePermissionsMatrix } from "@/lib/auth/rolePermissions";
+import { EditableRoleCard, ReadOnlyRoleCard } from "./RoleCards";
 
-export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Roles & Permissions | Salem Staff Area", robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Roles & Permissions | Salem Staff Area",
+  robots: { index: false, follow: false },
+};
 
 export default async function RolesPage() {
   const staff = await requireStaff();
   const navItems = getAdminNavItems(staff);
-  if (!can(staff, "staff.manage")) return <AdminShell eyebrow="Administration" title="Not available" staffName={staff.fullName} staffRole={staff.role} navItems={navItems}><p className="surface-card p-6 text-sm text-muted-foreground">Only Super Admin can manage staff roles and permissions.</p></AdminShell>;
-  return <AdminShell eyebrow="Administration · Access control" title="Roles & permissions" lead="Roles are reusable permission bundles. A staff member can hold multiple roles, with the primary role shown for identification." backTo="/admin/staff" backLabel="Back to staff" staffName={staff.fullName} staffRole={staff.role} navItems={navItems}>
-    <div className="mb-6 grid gap-4 sm:grid-cols-3"><div className="surface-card p-5"><ShieldCheck className="h-5 w-5 text-navy"/><p className="mt-3 text-2xl font-semibold text-navy-deep">{STAFF_ROLES.length}</p><p className="text-xs text-muted-foreground">Available roles</p></div><div className="surface-card p-5"><Users className="h-5 w-5 text-navy"/><p className="mt-3 text-2xl font-semibold text-navy-deep">Multi-role</p><p className="text-xs text-muted-foreground">Supported per staff account</p></div><div className="surface-card p-5"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Management</p><p className="mt-3 text-sm font-semibold text-navy-deep">Administration → Staff</p><p className="mt-1 text-xs text-muted-foreground">Assign department, primary role and additional roles there.</p></div></div>
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{STAFF_ROLES.map(role=>{const perms=getPermissionsForRole(role);return <section key={role} className="rounded-2xl border border-border bg-card p-5 shadow-soft"><div className="flex items-start justify-between gap-3"><div><h2 className="text-sm font-semibold text-navy-deep">{ROLE_LABELS[role]}</h2><p className="mt-1 text-xs text-muted-foreground">{perms.length} permissions</p></div><span className="rounded-xl bg-accent p-2 text-navy"><ShieldCheck className="h-4 w-4"/></span></div><div className="mt-4 flex flex-wrap gap-1.5">{perms.map(p=><span key={p} className="rounded-lg border border-border bg-secondary px-2 py-1 text-[10px] font-medium text-navy-deep">{p}</span>)}</div></section>})}</div>
-  </AdminShell>;
+
+  if (!can(staff, "staff.manage")) {
+    return (
+      <AdminShell eyebrow="Administration" title="Not available for your role" staffName={staff.fullName} staffRole={staff.role} navItems={navItems}>
+        <p className="surface-card p-6 text-sm text-muted-foreground">
+          Your role ({staff.role}) does not have access to this page.
+        </p>
+      </AdminShell>
+    );
+  }
+
+  // The live matrix — one DB read (request-memoized), shared with every
+  // hasPermission()/can() check elsewhere in this same request.
+  const matrix = await getRolePermissionsMatrix();
+  const isSuperAdmin = staff.role === "super_admin";
+
+  return (
+    <AdminShell
+      eyebrow="Administration · Staff Area"
+      title="Roles & permissions"
+      lead={
+        isSuperAdmin
+          ? "Tick which permissions each role holds and save — changes apply immediately, app-wide, no redeploy needed."
+          : "The live permission matrix. Only super_admin can edit this — you're viewing it read-only."
+      }
+      backTo="/admin"
+      staffName={staff.fullName}
+      staffRole={staff.role}
+      navItems={navItems}
+    >
+      <div className="grid gap-5 sm:grid-cols-2">
+        {STAFF_ROLES.map((role) => {
+          if (role === "super_admin") {
+            return (
+              <ReadOnlyRoleCard
+                key={role}
+                role={role}
+                permissions={[...ALL_PERMISSIONS]}
+                note="always has every permission — not editable, so it can never be locked out"
+              />
+            );
+          }
+          if (isSuperAdmin) {
+            return <EditableRoleCard key={role} role={role} initialPermissions={matrix[role] ?? []} />;
+          }
+          return <ReadOnlyRoleCard key={role} role={role} permissions={matrix[role] ?? []} />;
+        })}
+      </div>
+    </AdminShell>
+  );
 }

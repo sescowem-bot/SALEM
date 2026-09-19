@@ -1,6 +1,7 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import type { Database } from "@/lib/supabase/database.types";
 import { logAudit } from "./audit";
 import { decodeCloudinaryAsset, destroyCloudinaryAsset, encodeCloudinaryAsset, isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
@@ -22,7 +23,7 @@ export async function uploadReportPdf(input: {
   actorRole: StaffRole;
   actorId?: string;
 }): Promise<string> {
-  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(input.actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot upload a result PDF.`);
   }
 
@@ -72,7 +73,7 @@ export async function uploadFinalReportPdf(input: {
   actorRole: StaffRole;
   actorId?: string;
 }): Promise<string> {
-  if (!hasPermission(input.actorRole, "reports.review")) {
+  if (!await hasPermission(input.actorRole, "reports.review")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot generate a final report document.`);
   }
 
@@ -144,7 +145,7 @@ export async function uploadServiceImage(input: {
   actorRole: StaffRole;
   actorId?: string;
 }): Promise<string> {
-  if (!hasPermission(input.actorRole, "catalogue.manage")) {
+  if (!await hasPermission(input.actorRole, "catalogue.manage")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot manage the service catalogue.`);
   }
   if (!ALLOWED_SERVICE_IMAGE_TYPES.includes(input.contentType)) {
@@ -211,7 +212,7 @@ export async function uploadServiceImage(input: {
 }
 
 export async function removeServiceImage(testId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  if (!hasPermission(actorRole, "catalogue.manage")) {
+  if (!await hasPermission(actorRole, "catalogue.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot manage the service catalogue.`);
   }
 
@@ -292,7 +293,7 @@ export async function uploadSiteMedia(input: {
   /** Required only for slot "pageHero" — a caller-chosen subpath, e.g. "homepage/hero". */
   pathHint?: string;
 }): Promise<string> {
-  if (!hasPermission(input.actorRole, "settings.manage")) {
+  if (!await hasPermission(input.actorRole, "settings.manage")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot manage website media.`);
   }
   if (!ALLOWED_SITE_MEDIA_TYPES.includes(input.contentType)) {
@@ -384,7 +385,7 @@ export async function uploadSiteMedia(input: {
 }
 
 export async function removeSiteMediaSlot(slot: SiteMediaSlot, actorRole: StaffRole, actorId?: string): Promise<void> {
-  if (!hasPermission(actorRole, "settings.manage")) {
+  if (!await hasPermission(actorRole, "settings.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot manage website media.`);
   }
   const column = SITE_SETTINGS_COLUMN[slot];
@@ -424,7 +425,7 @@ export async function removeSiteMediaSlot(slot: SiteMediaSlot, actorRole: StaffR
 }
 
 export async function removeSiteMediaPath(storagePath: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  if (!hasPermission(actorRole, "settings.manage")) {
+  if (!await hasPermission(actorRole, "settings.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot manage website media.`);
   }
   const cloudinaryAsset = decodeCloudinaryAsset(storagePath);
@@ -475,7 +476,7 @@ export async function uploadSignatureImage(input: {
   actorRole: StaffRole;
   actorId?: string;
 }): Promise<string> {
-  if (!hasPermission(input.actorRole, "documents.manage")) {
+  if (!await hasPermission(input.actorRole, "documents.manage")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot manage signatures.`);
   }
   if (!ALLOWED_SIGNATURE_IMAGE_TYPES.includes(input.contentType)) {
@@ -523,7 +524,7 @@ export async function uploadSignatureImage(input: {
 }
 
 export async function removeSignatureImage(signatoryId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  if (!hasPermission(actorRole, "documents.manage")) {
+  if (!await hasPermission(actorRole, "documents.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot manage signatures.`);
   }
 

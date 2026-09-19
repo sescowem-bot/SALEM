@@ -1,17 +1,278 @@
 "use client";
+
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Building2, ChevronDown, Pencil, Plus, Search, ShieldCheck, UserPlus, X } from "lucide-react";
-import { createDepartmentAction, createStaffAction, updateStaffAction, setStaffStatusAction, type ActionState } from "./actions";
+import { UserPlus, Search, Pencil, X } from "lucide-react";
+import { createStaffAction, updateStaffAction, setStaffStatusAction, type ActionState } from "./actions";
 import { ROLE_LABELS, STAFF_ROLES, type StaffRole } from "@/lib/auth/permissions";
 import type { Database } from "@/lib/supabase/database.types";
-import type { StaffDirectoryMember } from "@/lib/data/staff";
-type Department=Database["public"]["Tables"]["departments"]["Row"];
-const field="mt-1.5 w-full rounded-xl border border-border bg-background px-3.5 py-2.75 text-sm text-navy-deep outline-none transition focus:border-cyan focus:ring-2 focus:ring-cyan/15";
-function Submit({label}:{label:string}){const{pending}=useFormStatus();return <button disabled={pending} className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:-translate-y-0.5 disabled:opacity-50">{pending?"Saving…":label}</button>}
-function RolePicker({name="roles",selected}:{name?:string;selected:StaffRole[]}){return <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{STAFF_ROLES.map(r=><label key={r} className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm"><input type="checkbox" name={name} value={r} defaultChecked={selected.includes(r)} className="h-4 w-4 accent-[var(--navy)]"/><span className="font-medium text-navy-deep">{ROLE_LABELS[r]}</span></label>)}</div>}
-function AddStaff({departments,onDone}:{departments:Department[];onDone:()=>void}){const[state,action]=useActionState(createStaffAction,{});return <form action={action} className="surface-card p-5 sm:p-7"><div className="flex justify-between gap-4"><div><h2 className="text-base font-semibold text-navy-deep">Create staff account</h2><p className="mt-1 text-xs text-muted-foreground">Assign a department and one or more roles at creation.</p></div><button type="button" onClick={onDone} className="grid h-8 w-8 place-items-center rounded-full hover:bg-accent"><X className="h-4 w-4"/></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Full name<input name="fullName" required className={field}/></label><label className="text-sm font-medium">Email<input name="email" type="email" required className={field}/></label><label className="text-sm font-medium">Temporary password<input name="password" type="password" minLength={8} required className={field}/></label><label className="text-sm font-medium">Primary role<select name="role" required defaultValue="frontdesk" className={field}>{STAFF_ROLES.map(r=><option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</select></label><label className="text-sm font-medium">Department<select name="departmentId" className={field}><option value="">No department</option>{departments.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label className="text-sm font-medium">Designation<input name="designation" className={field}/></label><label className="text-sm font-medium">Qualification<input name="qualification" className={field}/></label><label className="text-sm font-medium sm:col-span-2">Phone<input name="phone" className={field}/></label></div><div className="mt-5"><p className="text-sm font-semibold text-navy-deep">Roles</p><p className="mt-1 mb-3 text-xs text-muted-foreground">Select every responsibility this person should have. Choose a primary role above; additional selected roles extend the person's permissions.</p><RolePicker selected={["frontdesk"]}/></div>{state.error&&<p className="mt-4 text-sm text-destructive">{state.error}</p>}<div className="mt-5"><Submit label="Create account"/></div></form>}
-function EditStaff({profile,departments,onDone}:{profile:StaffDirectoryMember;departments:Department[];onDone:()=>void}){const[state,action]=useActionState(updateStaffAction,{});return <form action={action} className="rounded-2xl border border-border bg-secondary/60 p-5"><input type="hidden" name="staffId" value={profile.id}/><div className="flex justify-between"><div><h3 className="text-sm font-semibold text-navy-deep">Manage {profile.full_name}</h3><p className="mt-1 text-xs text-muted-foreground">Update department and responsibilities.</p></div><button type="button" onClick={onDone}><X className="h-4 w-4"/></button></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Full name<input name="fullName" required defaultValue={profile.full_name} className={field}/></label><label className="text-sm font-medium">Primary role<select name="role" required defaultValue={profile.role} className={field}>{STAFF_ROLES.map(r=><option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</select></label><label className="text-sm font-medium">Department<select name="departmentId" defaultValue={profile.department_id??""} className={field}><option value="">No department</option>{departments.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label className="text-sm font-medium">Designation<input name="designation" defaultValue={profile.designation??""} className={field}/></label><label className="text-sm font-medium">Qualification<input name="qualification" defaultValue={profile.qualification??""} className={field}/></label><label className="text-sm font-medium">Phone<input name="phone" defaultValue={profile.phone??""} className={field}/></label></div><div className="mt-4"><p className="mb-3 text-sm font-semibold text-navy-deep">Assigned roles</p><RolePicker selected={profile.roles.length?profile.roles:[profile.role]}/></div>{state.error&&<p className="mt-4 text-sm text-destructive">{state.error}</p>}<div className="mt-5 flex gap-2"><Submit label="Save changes"/><button type="button" onClick={onDone} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">Cancel</button></div></form>}
-function Status({id,active}:{id:string;active:boolean}){const[state,action,pending]=useActionState(setStaffStatusAction,{});return <form action={action}><input type="hidden" name="staffId" value={id}/><input type="hidden" name="active" value={String(!active)}/><button disabled={pending} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${active?"border-destructive/25 text-destructive hover:bg-destructive/5":"border-emerald-200 text-emerald-700 hover:bg-emerald-50"}`}>{pending?"…":active?"Deactivate":"Activate"}</button>{state.error&&<span className="ml-2 text-xs text-destructive">{state.error}</span>}</form>}
-function DepartmentForm({onDone}:{onDone:()=>void}){const[state,action]=useActionState(createDepartmentAction,{});return <form action={action} className="rounded-2xl border border-border bg-secondary/60 p-4"><div className="flex items-center gap-2 text-sm font-semibold text-navy-deep"><Building2 className="h-4 w-4"/>New department</div><input name="name" required placeholder="e.g. Finance" className={field}/><input name="description" placeholder="Short description (optional)" className={field}/><div className="mt-3 flex gap-2"><Submit label="Add department"/><button type="button" onClick={onDone} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">Cancel</button></div>{state.error&&<p className="mt-2 text-xs text-destructive">{state.error}</p>}</form>}
-export function StaffClient({directory,departments,canManage,currentUserId}:{directory:StaffDirectoryMember[];departments:Department[];canManage:boolean;currentUserId:string}){const[q,setQ]=useState("");const[role,setRole]=useState<StaffRole|"all">("all");const[dept,setDept]=useState("all");const[status,setStatus]=useState("all");const[add,setAdd]=useState(false);const[departmentAdd,setDepartmentAdd]=useState(false);const[edit,setEdit]=useState<string|null>(null);const filtered=useMemo(()=>directory.filter(s=>{const roles=s.roles.length?s.roles:[s.role];return(!q||s.full_name.toLowerCase().includes(q.toLowerCase())||(s.designation??"").toLowerCase().includes(q.toLowerCase()))&&(role==="all"||roles.includes(role))&&(dept==="all"||(s.department_id??"")===dept)&&(status==="all"||(status==="active"?s.is_active:!s.is_active));}),[directory,q,role,dept,status]);return <div className="space-y-6"><div className="grid gap-3 lg:grid-cols-[1fr_auto]"><div className="flex flex-wrap gap-2"><div className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search staff…" className="w-full rounded-xl border border-border bg-card py-2.75 pl-9 pr-3 text-sm outline-none focus:border-cyan"/></div><select value={role} onChange={e=>setRole(e.target.value as StaffRole|"all")} className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm"><option value="all">All roles</option>{STAFF_ROLES.map(r=><option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</select><select value={dept} onChange={e=>setDept(e.target.value)} className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm"><option value="all">All departments</option>{departments.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select><select value={status} onChange={e=>setStatus(e.target.value)} className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm"><option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>{canManage&&<div className="flex gap-2"><button onClick={()=>setDepartmentAdd(v=>!v)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold"><Building2 className="h-4 w-4"/>Departments</button><button onClick={()=>setAdd(v=>!v)} className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-primary-foreground"><UserPlus className="h-4 w-4"/>Add staff</button></div>}</div>{departmentAdd&&<DepartmentForm onDone={()=>setDepartmentAdd(false)}/>} {add&&<AddStaff departments={departments} onDone={()=>setAdd(false)}/>}<div className="grid gap-3">{filtered.length===0?<div className="surface-card p-8 text-center text-sm text-muted-foreground">No staff match the selected filters.</div>:filtered.map(s=><div key={s.id} className="surface-card p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-semibold text-navy-deep">{s.full_name}</h3>{s.id===currentUserId&&<span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase text-navy">You</span>}<span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${s.is_active?"bg-emerald-50 text-emerald-700":"bg-secondary text-muted-foreground"}`}>{s.is_active?"Active":"Inactive"}</span></div><p className="mt-1 text-xs text-muted-foreground">{s.department_name??"No department"}{s.designation?` · ${s.designation}`:""}</p><div className="mt-3 flex flex-wrap gap-1.5">{(s.roles.length?s.roles:[s.role]).map(r=><span key={r} className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary px-2 py-1 text-[11px] font-medium text-navy-deep"><ShieldCheck className="h-3 w-3"/>{ROLE_LABELS[r]}</span>)}</div></div>{canManage&&<div className="flex items-center gap-2"><button onClick={()=>setEdit(edit===s.id?null:s.id)} className="grid h-9 w-9 place-items-center rounded-xl border border-border" aria-label={`Manage ${s.full_name}`}><Pencil className="h-4 w-4"/></button><Status id={s.id} active={s.is_active}/></div>}</div>{edit===s.id&&<div className="mt-5"><EditStaff profile={s} departments={departments} onDone={()=>setEdit(null)}/></div>}</div>)}</div></div>}
+
+type StaffProfile = Database["public"]["Tables"]["staff_profiles"]["Row"];
+
+const fieldClass =
+  "mt-1.5 w-full rounded-lg border border-border bg-secondary px-3.5 py-2.5 text-sm text-navy-deep outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan focus:bg-card";
+
+function SubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.01] disabled:opacity-60 disabled:hover:scale-100"
+    >
+      {pending ? "Saving…" : label}
+    </button>
+  );
+}
+
+const initial: ActionState = {};
+
+function AddStaffForm({ onDone }: { onDone: () => void }) {
+  const [state, action] = useActionState(createStaffAction, initial);
+
+  return (
+    <form action={action} className="surface-card space-y-4 p-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-navy-deep">Add staff account</h3>
+        <button type="button" onClick={onDone} className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-accent">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block text-sm font-medium text-navy-deep">
+          Full name
+          <input name="fullName" required className={fieldClass} />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Role
+          <select name="role" required className={fieldClass} defaultValue="frontdesk">
+            {STAFF_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Email
+          <input name="email" type="email" required className={fieldClass} />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Temporary password
+          <input name="password" type="password" required minLength={8} className={fieldClass} />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Designation
+          <input name="designation" className={fieldClass} placeholder="e.g. Senior Medical Lab Scientist" />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Qualification
+          <input name="qualification" className={fieldClass} placeholder="e.g. AMLSN, BMLS" />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
+          Phone
+          <input name="phone" className={fieldClass} />
+        </label>
+      </div>
+      {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+      <SubmitButton label="Create account" />
+    </form>
+  );
+}
+
+function EditStaffForm({ profile, onDone }: { profile: StaffProfile; onDone: () => void }) {
+  const [state, action] = useActionState(updateStaffAction, initial);
+
+  return (
+    <form action={action} className="surface-card space-y-4 p-6">
+      <input type="hidden" name="staffId" value={profile.id} />
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-navy-deep">Edit {profile.full_name}</h3>
+        <button type="button" onClick={onDone} className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-accent">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block text-sm font-medium text-navy-deep">
+          Full name
+          <input name="fullName" required defaultValue={profile.full_name} className={fieldClass} />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Role
+          <select name="role" required defaultValue={profile.role} className={fieldClass}>
+            {STAFF_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Designation
+          <input name="designation" defaultValue={profile.designation ?? ""} className={fieldClass} />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep">
+          Qualification
+          <input name="qualification" defaultValue={profile.qualification ?? ""} className={fieldClass} />
+        </label>
+        <label className="block text-sm font-medium text-navy-deep sm:col-span-2">
+          Phone
+          <input name="phone" defaultValue={profile.phone ?? ""} className={fieldClass} />
+        </label>
+      </div>
+      {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+      <SubmitButton label="Save changes" />
+    </form>
+  );
+}
+
+function StatusToggleForm({ staffId, isActive }: { staffId: string; isActive: boolean }) {
+  const [state, action, isPending] = useActionState(setStaffStatusAction, initial);
+  return (
+    <form action={action}>
+      <input type="hidden" name="staffId" value={staffId} />
+      <input type="hidden" name="active" value={(!isActive).toString()} />
+      <button
+        type="submit"
+        disabled={isPending}
+        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+          isActive
+            ? "border-destructive/30 text-destructive hover:bg-destructive/10"
+            : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+        }`}
+      >
+        {isPending ? "…" : isActive ? "Deactivate" : "Activate"}
+      </button>
+      {state.error ? <p className="mt-1 text-[0.65rem] text-destructive">{state.error}</p> : null}
+    </form>
+  );
+}
+
+export function StaffClient({
+  directory,
+  canManage,
+  currentUserId,
+}: {
+  directory: StaffProfile[];
+  canManage: boolean;
+  currentUserId: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<StaffRole | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return directory.filter((s) => {
+      if (roleFilter !== "all" && s.role !== roleFilter) return false;
+      if (statusFilter === "active" && !s.is_active) return false;
+      if (statusFilter === "inactive" && s.is_active) return false;
+      if (q && !s.full_name.toLowerCase().includes(q) && !(s.designation ?? "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [directory, query, roleFilter, statusFilter]);
+
+  return (
+    <div className="space-y-6">
+      {canManage ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-1 flex-wrap items-center gap-3">
+            <span className="relative min-w-[200px] flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name or designation…"
+                className="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-3.5 text-sm text-navy-deep outline-none focus:border-cyan"
+              />
+            </span>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value as StaffRole | "all")}
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-navy-deep outline-none focus:border-cyan"
+            >
+              <option value="all">All roles</option>
+              {STAFF_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-navy-deep outline-none focus:border-cyan"
+            >
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <button
+            onClick={() => setShowAdd((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:scale-[1.01]"
+          >
+            <UserPlus className="h-4 w-4 shrink-0" /> Add staff
+          </button>
+        </div>
+      ) : null}
+
+      {showAdd ? <AddStaffForm onDone={() => setShowAdd(false)} /> : null}
+
+      {filtered.length === 0 ? (
+        <p className="surface-card p-6 text-sm text-muted-foreground">No staff match this search/filter.</p>
+      ) : (
+        <div className="surface-card divide-y divide-border">
+          {filtered.map((s) => (
+            <div key={s.id}>
+              <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-navy-deep">{s.full_name}</span>
+                    {s.id === currentUserId ? (
+                      <span className="rounded-full bg-accent px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-navy">You</span>
+                    ) : null}
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${
+                        s.is_active
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-border bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      {s.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {ROLE_LABELS[s.role]} {s.designation ? `· ${s.designation}` : ""}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {s.qualification ?? "No qualification on file"} {s.phone ? `· ${s.phone}` : ""}
+                  </span>
+                </span>
+                {canManage ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      onClick={() => setEditingId(editingId === s.id ? null : s.id)}
+                      className="grid h-8 w-8 place-items-center rounded-full border border-border text-muted-foreground hover:bg-accent hover:text-navy"
+                      aria-label="Edit staff"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <StatusToggleForm staffId={s.id} isActive={s.is_active} />
+                  </div>
+                ) : null}
+              </div>
+              {editingId === s.id ? (
+                <div className="p-5 pt-0">
+                  <EditStaffForm profile={s} onDone={() => setEditingId(null)} />
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

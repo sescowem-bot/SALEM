@@ -2,7 +2,8 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { slugify } from "@/lib/utils/slug";
 import { logAudit } from "./audit";
 
@@ -179,15 +180,15 @@ export interface ServiceWithCategory extends Test {
   category: TestCategory | null;
 }
 
-function requireCatalogueManage(actorRole: StaffRole) {
-  if (!hasPermission(actorRole, "catalogue.manage")) {
+async function requireCatalogueManage(actorRole: StaffRole) {
+  if (!await hasPermission(actorRole, "catalogue.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot manage the service catalogue.`);
   }
 }
 
 /** Full admin listing — every status, every category, for the /admin/services table. */
 export async function listAllServicesForAdmin(actorRole: StaffRole): Promise<ServiceWithCategory[]> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
 
   const [{ data: tests, error: testsError }, { data: categories, error: catError }] = await Promise.all([
@@ -203,7 +204,7 @@ export async function listAllServicesForAdmin(actorRole: StaffRole): Promise<Ser
 
 /** All categories regardless of is_active — for the admin editor's category picker. */
 export async function listAllTestCategoriesForAdmin(actorRole: StaffRole): Promise<TestCategory[]> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.from("test_categories").select("*").order("sort_order", { ascending: true });
   if (error) throw error;
@@ -212,7 +213,7 @@ export async function listAllTestCategoriesForAdmin(actorRole: StaffRole): Promi
 
 /** Active result-entry templates — every service must be linked to one (see migration note). */
 export async function listActiveTestTemplates(actorRole: StaffRole): Promise<TestTemplate[]> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
     .from("test_templates")
@@ -224,7 +225,7 @@ export async function listActiveTestTemplates(actorRole: StaffRole): Promise<Tes
 }
 
 export async function getServiceById(testId: string, actorRole: StaffRole): Promise<ServiceWithCategory | null> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
   const { data: test, error } = await supabase.from("tests").select("*").eq("id", testId).single();
   if (error) {
@@ -236,7 +237,7 @@ export async function getServiceById(testId: string, actorRole: StaffRole): Prom
 }
 
 export async function isServiceSlugTaken(slug: string, excludeId: string | undefined, actorRole: StaffRole): Promise<boolean> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
   let query = supabase.from("tests").select("id", { count: "exact", head: true }).eq("slug", slug);
   if (excludeId) query = query.neq("id", excludeId);
@@ -260,7 +261,6 @@ export interface ServiceEditableFields {
   priceNgn: number | null;
   showPrice: boolean;
   featured: boolean;
-  featuredHomeOrder?: number;
   ctaLabel: string | null;
   ctaDestination: string | null;
   seoTitle: string | null;
@@ -284,7 +284,6 @@ function toTestRow(input: ServiceEditableFields) {
     price_ngn: input.priceNgn,
     show_price: input.showPrice,
     featured: input.featured,
-    featured_home_order: input.featuredHomeOrder ?? 0,
     cta_label: input.ctaLabel,
     cta_destination: input.ctaDestination,
     seo_title: input.seoTitle,
@@ -298,7 +297,7 @@ export async function createService(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<Test> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
 
   const { data: maxSort } = await supabase
@@ -346,7 +345,6 @@ export interface NewTemplateFieldInput {
 
 export interface NewTemplateStructureInput {
   name: string;
-  description?: string | null;
   structureType: "field_based" | "table_based";
   fields?: NewTemplateFieldInput[];
   columns?: string[];
@@ -357,7 +355,7 @@ export async function createTemplateStructure(
   input: NewTemplateStructureInput,
   actorRole: StaffRole
 ): Promise<TestTemplate> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
 
   const fields = (input.fields ?? []).filter((f) => f.label.trim().length > 0);
@@ -381,7 +379,7 @@ export async function createTemplateStructure(
   for (let attempt = 0; attempt < 2 && !template; attempt++) {
     const { data, error } = await supabase
       .from("test_templates")
-      .insert({ name: attemptName, structure_type: input.structureType, description: input.description?.trim() || null, is_active: true })
+      .insert({ name: attemptName, structure_type: input.structureType, is_active: true })
       .select()
       .single();
     if (error) {
@@ -466,7 +464,7 @@ export async function updateService(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<Test> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
 
   const { data, error } = await supabase.from("tests").update(toTestRow(input)).eq("id", testId).select().single();
@@ -485,7 +483,7 @@ export async function updateService(
 }
 
 export async function publishService(testId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
   const { error } = await supabase
     .from("tests")
@@ -497,7 +495,7 @@ export async function publishService(testId: string, actorRole: StaffRole, actor
 }
 
 export async function unpublishService(testId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
   const { error } = await supabase.from("tests").update({ content_status: "draft" }).eq("id", testId);
   if (error) throw error;
@@ -506,7 +504,7 @@ export async function unpublishService(testId: string, actorRole: StaffRole, act
 }
 
 export async function archiveService(testId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
   const { error } = await supabase.from("tests").update({ content_status: "archived" }).eq("id", testId);
   if (error) throw error;
@@ -515,20 +513,9 @@ export async function archiveService(testId: string, actorRole: StaffRole, actor
 }
 
 export async function setServiceFeatured(testId: string, featured: boolean, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
-  let featuredHomeOrder = 0;
-  if (featured) {
-    const { data: last } = await supabase
-      .from("tests")
-      .select("featured_home_order")
-      .eq("featured", true)
-      .order("featured_home_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    featuredHomeOrder = (last?.featured_home_order ?? -1) + 1;
-  }
-  const { error } = await supabase.from("tests").update({ featured, featured_home_order: featuredHomeOrder }).eq("id", testId);
+  const { error } = await supabase.from("tests").update({ featured }).eq("id", testId);
   if (error) throw error;
 
   await logAudit({
@@ -537,36 +524,8 @@ export async function setServiceFeatured(testId: string, featured: boolean, acto
     entityId: testId,
     actorId,
     actorRole,
-    metadata: { featured, featuredHomeOrder },
+    metadata: { featured },
   });
-}
-
-export async function reorderFeaturedService(testId: string, direction: "up" | "down", actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireCatalogueManage(actorRole);
-  const supabase = getServiceRoleClient();
-  const { data: current, error: currentError } = await supabase.from("tests").select("id, featured, featured_home_order").eq("id", testId).single();
-  if (currentError) throw currentError;
-  if (!current.featured) throw new Error("Only featured services can be reordered on the homepage.");
-
-  const { data: siblings, error } = await supabase
-    .from("tests")
-    .select("id, featured_home_order")
-    .eq("featured", true)
-    .order("featured_home_order", { ascending: true })
-    .order("name", { ascending: true });
-  if (error) throw error;
-  const list = siblings ?? [];
-  const index = list.findIndex((s) => s.id === testId);
-  const swapIndex = direction === "up" ? index - 1 : index + 1;
-  if (index < 0 || swapIndex < 0 || swapIndex >= list.length) return;
-  const neighbour = list[swapIndex];
-  const [{ error: e1 }, { error: e2 }] = await Promise.all([
-    supabase.from("tests").update({ featured_home_order: neighbour.featured_home_order }).eq("id", current.id),
-    supabase.from("tests").update({ featured_home_order: current.featured_home_order }).eq("id", neighbour.id),
-  ]);
-  if (e1) throw e1;
-  if (e2) throw e2;
-  await logAudit({ action: "SERVICE_UPDATED", entityType: "tests", entityId: testId, actorId, actorRole, metadata: { featuredReordered: direction } });
 }
 
 /**
@@ -581,7 +540,7 @@ export async function reorderService(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   const supabase = getServiceRoleClient();
 
   const { data: current, error: currentError } = await supabase.from("tests").select("*").eq("id", testId).single();
@@ -679,125 +638,6 @@ export async function listRelatedPublishedServices(categoryId: string, excludeId
  * routes — only from an admin-authenticated page.
  */
 export async function getServiceForPreview(testId: string, actorRole: StaffRole): Promise<ServiceWithCategory | null> {
-  requireCatalogueManage(actorRole);
+  await requireCatalogueManage(actorRole);
   return getServiceById(testId, actorRole);
-}
-
-// ---------------------------------------------------------------------------
-// Report-template administration (Phase 3)
-// ---------------------------------------------------------------------------
-export interface AdminTemplateWithUsage extends TestTemplate {
-  fields: TemplateField[];
-  tableColumns: TemplateTableColumn[];
-  tableRows: TemplateTableRow[];
-  usageCount: number;
-}
-
-export async function listAllTemplatesForAdmin(actorRole: StaffRole): Promise<AdminTemplateWithUsage[]> {
-  requireCatalogueManage(actorRole);
-  const supabase = getServiceRoleClient();
-  const [{ data: templates, error: templateError }, { data: tests, error: testError }] = await Promise.all([
-    supabase.from("test_templates").select("*").order("is_active", { ascending: false }).order("name", { ascending: true }),
-    supabase.from("tests").select("id, template_id, name"),
-  ]);
-  if (templateError) throw templateError;
-  if (testError) throw testError;
-
-  const [{ data: fields, error: fieldError }, { data: columns, error: columnError }, { data: rows, error: rowError }] = await Promise.all([
-    supabase.from("template_fields").select("*").order("sort_order", { ascending: true }),
-    supabase.from("template_table_columns").select("*").order("sort_order", { ascending: true }),
-    supabase.from("template_table_rows").select("*").order("sort_order", { ascending: true }),
-  ]);
-  if (fieldError) throw fieldError;
-  if (columnError) throw columnError;
-  if (rowError) throw rowError;
-
-  const usage = new Map<string, number>();
-  for (const test of tests ?? []) usage.set(test.template_id, (usage.get(test.template_id) ?? 0) + 1);
-  return (templates ?? []).map((template) => ({
-    ...template,
-    fields: (fields ?? []).filter((f) => f.template_id === template.id),
-    tableColumns: (columns ?? []).filter((c) => c.template_id === template.id),
-    tableRows: (rows ?? []).filter((r) => r.template_id === template.id),
-    usageCount: usage.get(template.id) ?? 0,
-  }));
-}
-
-export async function getTemplateForAdmin(templateId: string, actorRole: StaffRole): Promise<AdminTemplateWithUsage | null> {
-  requireCatalogueManage(actorRole);
-  const supabase = getServiceRoleClient();
-  const { data: template, error } = await supabase.from("test_templates").select("*").eq("id", templateId).maybeSingle();
-  if (error) throw error;
-  if (!template) return null;
-  const [{ data: fields, error: fieldError }, { data: columns, error: columnError }, { data: rows, error: rowError }, { data: tests, error: testError }] = await Promise.all([
-    supabase.from("template_fields").select("*").eq("template_id", templateId).order("sort_order", { ascending: true }),
-    supabase.from("template_table_columns").select("*").eq("template_id", templateId).order("sort_order", { ascending: true }),
-    supabase.from("template_table_rows").select("*").eq("template_id", templateId).order("sort_order", { ascending: true }),
-    supabase.from("tests").select("id, name").eq("template_id", templateId),
-  ]);
-  if (fieldError) throw fieldError;
-  if (columnError) throw columnError;
-  if (rowError) throw rowError;
-  if (testError) throw testError;
-  return { ...template, fields: fields ?? [], tableColumns: columns ?? [], tableRows: rows ?? [], usageCount: tests?.length ?? 0 };
-}
-
-export interface UpdateTemplateStructureInput extends NewTemplateStructureInput {
-  id: string;
-  description?: string | null;
-}
-
-export async function updateTemplateStructure(input: UpdateTemplateStructureInput, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireCatalogueManage(actorRole);
-  const supabase = getServiceRoleClient();
-  const fields = (input.fields ?? []).filter((f) => f.label.trim());
-  const columns = (input.columns ?? []).map((v) => v.trim()).filter(Boolean);
-  const rows = (input.rows ?? []).map((v) => v.trim()).filter(Boolean);
-  if (input.structureType === "field_based" && fields.length === 0) throw new Error("Add at least one result parameter.");
-  if (input.structureType === "table_based" && (!columns.length || !rows.length)) throw new Error("A table-style investigation needs at least one column and one row.");
-
-  const { error: templateError } = await supabase.from("test_templates").update({
-    name: input.name.trim(), structure_type: input.structureType, description: input.description?.trim() || null, updated_at: new Date().toISOString(),
-  }).eq("id", input.id);
-  if (templateError) throw templateError;
-
-  const deletes = await Promise.all([
-    supabase.from("template_fields").delete().eq("template_id", input.id),
-    supabase.from("template_table_columns").delete().eq("template_id", input.id),
-    supabase.from("template_table_rows").delete().eq("template_id", input.id),
-  ]);
-  for (const result of deletes) if (result.error) throw result.error;
-
-  if (input.structureType === "field_based") {
-    const { error } = await supabase.from("template_fields").insert(fields.map((f, i) => ({
-      template_id: input.id, field_key: `${slugify(f.label) || "param"}-${i}`, label: f.label.trim(), input_type: f.inputType,
-      unit: f.unit?.trim() || null, options: f.inputType === "select" ? (f.options ?? []).filter(Boolean) : null, sort_order: i,
-    })));
-    if (error) throw error;
-  } else {
-    const { error: colError } = await supabase.from("template_table_columns").insert(columns.map((label, i) => ({ template_id: input.id, column_key: `${slugify(label) || "col"}-${i}`, column_label: label, sort_order: i })));
-    if (colError) throw colError;
-    const { error: rowError } = await supabase.from("template_table_rows").insert(rows.map((label, i) => ({ template_id: input.id, row_key: `${slugify(label) || "row"}-${i}`, row_label: label, sort_order: i })));
-    if (rowError) throw rowError;
-  }
-  await logAudit({ action: "SERVICE_UPDATED", entityType: "test_templates", entityId: input.id, actorId, actorRole, metadata: { templateUpdated: true, name: input.name } });
-}
-
-export async function setTemplateActive(templateId: string, isActive: boolean, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireCatalogueManage(actorRole);
-  const supabase = getServiceRoleClient();
-  const { error } = await supabase.from("test_templates").update({ is_active: isActive }).eq("id", templateId);
-  if (error) throw error;
-  await logAudit({ action: "SERVICE_UPDATED", entityType: "test_templates", entityId: templateId, actorId, actorRole, metadata: { isActive } });
-}
-
-export async function deleteTemplate(templateId: string, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireCatalogueManage(actorRole);
-  const supabase = getServiceRoleClient();
-  const { count, error: usageError } = await supabase.from("tests").select("id", { count: "exact", head: true }).eq("template_id", templateId);
-  if (usageError) throw usageError;
-  if ((count ?? 0) > 0) throw new Error("This template is in use by one or more tests. Deactivate it or reassign those tests before deleting it.");
-  const { error } = await supabase.from("test_templates").delete().eq("id", templateId);
-  if (error) throw error;
-  await logAudit({ action: "SERVICE_UPDATED", entityType: "test_templates", entityId: templateId, actorId, actorRole, metadata: { deleted: true } });
 }

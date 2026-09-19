@@ -1,6 +1,7 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 import { getSiteMediaPublicUrl } from "./storage";
 import { isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
@@ -12,7 +13,7 @@ type Article = {
   created_by: string | null; updated_by: string | null;
 };
 
-function guard(role: StaffRole) { if (!hasPermission(role, "settings.manage")) throw new Error(`Forbidden: role "${role}" cannot manage SEO content.`); }
+async function guard(role: StaffRole) { if (!await hasPermission(role, "settings.manage")) throw new Error(`Forbidden: role "${role}" cannot manage SEO content.`); }
 export async function listPublishedArticles(): Promise<Article[]> {
   const db = getServiceRoleClient() as any;
   const { data, error } = await db.from("seo_articles").select("*").eq("status", "published").order("published_at", { ascending: false });
@@ -24,12 +25,12 @@ export async function getPublishedArticleBySlug(slug: string): Promise<Article |
   if (error) throw error; return data;
 }
 export async function listAllArticles(role: StaffRole): Promise<Article[]> {
-  guard(role); const db = getServiceRoleClient() as any;
+  await guard(role); const db = getServiceRoleClient() as any;
   const { data, error } = await db.from("seo_articles").select("*").order("updated_at", { ascending: false });
   if (error) throw error; return data ?? [];
 }
 export async function upsertArticle(input: Partial<Article> & { title: string; slug: string; content: string }, role: StaffRole, actorId?: string) {
-  guard(role);
+  await guard(role);
   const db = getServiceRoleClient() as any;
   const now = new Date().toISOString();
   const { id, created_by: _createdBy, updated_by: _updatedBy, updated_at: _updatedAt, published_at: inputPublishedAt, ...fields } = input as any;
@@ -62,7 +63,7 @@ export async function uploadArticleFeaturedImage(input: {
   actorRole: StaffRole;
   actorId?: string;
 }): Promise<string> {
-  guard(input.actorRole);
+  await guard(input.actorRole);
   const allowed = ["image/jpeg", "image/png", "image/webp"] as const;
   if (!allowed.includes(input.file.type as (typeof allowed)[number])) {
     throw new Error("Unsupported image type. Use JPEG, PNG, or WebP.");
@@ -110,7 +111,7 @@ export async function uploadArticleFeaturedImage(input: {
 }
 
 export async function setArticleStatus(id: string, status: Article["status"], role: StaffRole, actorId?: string): Promise<Article> {
-  guard(role);
+  await guard(role);
   const db = getServiceRoleClient() as any;
   const now = new Date().toISOString();
   const patch = {

@@ -1,7 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 
 type Signatory = Database["public"]["Tables"]["signatories"]["Row"];
@@ -36,7 +37,7 @@ export async function listActiveSignatories(): Promise<Signatory[]> {
 
 /** Admin management screen — includes inactive signatories, unlike listActiveSignatories. */
 export async function listAllSignatories(actorRole: StaffRole): Promise<Signatory[]> {
-  if (!hasPermission(actorRole, "documents.manage")) {
+  if (!await hasPermission(actorRole, "documents.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view signatory records.`);
   }
   const supabase = getServiceRoleClient();
@@ -78,7 +79,7 @@ export async function createSignatory(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<Signatory> {
-  if (!hasPermission(actorRole, "documents.manage")) {
+  if (!await hasPermission(actorRole, "documents.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot create a signatory.`);
   }
 
@@ -114,7 +115,7 @@ export async function updateSignatory(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<Signatory> {
-  if (!hasPermission(actorRole, "documents.manage")) {
+  if (!await hasPermission(actorRole, "documents.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot update a signatory.`);
   }
 

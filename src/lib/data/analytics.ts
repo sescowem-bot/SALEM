@@ -1,6 +1,7 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 
 export type AnalyticsSummary = { totalViews: number; topPages: { path: string; views: number }[]; sources: { source: string; views: number }[]; daily: { day: string; views: number }[] };
 
@@ -9,7 +10,7 @@ export async function recordPageView(path: string, source: string, device: strin
   await db.from("website_page_views").insert({ path: path.slice(0, 300), source: source.slice(0, 60), device: device.slice(0, 20) });
 }
 export async function getAnalyticsSummary(role: StaffRole, days = 30): Promise<AnalyticsSummary> {
-  if (!hasPermission(role, "analytics.view")) throw new Error("Forbidden: analytics access required.");
+  if (!await hasPermission(role, "analytics.view")) throw new Error("Forbidden: analytics access required.");
   const db = getServiceRoleClient() as any;
   const since = new Date(Date.now() - days * 86400000).toISOString();
   const { data, error } = await db.from("website_page_views").select("viewed_at,path,source").gte("viewed_at", since).limit(50000);

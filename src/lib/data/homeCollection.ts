@@ -1,7 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 
 type HomeCollectionRequest = Database["public"]["Tables"]["home_collection_requests"]["Row"];
@@ -22,7 +23,7 @@ export async function listHomeCollectionRequests(
 ): Promise<HomeCollectionRequest[]> {
   const supabase = getServiceRoleClient();
 
-  if (hasPermission(actorRole, "home_collection.manage")) {
+  if (await hasPermission(actorRole, "home_collection.manage")) {
     const { data, error } = await supabase
       .from("home_collection_requests")
       .select("*")
@@ -31,7 +32,7 @@ export async function listHomeCollectionRequests(
     return data ?? [];
   }
 
-  if (hasPermission(actorRole, "home_collection.view_assigned")) {
+  if (await hasPermission(actorRole, "home_collection.view_assigned")) {
     if (!actorId) return [];
     const { data, error } = await supabase
       .from("home_collection_requests")
@@ -53,9 +54,9 @@ export async function updateHomeCollectionStatus(
 ): Promise<void> {
   const supabase = getServiceRoleClient();
 
-  if (hasPermission(actorRole, "home_collection.manage")) {
+  if (await hasPermission(actorRole, "home_collection.manage")) {
     // full access, no ownership check
-  } else if (hasPermission(actorRole, "home_collection.update_status")) {
+  } else if (await hasPermission(actorRole, "home_collection.update_status")) {
     const { data: existing, error: fetchError } = await supabase
       .from("home_collection_requests")
       .select("assigned_phlebotomist_id")
@@ -94,7 +95,7 @@ export async function updateHomeCollectionPayment(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  if (!hasPermission(actorRole, "home_collection.manage")) {
+  if (!await hasPermission(actorRole, "home_collection.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot update payment for home collection requests.`);
   }
 
@@ -125,7 +126,7 @@ export async function assignPhlebotomist(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  if (!hasPermission(actorRole, "home_collection.manage")) {
+  if (!await hasPermission(actorRole, "home_collection.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot assign home collection requests.`);
   }
 
@@ -147,7 +148,7 @@ export async function assignPhlebotomist(
 }
 
 export async function listActivePhlebotomists(actorRole: StaffRole) {
-  if (!hasPermission(actorRole, "home_collection.manage")) {
+  if (!await hasPermission(actorRole, "home_collection.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view the phlebotomist list.`);
   }
 

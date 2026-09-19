@@ -3,7 +3,6 @@ import { createHash } from "node:crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import { verifyAccessCode } from "./security";
 import { getSignedReportPdfUrl, downloadReportPdfBytes } from "./storage";
-import { getLatestUploadedReportDocumentPath } from "./uploadedReportDocuments";
 import { logAudit } from "./audit";
 import { renderCurrentFinalReportPdfBuffer } from "./reportDocuments";
 
@@ -25,7 +24,6 @@ type AccessOutcome =
         result_reference: string | null;
         patient_name_snapshot: string;
         patient_sex_snapshot: string | null;
-        source_investigation_name: string | null;
         request: string | null;
         specimen: string | null;
         date_collected: string | null;
@@ -46,7 +44,6 @@ export interface PublishedResultDto {
   resultReference: string;
   patientName: string;
   patientSex: string | null;
-  investigationName: string | null;
   request: string | null;
   specimen: string | null;
   dateCollected: string | null;
@@ -108,7 +105,7 @@ async function authenticatePatientAccess(input: VerifyResultInput): Promise<Acce
   const { data: report, error } = await supabase
     .from("lab_reports")
     .select(
-      "id, lab_number, result_reference, access_code_hash, patient_name_snapshot, patient_sex_snapshot, source_investigation_name, request, specimen, date_collected, date_reported, status, published_at, current_version_number"
+      "id, lab_number, result_reference, access_code_hash, patient_name_snapshot, patient_sex_snapshot, request, specimen, date_collected, date_reported, status, published_at, current_version_number"
     )
     .eq("result_reference", input.resultReference)
     .maybeSingle();
@@ -153,7 +150,7 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
   // (Advanced 5's report_final_documents), matched to this exact published
   // version, never a freshly generated or independent document.
   const supabase = getServiceRoleClient();
-  const [{ data: finalDoc }, { data: approvedRequest }, { data: uploadedSource }] = await Promise.all([
+  const [{ data: finalDoc }, { data: approvedRequest }] = await Promise.all([
     supabase
       .from("report_final_documents")
       .select("storage_path")
@@ -168,12 +165,6 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
       .not("decided_by", "is", null)
       .not("decided_at", "is", null)
       .order("decided_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("report_uploaded_documents")
-      .select("id")
-      .eq("lab_report_id", report.id)
       .limit(1)
       .maybeSingle(),
   ]);
@@ -262,14 +253,13 @@ export async function verifyPatientResult(input: VerifyResultInput): Promise<Ver
       resultReference: report.result_reference ?? input.resultReference,
       patientName: report.patient_name_snapshot,
       patientSex: report.patient_sex_snapshot,
-      investigationName: report.source_investigation_name,
       request: report.request,
       specimen: report.specimen,
       dateCollected: report.date_collected,
       dateReported: report.date_reported,
       publishedAt: report.published_at,
       documentVersion: report.current_version_number,
-      hasFinalPdf: Boolean(finalDoc?.storage_path || uploadedSource?.id || approvedRequest?.id),
+      hasFinalPdf: Boolean(finalDoc?.storage_path || approvedRequest?.id),
       tests,
     },
   };
@@ -299,18 +289,6 @@ export async function downloadPatientFinalPdf(input: VerifyResultInput): Promise
     .eq("lab_report_id", report.id)
     .eq("version_number", report.current_version_number)
     .maybeSingle();
-
-  const uploadedSource = await getLatestUploadedReportDocumentPath(report.id);
-  if (uploadedSource) {
-    const buffer = await downloadReportPdfBytes(uploadedSource.storagePath);
-    await logAudit({
-      action: "PATIENT_PDF_DOWNLOADED",
-      entityType: "lab_reports",
-      entityId: report.id,
-      metadata: { resultReference: input.resultReference, versionNumber: report.current_version_number, source: "uploaded" },
-    });
-    return { ok: true, buffer, labNumber: report.lab_number };
-  }
 
   // Prefer a fresh render using the current official letterhead/signatory.
   // This also allows a published report to remain downloadable if the

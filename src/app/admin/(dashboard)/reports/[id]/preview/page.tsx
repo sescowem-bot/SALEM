@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getReportPreviewData, getLatestFinalDocument } from "@/lib/data/reportDocuments";
-import { getLatestUploadedReportDocument } from "@/lib/data/uploadedReportDocuments";
 import { PreviewToolbar } from "./PreviewToolbar";
 
 export const dynamic = "force-dynamic";
@@ -28,40 +27,14 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
 
   let data;
   let finalDoc;
-  let uploadedDoc;
   try {
-    [data, finalDoc, uploadedDoc] = await Promise.all([
-      getReportPreviewData(id, staff.role),
-      getLatestFinalDocument(id, staff.role),
-      getLatestUploadedReportDocument(id, staff.role),
-    ]);
+    data = await getReportPreviewData(id, staff.role);
+    finalDoc = await getLatestFinalDocument(id, staff.role);
   } catch {
     notFound();
   }
 
   const { org, report, tests, approval } = data;
-
-  if (uploadedDoc) {
-    return (
-      <div className="min-h-screen bg-secondary/40">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <Link href={`/admin/reports/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:underline">
-            <ArrowLeft className="h-4 w-4" /> Back to report
-          </Link>
-          <PreviewToolbar labReportId={id} hasFinalPdf={Boolean(finalDoc || uploadedDoc)} />
-        </div>
-        <main className="mx-auto w-full max-w-5xl px-4 pb-8">
-          <div className="overflow-hidden rounded-xl border border-border bg-white shadow-soft">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <div><p className="text-sm font-semibold text-navy-deep">Uploaded result document</p><p className="text-xs text-muted-foreground">{uploadedDoc.fileName} · version {uploadedDoc.versionNumber}</p></div>
-              <span className="text-xs font-medium text-muted-foreground">Exact uploaded PDF</span>
-            </div>
-            <iframe src={uploadedDoc.signedUrl} title="Uploaded laboratory result" className="h-[82vh] min-h-[700px] w-full" />
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   return (
     <>

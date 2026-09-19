@@ -1,7 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 
 type ContactSubmission = Database["public"]["Tables"]["contact_submissions"]["Row"];
@@ -19,7 +20,7 @@ export async function listContactSubmissions(
   actorRole: StaffRole,
   opts?: { status?: IntakeStatus }
 ): Promise<ContactSubmission[]> {
-  if (!hasPermission(actorRole, "enquiries.manage")) {
+  if (!await hasPermission(actorRole, "enquiries.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view contact messages.`);
   }
 
@@ -34,7 +35,7 @@ export async function listContactSubmissions(
 
 /** Unread == status still "new" (the default status set at insert time). */
 export async function countUnreadContactMessages(actorRole: StaffRole): Promise<number> {
-  if (!hasPermission(actorRole, "enquiries.manage")) {
+  if (!await hasPermission(actorRole, "enquiries.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view contact messages.`);
   }
 
@@ -53,7 +54,7 @@ export async function updateContactSubmissionStatus(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  if (!hasPermission(actorRole, "enquiries.manage")) {
+  if (!await hasPermission(actorRole, "enquiries.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot update contact messages.`);
   }
 

@@ -65,19 +65,26 @@ export async function submitAppointmentRequest(
   const supabase = getServiceRoleClient();
   const bookingReference = generateBookingReference("APT");
 
-  const { data, error } = await supabase.rpc("book_appointment_slot", {
-    p_full_name: input.full_name,
-    p_phone: input.phone,
-    p_email: input.email ?? "",
-    p_test_or_package: input.test_or_package ?? "",
-    p_preferred_date: input.preferred_date ?? "",
-    p_preferred_time: input.preferred_time ?? "",
-    p_location_type: input.location_type ?? "",
-    p_address: input.address ?? "",
-    p_landmark: input.landmark ?? "",
-    p_notes: input.notes ?? "",
-    p_booking_reference: bookingReference,
-  });
+  // Plain insert — same pattern as submitHomeCollectionRequest below.
+  //
+  // This used to go through a book_appointment_slot() RPC that hard-rejected
+  // a booking once 3 requests already existed for the same date+time
+  // (SLOT_FULL). That directly violated the requirement that patients must
+  // be able to submit multiple requests for the same date/time — the front
+  // desk, not the booking form, is who coordinates actual capacity — so the
+  // capacity gate is removed rather than reworked. It also removed a real
+  // failure surface: every booking depended on that RPC's signature staying
+  // in lockstep with this code, and any drift (or the migration simply not
+  // having been applied to a given environment) meant every single
+  // submission fell into the generic error branch below and showed
+  // "Something went wrong" with no way to tell why. A plain insert has no
+  // such dependency.
+  const { data, error } = await supabase
+    .from("appointment_requests")
+    .insert({ ...input, booking_reference: bookingReference })
+    .select("id")
+    .single();
+
   if (error) {
     await recordFormAttempt("appointment", ipHash, false);
     return { ok: false, reason: "error" };
@@ -87,7 +94,7 @@ export async function submitAppointmentRequest(
   await logAudit({
     action: "BOOKING_CREATED",
     entityType: "appointment_requests",
-    entityId: data[0]?.id,
+    entityId: data.id,
     metadata: { bookingReference },
   });
 
@@ -121,7 +128,7 @@ export async function submitHomeCollectionRequest(
   await logAudit({
     action: "HOME_COLLECTION_CREATED",
     entityType: "home_collection_requests",
-    entityId: data?.id,
+    entityId: data.id,
     metadata: { bookingReference },
   });
 

@@ -4,7 +4,8 @@ import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database, ReportStatus } from "@/lib/supabase/database.types";
 import { getReferenceRangesForField } from "./testCatalog";
 import { generateResultReference, generateAccessCode, verifyAccessCode } from "./security";
-import { hasPermission, permissionForReportTransition, type StaffRole } from "@/lib/auth/permissions";
+import { permissionForReportTransition, type StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 import { dispatchReportNotification } from "./notifications";
 import { slugify } from "@/lib/utils/slug";
@@ -77,10 +78,8 @@ export interface CreateLabReportInput {
   patientNameSnapshot: string;
   patientSexSnapshot?: Database["public"]["Tables"]["patients"]["Row"]["sex"];
   patientDobSnapshot?: string | null;
-  labNumber?: string;
+  labNumber: string;
   request?: string;
-  sourceInvestigationName?: string;
-  reportComment?: string;
   specimen?: string;
   dateCollected?: string;
   createdBy?: string; // auth.users id of the actor, for audit fields
@@ -88,7 +87,7 @@ export interface CreateLabReportInput {
 }
 
 export async function createLabReport(input: CreateLabReportInput): Promise<LabReport> {
-  if (!hasPermission(input.actorRole, "reports.create_draft")) {
+  if (!await hasPermission(input.actorRole, "reports.create_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot create a lab report.`);
   }
 
@@ -99,10 +98,8 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     patient_name_snapshot: input.patientNameSnapshot,
     patient_sex_snapshot: input.patientSexSnapshot ?? null,
     patient_dob_snapshot: input.patientDobSnapshot ?? null,
-    ...(input.labNumber ? { lab_number: input.labNumber } : {}),
+    lab_number: input.labNumber,
     request: input.request,
-    source_investigation_name: input.sourceInvestigationName ?? null,
-    report_comment: input.reportComment ?? null,
     specimen: input.specimen,
     date_collected: input.dateCollected,
     status: "draft",
@@ -120,7 +117,7 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     entityId: report.id,
     actorId: input.createdBy,
     actorRole: input.actorRole,
-    metadata: { patientId: input.patientId, labNumber: report.lab_number },
+    metadata: { patientId: input.patientId, labNumber: input.labNumber },
   });
   await logAudit({
     action: "LAB_CODE_GENERATED",
@@ -141,7 +138,7 @@ export async function addTestToReport(
   comment?: string,
   actorId?: string
 ): Promise<ReportTest> {
-  if (!hasPermission(actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot edit a report.`);
   }
   await assertReportIsEditable(labReportId);
@@ -203,7 +200,7 @@ export async function removeTestFromReport(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  if (!hasPermission(actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot edit a report.`);
   }
   await assertReportIsEditable(labReportId);
@@ -243,7 +240,7 @@ export async function reorderReportTest(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  if (!hasPermission(actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot edit a report.`);
   }
   await assertReportIsEditable(labReportId);
@@ -325,7 +322,7 @@ export interface CreateCustomInvestigationInput {
  * validation error rather than silently allowed to collide.
  */
 export async function createCustomInvestigation(input: CreateCustomInvestigationInput): Promise<ReportTest> {
-  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(input.actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot edit a report.`);
   }
   await assertReportIsEditable(input.labReportId);
@@ -494,7 +491,7 @@ export interface SetFieldResultInput {
  * change what this saved result shows (Phase 2B rule #6).
  */
 export async function setFieldResult(input: SetFieldResultInput) {
-  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(input.actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot enter results.`);
   }
 
@@ -546,7 +543,7 @@ export async function setTableCellResult(input: {
   actorRole: StaffRole;
   actorId?: string;
 }) {
-  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(input.actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot enter results.`);
   }
 
@@ -590,7 +587,7 @@ function formatNumericRange(low: number | null, high: number | null, unit: strin
 // ---------------------------------------------------------------------------
 
 export async function submitForReview(labReportId: string, actorRole: StaffRole, actorId?: string) {
-  if (!hasPermission(actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot submit a report for review.`);
   }
   await assertReportIsEditable(labReportId);
@@ -623,7 +620,7 @@ export async function returnForCorrection(
   comment?: string,
   actorId?: string
 ) {
-  if (!hasPermission(actorRole, "reports.review")) {
+  if (!await hasPermission(actorRole, "reports.review")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot return a report for correction.`);
   }
 
@@ -759,7 +756,7 @@ export async function transitionReportStatus(
   // transition beyond "draft".
   if (toStatus !== "draft") {
     const required = permissionForReportTransition(toStatus as "reviewed" | "published" | "archived");
-    if (!actorRole || !hasPermission(actorRole, required)) {
+    if (!actorRole || !await hasPermission(actorRole, required)) {
       throw new Error(
         `Forbidden: role "${actorRole ?? "unknown"}" cannot transition a report to "${toStatus}".`
       );
@@ -922,7 +919,7 @@ export async function unlockPublishedReportForCorrection(
   actorId?: string,
   reason?: string
 ): Promise<LabReport> {
-  if (!hasPermission(actorRole, "reports.review")) {
+  if (!await hasPermission(actorRole, "reports.review")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot unlock a published report for correction.`);
   }
 
@@ -963,7 +960,7 @@ export async function resetPatientAccessCode(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<{ report: LabReport; accessCodePlaintext: string }> {
-  if (!hasPermission(actorRole, "reports.publish")) {
+  if (!await hasPermission(actorRole, "reports.publish")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot reset a patient access code.`);
   }
 
@@ -1020,7 +1017,7 @@ export async function sendAccessCodeToPatientNow(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  if (!hasPermission(actorRole, "reports.publish")) {
+  if (!await hasPermission(actorRole, "reports.publish")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot send a patient access code.`);
   }
 
@@ -1264,7 +1261,7 @@ export async function listAllReports(
   actorRole: StaffRole,
   filters?: { query?: string; status?: ReportStatus | "all" }
 ) {
-  if (!hasPermission(actorRole, "reports.view")) {
+  if (!await hasPermission(actorRole, "reports.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view the report index.`);
   }
 

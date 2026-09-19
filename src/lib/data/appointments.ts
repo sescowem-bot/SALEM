@@ -1,7 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 import { generateBookingReference } from "./security";
 
@@ -31,7 +32,7 @@ export async function createAppointmentRequestByStaff(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<{ id: string; bookingReference: string }> {
-  if (!hasPermission(actorRole, "appointments.manage")) {
+  if (!await hasPermission(actorRole, "appointments.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot create appointment requests.`);
   }
 
@@ -70,7 +71,7 @@ export async function createAppointmentRequestByStaff(
 }
 
 export async function listAppointmentRequests(actorRole: StaffRole): Promise<AppointmentRequest[]> {
-  if (!hasPermission(actorRole, "appointments.manage")) {
+  if (!await hasPermission(actorRole, "appointments.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view appointment requests.`);
   }
 
@@ -90,7 +91,7 @@ export async function updateAppointmentStatus(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  if (!hasPermission(actorRole, "appointments.manage")) {
+  if (!await hasPermission(actorRole, "appointments.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot update appointment requests.`);
   }
 
@@ -122,7 +123,7 @@ export async function rescheduleAppointment(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  if (!hasPermission(actorRole, "appointments.manage")) {
+  if (!await hasPermission(actorRole, "appointments.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot update appointment requests.`);
   }
 

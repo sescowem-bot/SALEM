@@ -1,7 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { getRolePermissionsMatrix, hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 import { submitForReview, returnForCorrection, transitionReportStatus } from "./labReports";
 import { dispatchReportNotification } from "./notifications";
@@ -52,7 +53,13 @@ export async function listApprovers(): Promise<ApproverOption[]> {
     .order("full_name", { ascending: true });
   if (error) throw error;
 
-  return (data ?? []).filter((s): s is typeof s & { role: StaffRole } => hasPermission(s.role, "reports.review"));
+  // A single matrix read (request-memoized) instead of one hasPermission()
+  // call per row — .filter()'s predicate must stay synchronous, and this
+  // avoids N sequential DB round-trips for what is otherwise one lookup.
+  const matrix = await getRolePermissionsMatrix();
+  return (data ?? []).filter(
+    (s): s is typeof s & { role: StaffRole } => matrix[s.role as StaffRole]?.includes("reports.review") ?? false
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +72,7 @@ export async function submitReportForApproval(input: {
   actorRole: StaffRole;
   actorId?: string;
 }): Promise<ApprovalRequest> {
-  if (!hasPermission(input.actorRole, "reports.edit_draft")) {
+  if (!await hasPermission(input.actorRole, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${input.actorRole}" cannot submit a report for approval.`);
   }
 
@@ -77,28 +84,8 @@ export async function submitReportForApproval(input: {
     .eq("id", input.approverId)
     .single();
   if (approverError) throw approverError;
-  if (!approver.is_active || !hasPermission(approver.role, "reports.review")) {
+  if (!approver.is_active || !await hasPermission(approver.role, "reports.review")) {
     throw new Error("The selected approver is not currently authorized to review reports.");
-  }
-
-  const { data: reportForSubmission, error: reportForSubmissionError } = await supabase
-    .from("lab_reports")
-    .select("status, submitted_for_review, source_investigation_name, current_version_number")
-    .eq("id", input.labReportId)
-    .single();
-  if (reportForSubmissionError) throw reportForSubmissionError;
-  if (reportForSubmission.source_investigation_name) {
-    const { data: sourceDocument, error: sourceError } = await supabase
-      .from("report_uploaded_documents")
-      .select("version_number")
-      .eq("lab_report_id", input.labReportId)
-      .order("version_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (sourceError) throw sourceError;
-    if (!sourceDocument || sourceDocument.version_number !== reportForSubmission.current_version_number) {
-      throw new Error("Upload the corrected source PDF for the current report version before submitting this report for approval.");
-    }
   }
 
   // Reuses the existing submit-for-review transition as-is (sets
@@ -200,7 +187,7 @@ export async function getLatestApprovedApprovalRequest(labReportId: string): Pro
  * small lab team, still gated by the same reports.review permission.
  */
 export async function listApprovalQueue(staff: { userId: string; role: StaffRole }) {
-  if (!hasPermission(staff.role, "reports.review")) {
+  if (!await hasPermission(staff.role, "reports.review")) {
     throw new Error(`Forbidden: role "${staff.role}" cannot view the approval queue.`);
   }
 
@@ -233,7 +220,7 @@ export async function listApprovalQueue(staff: { userId: string; role: StaffRole
 
 /** Staff Workspace: a staff member's own drafts and submissions, whatever their current state. */
 export async function listMyReports(staff: { userId: string; role: StaffRole }) {
-  if (!hasPermission(staff.role, "reports.create_draft") && !hasPermission(staff.role, "reports.edit_draft")) {
+  if (!await hasPermission(staff.role, "reports.create_draft") && !await hasPermission(staff.role, "reports.edit_draft")) {
     throw new Error(`Forbidden: role "${staff.role}" has no personal report workspace.`);
   }
 
@@ -264,7 +251,7 @@ export async function getApprovalPipelineCounts(staff: { userId: string; role: S
       .select("id", { count: "exact", head: true })
       .eq("status", "pending")
       .eq("assigned_approver_id", staff.userId),
-    hasPermission(staff.role, "reports.review")
+    await hasPermission(staff.role, "reports.review")
       ? supabase.from("approval_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
       : Promise.resolve({ count: 0, error: null }),
     supabase
@@ -304,8 +291,8 @@ async function loadPendingRequest(requestId: string): Promise<ApprovalRequest> {
 }
 
 /** An approver may act on a request if it's assigned to them, or they're admin/super_admin (oversight override). */
-function assertCanDecide(request: ApprovalRequest, actorRole: StaffRole, actorId?: string) {
-  if (!hasPermission(actorRole, "reports.review")) {
+async function assertCanDecide(request: ApprovalRequest, actorRole: StaffRole, actorId?: string) {
+  if (!await hasPermission(actorRole, "reports.review")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot decide on approval requests.`);
   }
   const isOverride = actorRole === "admin" || actorRole === "super_admin";
@@ -320,7 +307,7 @@ export async function approveApprovalRequest(
   actorId?: string
 ): Promise<void> {
   const request = await loadPendingRequest(requestId);
-  assertCanDecide(request, actorRole, actorId);
+  await assertCanDecide(request, actorRole, actorId);
 
   // Reuses the existing draft -> reviewed transition (writes its own
   // RESULT_APPROVED audit entry + report_versions snapshot).
@@ -354,7 +341,7 @@ export async function rejectApprovalRequest(
   actorId?: string
 ): Promise<void> {
   const request = await loadPendingRequest(requestId);
-  assertCanDecide(request, actorRole, actorId);
+  await assertCanDecide(request, actorRole, actorId);
 
   const supabase = getServiceRoleClient();
   const now = new Date().toISOString();
@@ -411,7 +398,7 @@ export async function returnApprovalRequestForCorrection(
   actorId?: string
 ): Promise<void> {
   const request = await loadPendingRequest(requestId);
-  assertCanDecide(request, actorRole, actorId);
+  await assertCanDecide(request, actorRole, actorId);
 
   // Reuses the existing return-for-correction logic (writes its own
   // RESULT_RETURNED audit entry, clears submitted_for_review).

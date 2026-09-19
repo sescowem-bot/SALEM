@@ -113,7 +113,7 @@
     border-color 0.35s ease;
 
   &:hover {
-    transform: translateY(-2px);
+    transform: translateY(-6px);
     box-shadow: var(--shadow-lift);
     border-color: oklch(0.75 0.13 205 / 0.45);
   }
@@ -256,21 +256,4 @@ button {
     box-shadow: none !important;
     border: 0 !important;
   }
-}
-
-
-/* Phase 5: polished focus and compact form controls. */
-button, a, input, select, textarea {
-  -webkit-tap-highlight-color: transparent;
-}
-
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-::placeholder { opacity: .72; }
-
-@media (max-width: 640px) {
-  .surface-card { border-radius: 1rem; }
 }

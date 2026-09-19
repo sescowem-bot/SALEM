@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, FileText, Plus, UploadCloud } from "lucide-react";
+import { Search, FileText, Plus } from "lucide-react";
 import { AdminShell } from "@/components/salem/AdminShell";
 import { StatusBadge } from "@/components/salem/StatusBadge";
 import { requireStaff, can } from "@/lib/auth/session";
@@ -58,10 +58,12 @@ export default async function ReportsIndexPage({
       navItems={navItems}
       actions={
         canCreate ? (
-          <div className="flex flex-wrap gap-2">
-            <Link href="/admin/results-entry" className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-navy-deep"><Plus className="h-3.5 w-3.5 shrink-0" /> New report</Link>
-            <Link href="/admin/upload-results" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-semibold text-navy hover:border-cyan hover:bg-accent"><UploadCloud className="h-3.5 w-3.5 shrink-0" /> Upload existing</Link>
-          </div>
+          <Link
+            href="/admin/results-entry"
+            className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-navy-deep"
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" /> New report
+          </Link>
         ) : undefined
       }
     >

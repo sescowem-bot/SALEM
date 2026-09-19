@@ -1,20 +1,21 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database, WebsitePageKey } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 
 type WebsitePageRow = Database["public"]["Tables"]["website_pages"]["Row"];
 
-function requireSettingsManage(actorRole: StaffRole) {
-  if (!hasPermission(actorRole, "settings.manage")) {
+async function requireSettingsManage(actorRole: StaffRole) {
+  if (!await hasPermission(actorRole, "settings.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot manage website content.`);
   }
 }
 
 /** Admin read — full row including draft_content, for the editor and the status bar. */
 export async function getWebsitePage(pageKey: WebsitePageKey, actorRole: StaffRole): Promise<WebsitePageRow> {
-  requireSettingsManage(actorRole);
+  await requireSettingsManage(actorRole);
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.from("website_pages").select("*").eq("page_key", pageKey).single();
   if (error) throw error;
@@ -35,7 +36,7 @@ export async function saveDraftContent(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<void> {
-  requireSettingsManage(actorRole);
+  await requireSettingsManage(actorRole);
   const supabase = getServiceRoleClient();
   const { error } = await supabase
     .from("website_pages")
@@ -53,7 +54,7 @@ export async function saveDraftContent(
 }
 
 export async function publishPageContent(pageKey: WebsitePageKey, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireSettingsManage(actorRole);
+  await requireSettingsManage(actorRole);
   const supabase = getServiceRoleClient();
   const { data: current, error: readError } = await supabase
     .from("website_pages")
@@ -84,7 +85,7 @@ export async function publishPageContent(pageKey: WebsitePageKey, actorRole: Sta
 
 /** Reverts the page to unpublished — published_content is cleared, so the public site falls back to defaults. Draft content is untouched. */
 export async function unpublishPageContent(pageKey: WebsitePageKey, actorRole: StaffRole, actorId?: string): Promise<void> {
-  requireSettingsManage(actorRole);
+  await requireSettingsManage(actorRole);
   const supabase = getServiceRoleClient();
   const { error } = await supabase
     .from("website_pages")
@@ -102,7 +103,7 @@ export async function unpublishPageContent(pageKey: WebsitePageKey, actorRole: S
 }
 
 export async function listAllWebsitePages(actorRole: StaffRole): Promise<WebsitePageRow[]> {
-  requireSettingsManage(actorRole);
+  await requireSettingsManage(actorRole);
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.from("website_pages").select("*").order("page_key", { ascending: true });
   if (error) throw error;

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
-import { hasPermission } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { saveDraftContent, publishPageContent, unpublishPageContent } from "@/lib/data/websitePages";
 import { updateSiteSettings, type SiteSettingsInput } from "@/lib/data/siteSettings";
 import { uploadSiteMedia, removeSiteMediaSlot, type SiteMediaSlot } from "@/lib/data/storage";
@@ -246,7 +246,7 @@ export async function uploadHomepageHeroAction(_prev: ActionState, formData: For
 
 export async function removeHomepageHeroAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireStaff();
-  if (!hasPermissionForWebsiteMediaRemoval(staff.role)) return { error: "You do not have permission to remove website media." };
+  if (!(await hasPermissionForWebsiteMediaRemoval(staff.role))) return { error: "You do not have permission to remove website media." };
   try {
     const { getServiceRoleClient } = await import("@/lib/supabase/service-client");
     const supabase = getServiceRoleClient();
@@ -267,6 +267,6 @@ export async function removeHomepageHeroAction(_prev: ActionState, formData: For
   }
 }
 
-function hasPermissionForWebsiteMediaRemoval(role: Parameters<typeof hasPermission>[0]): boolean {
+function hasPermissionForWebsiteMediaRemoval(role: Parameters<typeof hasPermission>[0]): Promise<boolean> {
   return hasPermission(role, "settings.manage");
 }

@@ -1,7 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { siteConfig } from "@/data/siteContent";
 import { logAudit } from "./audit";
 import { getSiteMediaPublicUrl } from "./storage";
@@ -125,7 +126,7 @@ export async function getSiteSettings(): Promise<ResolvedSiteSettings> {
 
 /** Raw row for the admin settings form (needs to distinguish "unset" from "using fallback"). */
 export async function getSiteSettingsRow(actorRole: StaffRole): Promise<SiteSettingsRow> {
-  if (!hasPermission(actorRole, "settings.manage")) {
+  if (!await hasPermission(actorRole, "settings.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view website settings.`);
   }
   const supabase = getServiceRoleClient();
@@ -137,7 +138,7 @@ export async function getSiteSettingsRow(actorRole: StaffRole): Promise<SiteSett
 export type SiteSettingsInput = Partial<Omit<SiteSettingsRow, "id" | "updated_at" | "updated_by">>;
 
 export async function updateSiteSettings(input: SiteSettingsInput, actorRole: StaffRole, actorId?: string): Promise<void> {
-  if (!hasPermission(actorRole, "settings.manage")) {
+  if (!await hasPermission(actorRole, "settings.manage")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot update website settings.`);
   }
   const supabase = getServiceRoleClient();

@@ -1,7 +1,8 @@
 import "server-only";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { getReportDetail } from "./labReports";
 import { getTestWithStructure } from "./testCatalog";
 import { getSiteSettings } from "./siteSettings";
@@ -165,7 +166,7 @@ async function buildReportPdfData(input: {
  * is what "before final release" (§1) needs, distinct from generateFinalReportPdf.
  */
 export async function renderReportPreviewPdfBuffer(labReportId: string, actorRole: StaffRole): Promise<Buffer> {
-  if (!hasPermission(actorRole, "reports.view")) {
+  if (!await hasPermission(actorRole, "reports.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot preview report documents.`);
   }
   const data = await buildReportPdfData({ labReportId, approvalInfo: null, isFinal: false });
@@ -174,7 +175,7 @@ export async function renderReportPreviewPdfBuffer(labReportId: string, actorRol
 
 /** Data for the on-screen HTML Report Preview (mirrors the PDF template's content, not its layout). */
 export async function getReportPreviewData(labReportId: string, actorRole: StaffRole): Promise<ReportPdfInput> {
-  if (!hasPermission(actorRole, "reports.view")) {
+  if (!await hasPermission(actorRole, "reports.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot preview report documents.`);
   }
   return buildReportPdfData({ labReportId, approvalInfo: null, isFinal: false });
@@ -298,7 +299,7 @@ export async function getFinalDocumentForDownload(
   labReportId: string,
   actorRole: StaffRole
 ): Promise<{ storagePath: string; labNumber: string } | null> {
-  if (!hasPermission(actorRole, "reports.view")) {
+  if (!await hasPermission(actorRole, "reports.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot access report documents.`);
   }
   const supabase = getServiceRoleClient();
@@ -325,7 +326,7 @@ export interface FinalDocumentSummary {
 
 /** Latest finalized document for a report, if any — for the Admin report screen's "Download Final PDF". */
 export async function getLatestFinalDocument(labReportId: string, actorRole: StaffRole): Promise<FinalDocumentSummary | null> {
-  if (!hasPermission(actorRole, "reports.view")) {
+  if (!await hasPermission(actorRole, "reports.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot access report documents.`);
   }
   const supabase = getServiceRoleClient();
@@ -349,7 +350,7 @@ export async function getLatestFinalDocument(labReportId: string, actorRole: Sta
 
 /** Every finalized document for a report, oldest first — for the version-history / audit view. */
 export async function listFinalDocuments(labReportId: string, actorRole: StaffRole) {
-  if (!hasPermission(actorRole, "reports.view")) {
+  if (!await hasPermission(actorRole, "reports.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot access report documents.`);
   }
   const supabase = getServiceRoleClient();

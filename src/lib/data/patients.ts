@@ -1,7 +1,8 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Database } from "@/lib/supabase/database.types";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import { logAudit } from "./audit";
 
 type Patient = Database["public"]["Tables"]["patients"]["Row"];
@@ -75,7 +76,7 @@ export async function listPatients(
   actorRole: StaffRole,
   opts?: { query?: string; limit?: number }
 ): Promise<Patient[]> {
-  if (!hasPermission(actorRole, "patients.view")) {
+  if (!await hasPermission(actorRole, "patients.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view patients.`);
   }
 
@@ -94,7 +95,7 @@ export async function listPatients(
 }
 
 export async function countPatients(actorRole: StaffRole): Promise<number> {
-  if (!hasPermission(actorRole, "patients.view")) {
+  if (!await hasPermission(actorRole, "patients.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view patients.`);
   }
 
@@ -110,7 +111,7 @@ export async function updatePatient(
   actorRole: StaffRole,
   actorId?: string
 ): Promise<Patient> {
-  if (!hasPermission(actorRole, "patients.update")) {
+  if (!await hasPermission(actorRole, "patients.update")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot edit patient records.`);
   }
 
@@ -131,7 +132,7 @@ export async function updatePatient(
 }
 
 export async function createPatient(input: PatientInsert, actorRole: StaffRole, actorId?: string): Promise<Patient> {
-  if (!hasPermission(actorRole, "patients.register")) {
+  if (!await hasPermission(actorRole, "patients.register")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot register patients.`);
   }
 

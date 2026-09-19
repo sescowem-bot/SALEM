@@ -1,6 +1,7 @@
 import "server-only";
 import { getServiceRoleClient } from "@/lib/supabase/service-client";
-import { hasPermission, type StaffRole } from "@/lib/auth/permissions";
+import type { StaffRole } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/rolePermissions";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSiteSettings } from "./siteSettings";
 import { logAudit } from "./audit";
@@ -151,27 +152,10 @@ export async function dispatchReportNotification(input: {
       .maybeSingle();
 
     if (finalDocumentError) throw finalDocumentError;
-    let attachmentPath = finalDocument?.storage_path ?? null;
-    let attachmentName = `Salem-Laboratory-Report-${report.result_reference ?? report.lab_number}.pdf`;
-
-    // Standalone externally completed reports use their privately stored
-    // source document rather than generating an empty system report PDF.
-    if (!attachmentPath) {
-      const { data: uploadedSource } = await supabase
-        .from("report_uploaded_documents")
-        .select("storage_path, file_name")
-        .eq("lab_report_id", input.labReportId)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      attachmentPath = uploadedSource?.storage_path ?? null;
-      if (uploadedSource?.file_name) attachmentName = uploadedSource.file_name;
-    }
-
-    if (attachmentPath) {
-      const pdfBytes = await downloadReportPdfBytes(attachmentPath);
+    if (finalDocument?.storage_path) {
+      const pdfBytes = await downloadReportPdfBytes(finalDocument.storage_path);
       attachments = [{
-        filename: attachmentName,
+        filename: `Salem-Laboratory-Report-${report.result_reference ?? report.lab_number}.pdf`,
         contentBase64: pdfBytes.toString("base64"),
         contentType: "application/pdf",
       }];
@@ -275,7 +259,7 @@ export async function listAllNotifications(
   actorRole: StaffRole,
   filters?: { eventType?: NotificationEventType | "all"; status?: Notification["status"] | "all"; limit?: number }
 ): Promise<NotificationListRow[]> {
-  if (!hasPermission(actorRole, "audit.view")) {
+  if (!await hasPermission(actorRole, "audit.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view the notification center.`);
   }
 
@@ -296,7 +280,7 @@ export async function listAllNotifications(
 
 /** Per-report delivery history (§7) — for the Admin report detail screen, not the org-wide inbox. */
 export async function listReportNotifications(labReportId: string, actorRole: StaffRole): Promise<Notification[]> {
-  if (!hasPermission(actorRole, "reports.view")) {
+  if (!await hasPermission(actorRole, "reports.view")) {
     throw new Error(`Forbidden: role "${actorRole}" cannot view report notifications.`);
   }
 
