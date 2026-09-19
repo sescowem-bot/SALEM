@@ -128,7 +128,7 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     entityId: report.id,
     actorId: input.createdBy,
     actorRole: input.actorRole,
-    metadata: { labNumber: report.lab_number },
+    metadata: { labNumber: input.labNumber },
   });
 
   return report;
