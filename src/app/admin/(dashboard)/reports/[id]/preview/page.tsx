@@ -19,7 +19,11 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
   const { id } = await params;
 
   if (!can(staff, "reports.view")) {
-    return <div className="mx-auto max-w-2xl p-10 text-sm text-muted-foreground">Your role ({staff.role}) does not have access to laboratory reports.</div>;
+    return (
+      <div className="mx-auto max-w-2xl p-10 text-sm text-muted-foreground">
+        Your role ({staff.role}) does not have access to laboratory reports.
+      </div>
+    );
   }
 
   let data;
@@ -35,61 +39,194 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
     notFound();
   }
 
+  const { org, report, tests, approval } = data;
+
   if (uploadedDoc) {
     return (
-      <>
-        <style>{`@page { size: A4; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; } }`}</style>
-        <div className="min-h-screen bg-secondary/40 print:bg-white">
-          <div className="print:hidden">
-            <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
-              <Link href={`/admin/reports/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:underline">
-                <ArrowLeft className="h-4 w-4" /> Back to report
-              </Link>
-              <PreviewToolbar labReportId={id} hasFinalPdf={Boolean(finalDoc || uploadedDoc)} />
-            </div>
-          </div>
-          <main className="mx-auto w-full max-w-5xl px-4 pb-8">
-            <div className="overflow-hidden rounded-xl border border-border bg-white shadow-soft">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-navy-deep">Uploaded result document</p>
-                  <p className="text-xs text-muted-foreground">{uploadedDoc.fileName} · version {uploadedDoc.versionNumber}</p>
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">Exact uploaded PDF</span>
-              </div>
-              <iframe src={uploadedDoc.signedUrl} title="Uploaded laboratory result" className="h-[82vh] min-h-[700px] w-full" />
-            </div>
-          </main>
+      <div className="min-h-screen bg-secondary/40">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+          <Link href={`/admin/reports/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:underline">
+            <ArrowLeft className="h-4 w-4" /> Back to report
+          </Link>
+          <PreviewToolbar labReportId={id} hasFinalPdf={Boolean(finalDoc || uploadedDoc)} />
         </div>
-      </>
+        <main className="mx-auto w-full max-w-5xl px-4 pb-8">
+          <div className="overflow-hidden rounded-xl border border-border bg-white shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div><p className="text-sm font-semibold text-navy-deep">Uploaded result document</p><p className="text-xs text-muted-foreground">{uploadedDoc.fileName} · version {uploadedDoc.versionNumber}</p></div>
+              <span className="text-xs font-medium text-muted-foreground">Exact uploaded PDF</span>
+            </div>
+            <iframe src={uploadedDoc.signedUrl} title="Uploaded laboratory result" className="h-[82vh] min-h-[700px] w-full" />
+          </div>
+        </main>
+      </div>
     );
   }
 
-  const { org, report, tests, approval } = data;
-
   return (
     <>
-      <style>{`@page { size: A4; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; } }`}</style>
+      <style>{`
+        @page { size: A4; margin: 0; }
+        @media print {
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+        }
+      `}</style>
       <div className="min-h-screen bg-secondary/40 print:bg-white">
-        <div className="print:hidden">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-            <Link href={`/admin/reports/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:underline"><ArrowLeft className="h-4 w-4" /> Back to report</Link>
-            <PreviewToolbar labReportId={id} hasFinalPdf={Boolean(finalDoc)} />
-          </div>
+      <div className="print:hidden">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
+          <Link href={`/admin/reports/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:underline">
+            <ArrowLeft className="h-4 w-4" /> Back to report
+          </Link>
+          <PreviewToolbar labReportId={id} hasFinalPdf={Boolean(finalDoc)} />
         </div>
-        <main className="relative mx-auto min-h-[297mm] w-[210mm] max-w-[calc(100vw-2rem)] bg-white shadow-soft print:w-[210mm] print:max-w-none print:shadow-none">
-          {org.letterheadDataUri ? <img src={org.letterheadDataUri} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 h-full w-full object-fill" /> : null}
-          <div className={org.letterheadDataUri ? "relative z-10 px-[15mm] pt-[62mm] pb-[35mm]" : "relative z-10 mx-[15mm] pt-[15mm] pb-[35mm]"}>
-            {!org.letterheadDataUri ? <div className="mb-5 border-b-2 border-navy pb-3"><p className="text-xl font-bold text-navy-deep">{org.orgName}</p>{org.tagline ? <p className="text-xs text-muted-foreground">{org.tagline}</p> : null}<p className="mt-1 text-[0.7rem] text-muted-foreground">{org.addressLine1}{org.addressLine2 ? `, ${org.addressLine2}` : ""}{org.city || org.state ? `, ${[org.city, org.state].filter(Boolean).join(", ")}` : ""} · {org.phonePrimary} · {org.emailPrimary}</p></div> : null}
-            <div className="mb-4 flex items-center justify-between"><h1 className="text-sm font-bold uppercase tracking-wide text-navy-deep">Laboratory Report — Preview</h1><span className="rounded-full border border-border bg-secondary px-3 py-1 text-[0.65rem] font-semibold uppercase text-muted-foreground">{report.status.replace("_", " ")}</span></div>
-            <div className="mb-6 grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg border border-border p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-              {[["Patient name", report.patientName],["Sex", report.patientSex ?? "—"],["Date of birth", report.patientDob ?? "—"],["Lab number", report.labNumber],["Report reference", report.resultReference ?? "Pending publication"],["Document version", `v${report.versionNumber}`],["Requested service(s)", tests.map((t) => t.testName).join(", ") || "—"],["Specimen", report.specimen ?? "—"],["Date collected", report.dateCollected ?? "—"],["Date reported", report.dateReported ?? "—"],["Clinical request", report.request ?? "—"],["Generated", data.generatedAt]].map(([label,value]) => <div key={label}><p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p><p className="text-navy-deep">{value}</p></div>)}
-            </div>
-            {tests.map((t, i) => <div key={i} className="mb-6"><h2 className="mb-2 border-b border-navy-deep pb-1 text-sm font-bold text-navy-deep">{t.testName}</h2>{t.structureType === "field_based" ? <div className="overflow-x-auto rounded-lg"><table className="min-w-[620px] w-full border-collapse border border-border text-xs"><thead><tr className="bg-secondary text-left uppercase text-muted-foreground"><th className="border border-border px-2 py-1.5">Parameter</th><th className="border border-border px-2 py-1.5">Result</th><th className="border border-border px-2 py-1.5">Unit</th><th className="border border-border px-2 py-1.5">Reference range</th><th className="border border-border px-2 py-1.5">Flag</th></tr></thead><tbody>{t.fields.map((f, fi) => { const abnormal = f.flag && f.flag !== "normal"; return <tr key={fi}><td className="border border-border px-2 py-1.5">{f.label}</td><td className={`border border-border px-2 py-1.5 ${abnormal ? "font-bold text-destructive" : ""}`}>{f.value || "—"}</td><td className="border border-border px-2 py-1.5">{f.unit ?? "—"}</td><td className="border border-border px-2 py-1.5">{f.referenceRange ?? "—"}</td><td className="border border-border px-2 py-1.5">{f.flag ?? "—"}</td></tr>; })}</tbody></table></div> : <div className="overflow-x-auto rounded-lg"><table className="min-w-[520px] w-full border-collapse border border-border text-xs"><thead><tr className="bg-secondary text-left uppercase text-muted-foreground"><th className="border border-border px-2 py-1.5">Parameter</th>{t.tableColumns.map((c) => <th key={c} className="border border-border px-2 py-1.5">{c}</th>)}</tr></thead><tbody>{t.tableRows.map((row, ri) => <tr key={ri}><td className="border border-border px-2 py-1.5 font-medium">{row.rowLabel}</td>{t.tableColumns.map((c) => <td key={c} className="border border-border px-2 py-1.5">{row.cells.find((cell) => cell.columnLabel === c)?.value || "—"}</td>)}</tr>)}</tbody></table></div>}{t.comment ? <p className="mt-1.5 text-xs italic text-muted-foreground">Comment: {t.comment}</p> : null}</div>)}
-            {report.reportComment ? <div className="mb-6 rounded-lg bg-secondary/60 p-4"><p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">Interpretation / comments</p><p className="text-sm text-navy-deep">{report.reportComment}</p></div> : null}
-            {!org.letterheadDataUri ? <div className="mt-10 flex justify-start break-inside-avoid">{approval ? <div>{approval.signatureDataUri ? <img src={approval.signatureDataUri} alt="Approver signature" className="mb-1 h-11 w-32 object-contain" /> : null}<div className="w-52 border-t border-navy-deep pt-1.5"><p className="text-sm font-bold text-navy-deep">{approval.approverName}</p>{approval.approverDesignation || approval.approverQualification ? <p className="text-xs text-muted-foreground">{[approval.approverQualification, approval.approverDesignation].filter(Boolean).join(" · ")}</p> : null}<p className="mt-1 text-[0.65rem] text-muted-foreground">{approval.signatureDataUri ? "Signed" : "Electronically approved"} on {approval.decidedAt}</p></div></div> : <p className="text-xs italic text-muted-foreground">Pending authorized approval — not yet signed.</p>}</div> : null}
+      </div>
+
+      <div className="relative mx-auto min-h-[297mm] w-[210mm] max-w-[calc(100vw-2rem)] bg-white shadow-soft print:w-[210mm] print:min-h-[297mm] print:max-w-none print:shadow-none">
+        {org.letterheadDataUri ? (
+          // The uploaded file is a complete A4 stationery sheet. Keep it as a
+          // full-page background so report text is rendered inside its blank body.
+          // eslint-disable-next-line @next/next/no-img-element -- data URI
+          <img src={org.letterheadDataUri} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 h-full w-full object-fill" />
+        ) : (
+          <div className="mb-4 border-b-2 border-navy pb-3">
+            <p className="text-xl font-bold text-navy-deep">{org.orgName}</p>
+            {org.tagline ? <p className="text-xs text-muted-foreground">{org.tagline}</p> : null}
+            <p className="mt-1 text-[0.7rem] text-muted-foreground">
+              {org.addressLine1}
+              {org.addressLine2 ? `, ${org.addressLine2}` : ""}
+              {org.city || org.state ? `, ${[org.city, org.state].filter(Boolean).join(", ")}` : ""} · {org.phonePrimary} ·{" "}
+              {org.emailPrimary}
+            </p>
           </div>
-        </main>
+        )}
+
+        <div className={org.letterheadDataUri ? "relative z-10 px-[15mm] pt-[62mm] pb-[35mm]" : "relative z-10 mx-[15mm] pt-[15mm] pb-[35mm]"}>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-sm font-bold uppercase tracking-wide text-navy-deep">
+            {data.isFinal ? "Laboratory Report — Approved" : "Laboratory Report — Preview"}
+          </h1>
+          <span className="rounded-full border border-border bg-secondary px-3 py-1 text-[0.65rem] font-semibold uppercase text-muted-foreground">
+            {report.status.replace("_", " ")}
+          </span>
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg border border-border p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            ["Patient name", report.patientName],
+            ["Sex", report.patientSex ?? "—"],
+            ["Date of birth", report.patientDob ?? "—"],
+            ["Lab number", report.labNumber],
+            ["Report reference", report.resultReference ?? "Pending publication"],
+            ["Document version", `v${report.versionNumber}`],
+            ["Requested service(s)", tests.map((t) => t.testName).join(", ") || "—"],
+            ["Specimen", report.specimen ?? "—"],
+            ["Date collected", report.dateCollected ?? "—"],
+            ["Date reported", report.dateReported ?? "—"],
+            ["Clinical request", report.request ?? "—"],
+            ["Generated", data.generatedAt],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+              <p className="text-navy-deep">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {tests.map((t, i) => (
+          <div key={i} className="mb-6">
+            <h2 className="mb-2 border-b border-navy-deep pb-1 text-sm font-bold text-navy-deep">{t.testName}</h2>
+            {t.structureType === "field_based" ? (
+              <div className="overflow-x-auto rounded-lg">
+              <table className="min-w-[620px] w-full border-collapse border border-border text-xs">
+                <thead>
+                  <tr className="bg-secondary text-left uppercase text-muted-foreground">
+                    <th className="border border-border px-2 py-1.5">Parameter</th>
+                    <th className="border border-border px-2 py-1.5">Result</th>
+                    <th className="border border-border px-2 py-1.5">Unit</th>
+                    <th className="border border-border px-2 py-1.5">Reference range</th>
+                    <th className="border border-border px-2 py-1.5">Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {t.fields.map((f, fi) => {
+                    const abnormal = f.flag && f.flag !== "normal";
+                    return (
+                      <tr key={fi}>
+                        <td className="border border-border px-2 py-1.5">{f.label}</td>
+                        <td className={`border border-border px-2 py-1.5 ${abnormal ? "font-bold text-destructive" : ""}`}>{f.value || "—"}</td>
+                        <td className="border border-border px-2 py-1.5">{f.unit ?? "—"}</td>
+                        <td className="border border-border px-2 py-1.5">{f.referenceRange ?? "—"}</td>
+                        <td className={`border border-border px-2 py-1.5 ${abnormal ? "font-bold text-destructive" : ""}`}>{f.flag ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg">
+              <table className="min-w-[520px] w-full border-collapse border border-border text-xs">
+                <thead>
+                  <tr className="bg-secondary text-left uppercase text-muted-foreground">
+                    <th className="border border-border px-2 py-1.5">Parameter</th>
+                    {t.tableColumns.map((c) => (
+                      <th key={c} className="border border-border px-2 py-1.5">{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {t.tableRows.map((row, ri) => (
+                    <tr key={ri}>
+                      <td className="border border-border px-2 py-1.5 font-medium">{row.rowLabel}</td>
+                      {t.tableColumns.map((c) => (
+                        <td key={c} className="border border-border px-2 py-1.5">
+                          {row.cells.find((cell) => cell.columnLabel === c)?.value || "—"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+            )}
+            {t.comment ? <p className="mt-1.5 text-xs italic text-muted-foreground">Comment: {t.comment}</p> : null}
+          </div>
+        ))}
+
+        {report.reportComment ? (
+          <div className="mb-6 rounded-lg bg-secondary/60 p-4">
+            <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">Interpretation / comments</p>
+            <p className="text-sm text-navy-deep">{report.reportComment}</p>
+          </div>
+        ) : null}
+
+        {!org.letterheadDataUri ? (
+        <div className="mt-10 flex justify-start break-inside-avoid">
+          {approval ? (
+            <div>
+              {approval.signatureDataUri ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data URI
+                <img src={approval.signatureDataUri} alt="Approver signature" className="mb-1 h-11 w-32 object-contain" />
+              ) : null}
+              <div className="w-52 border-t border-navy-deep pt-1.5">
+                <p className="text-sm font-bold text-navy-deep">{approval.approverName}</p>
+                {approval.approverDesignation || approval.approverQualification ? (
+                  <p className="text-xs text-muted-foreground">
+                    {[approval.approverQualification, approval.approverDesignation].filter(Boolean).join(" · ")}
+                  </p>
+                ) : null}
+                <p className="mt-1 text-[0.65rem] text-muted-foreground">
+                  {approval.signatureDataUri ? "Signed" : "Electronically approved"} on {approval.decidedAt}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs italic text-muted-foreground">Pending authorized approval — not yet signed.</p>
+          )}
+        </div>
+        ) : null}
+        </div>
+      </div>
       </div>
     </>
   );

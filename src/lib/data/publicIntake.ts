@@ -65,23 +65,19 @@ export async function submitAppointmentRequest(
   const supabase = getServiceRoleClient();
   const bookingReference = generateBookingReference("APT");
 
-  // Use the database-side atomic booking function. It preserves address and
-  // landmark fields and serializes submissions for the same date/time without
-  // rejecting multiple patient requests for that slot.
   const { data, error } = await supabase.rpc("book_appointment_slot", {
     p_full_name: input.full_name,
     p_phone: input.phone,
-    p_email: input.email ?? null,
-    p_test_or_package: input.test_or_package ?? null,
-    p_preferred_date: input.preferred_date,
-    p_preferred_time: input.preferred_time,
-    p_location_type: input.location_type ?? null,
-    p_address: input.address ?? null,
-    p_landmark: input.landmark ?? null,
-    p_notes: input.notes ?? null,
+    p_email: input.email ?? "",
+    p_test_or_package: input.test_or_package ?? "",
+    p_preferred_date: input.preferred_date ?? "",
+    p_preferred_time: input.preferred_time ?? "",
+    p_location_type: input.location_type ?? "",
+    p_address: input.address ?? "",
+    p_landmark: input.landmark ?? "",
+    p_notes: input.notes ?? "",
     p_booking_reference: bookingReference,
   });
-
   if (error) {
     await recordFormAttempt("appointment", ipHash, false);
     return { ok: false, reason: "error" };
@@ -91,7 +87,7 @@ export async function submitAppointmentRequest(
   await logAudit({
     action: "BOOKING_CREATED",
     entityType: "appointment_requests",
-    entityId: data.id,
+    entityId: data[0]?.id,
     metadata: { bookingReference },
   });
 
@@ -125,7 +121,7 @@ export async function submitHomeCollectionRequest(
   await logAudit({
     action: "HOME_COLLECTION_CREATED",
     entityType: "home_collection_requests",
-    entityId: data.id,
+    entityId: data[0]?.id,
     metadata: { bookingReference },
   });
 

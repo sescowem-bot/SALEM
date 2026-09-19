@@ -11,6 +11,7 @@ export const registerPatientSchema = z.object({
 
 export const createVisitSchema = z.object({
   patientId: z.string().uuid(),
+  labNumber: z.string().trim().max(50).optional().or(z.literal("")),
   request: z.string().trim().max(500).optional().or(z.literal("")),
   specimen: z.string().trim().max(200).optional().or(z.literal("")),
   dateCollected: z.string().date().optional().or(z.literal("")),
@@ -430,6 +431,7 @@ export const standaloneUploadedResultSchema = z.object({
   dateOfBirth: z.string().date().optional().or(z.literal("")),
   phone: z.string().trim().max(30).optional().or(z.literal("")),
   email: z.string().trim().email().optional().or(z.literal("")),
+  labNumber: z.string().trim().max(100).optional().or(z.literal("")),
   investigationName: z.string().trim().min(2, "Investigation name is required").max(200),
   request: z.string().trim().max(500).optional().or(z.literal("")),
   specimen: z.string().trim().max(200).optional().or(z.literal("")),

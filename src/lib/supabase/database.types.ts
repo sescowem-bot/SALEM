@@ -419,6 +419,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]> & {
           patient_id: string;
+          lab_number: string;
           patient_name_snapshot: string;
         };
         Update: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]>;
@@ -697,19 +698,19 @@ export interface Database {
           designation: string | null; phone: string | null; department_id: string | null;
           is_active: boolean; created_at: string; updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]> & { id: string; full_name: string; role: StaffRoleDb };
+        Insert: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]]> & { id: string; full_name: string; role: StaffRoleDb };
         Update: Partial<Database["public"]["Tables"]["staff_profiles"]["Row"]>;
         Relationships: [{ foreignKeyName: "staff_profiles_department_id_fkey"; columns: ["department_id"]; isOneToOne: false; referencedRelation: "departments"; referencedColumns: ["id"] }];
       };
       departments: {
         Row: { id: string; name: string; description: string | null; is_active: boolean; created_at: string; updated_at: string };
-        Insert: Partial<Database["public"]["Tables"]["departments"]["Row"]> & { name: string };
+        Insert: Partial<Database["public"]["Tables"]["departments"]["Row"]]> & { name: string };
         Update: Partial<Database["public"]["Tables"]["departments"]["Row"]>;
         Relationships: [];
       };
       staff_role_assignments: {
         Row: { staff_id: string; role: StaffRoleDb; is_primary: boolean; created_at: string };
-        Insert: Partial<Database["public"]["Tables"]["staff_role_assignments"]["Row"]> & { staff_id: string; role: StaffRoleDb };
+        Insert: Partial<Database["public"]["Tables"]["staff_role_assignments"]["Row"]]> & { staff_id: string; role: StaffRoleDb };
         Update: Partial<Database["public"]["Tables"]["staff_role_assignments"]["Row"]>;
         Relationships: [{ foreignKeyName: "staff_role_assignments_staff_id_fkey"; columns: ["staff_id"]; isOneToOne: false; referencedRelation: "staff_profiles"; referencedColumns: ["id"] }];
       };
@@ -975,20 +976,12 @@ export interface Database {
     Functions: {
       book_appointment_slot: {
         Args: {
-          p_full_name: string;
-          p_phone: string;
-          p_email: string | null;
-          p_test_or_package: string | null;
-          p_preferred_date: string;
-          p_preferred_time: string;
-          p_location_type: string | null;
-          p_address: string | null;
-          p_landmark: string | null;
-          p_notes: string | null;
-          p_booking_reference: string;
+          p_full_name: string; p_phone: string; p_email: string; p_test_or_package: string;
+          p_preferred_date: string; p_preferred_time: string; p_location_type: string;
+          p_address: string; p_landmark: string; p_notes: string; p_booking_reference: string;
         };
         Returns: { id: string }[];
-      };
+      }
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
