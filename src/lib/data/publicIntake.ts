@@ -65,27 +65,23 @@ export async function submitAppointmentRequest(
   const supabase = getServiceRoleClient();
   const bookingReference = generateBookingReference("APT");
 
-  // Plain insert — same pattern as submitHomeCollectionRequest below.
-  //
-  // This used to go through a book_appointment_slot() RPC that hard-rejected
-  // a booking once 3 requests already existed for the same date+time
-  // (SLOT_FULL). That directly violated the requirement that patients must
-  // be able to submit multiple requests for the same date/time — the front
-  // desk, not the booking form, is who coordinates actual capacity — so the
-  // capacity gate is removed rather than reworked. It also removed a real
-  // failure surface: every booking depended on that RPC's signature staying
-  // in lockstep with this code, and any drift (or the migration simply not
-  // having been applied to a given environment) meant every single
-  // submission fell into the generic error branch below and showed
-  // "Something went wrong" with no way to tell why. A plain insert has no
-  // such dependency.
-  const { data, error } = await supabase
-    .from("appointment_requests")
-    .insert({ ...input, booking_reference: bookingReference })
-    .select("id")
-    .single();
+  // Keep creation atomic at the database boundary. The function deliberately
+  // does not enforce a hard per-slot capacity because the current workflow
+  // allows multiple requests for the same date/time for front-desk review.
+  const { data, error } = await supabase.rpc("book_appointment_slot", {
+    p_full_name: input.full_name,
+    p_phone: input.phone,
+    p_email: input.email ?? null,
+    p_test_or_package: input.test_or_package ?? null,
+    p_preferred_date: input.preferred_date,
+    p_preferred_time: input.preferred_time,
+    p_location_type: input.location_type ?? null,
+    p_notes: input.notes ?? null,
+    p_booking_reference: bookingReference,
+    p_max_per_slot: null,
+  });
 
-  if (error) {
+  if (error || !data?.[0]?.id) {
     await recordFormAttempt("appointment", ipHash, false);
     return { ok: false, reason: "error" };
   }
@@ -94,7 +90,7 @@ export async function submitAppointmentRequest(
   await logAudit({
     action: "BOOKING_CREATED",
     entityType: "appointment_requests",
-    entityId: data.id,
+    entityId: data[0].id,
     metadata: { bookingReference },
   });
 

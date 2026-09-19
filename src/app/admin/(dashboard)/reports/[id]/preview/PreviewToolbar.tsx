@@ -2,7 +2,7 @@
 
 import { Printer, Download } from "lucide-react";
 
-export function PreviewToolbar({ labReportId, hasFinalPdf, hasUploadedPdf }: { labReportId: string; hasFinalPdf: boolean; hasUploadedPdf: boolean }) {
+export function PreviewToolbar({ labReportId, hasFinalPdf }: { labReportId: string; hasFinalPdf: boolean }) {
   return (
     <div className="flex items-center gap-2">
       <button
@@ -12,12 +12,12 @@ export function PreviewToolbar({ labReportId, hasFinalPdf, hasUploadedPdf }: { l
       >
         <Printer className="h-3.5 w-3.5" /> Print
       </button>
-      {hasUploadedPdf || hasFinalPdf ? (
+      {hasFinalPdf ? (
         <a
           href={`/admin/reports/${labReportId}/download`}
           className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft"
         >
-          <Download className="h-3.5 w-3.5" /> Download result PDF
+          <Download className="h-3.5 w-3.5" /> Download final PDF
         </a>
       ) : (
         <a

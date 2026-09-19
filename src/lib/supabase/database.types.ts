@@ -419,6 +419,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]> & {
           patient_id: string;
+          lab_number: string;
           patient_name_snapshot: string;
         };
         Update: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]>;
@@ -984,7 +985,7 @@ export interface Database {
           p_location_type: string | null;
           p_notes: string | null;
           p_booking_reference: string;
-          p_max_per_slot: number;
+          p_max_per_slot: number | null;
         };
         Returns: { id: string }[];
       };

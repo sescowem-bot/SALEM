@@ -77,7 +77,7 @@ export interface CreateLabReportInput {
   patientNameSnapshot: string;
   patientSexSnapshot?: Database["public"]["Tables"]["patients"]["Row"]["sex"];
   patientDobSnapshot?: string | null;
-  labNumber?: string;
+  labNumber: string;
   request?: string;
   sourceInvestigationName?: string;
   reportComment?: string;
@@ -99,7 +99,7 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     patient_name_snapshot: input.patientNameSnapshot,
     patient_sex_snapshot: input.patientSexSnapshot ?? null,
     patient_dob_snapshot: input.patientDobSnapshot ?? null,
-    ...(input.labNumber ? { lab_number: input.labNumber } : {}),
+    lab_number: input.labNumber,
     request: input.request,
     source_investigation_name: input.sourceInvestigationName ?? null,
     report_comment: input.reportComment ?? null,
@@ -120,7 +120,7 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     entityId: report.id,
     actorId: input.createdBy,
     actorRole: input.actorRole,
-    metadata: { patientId: input.patientId, labNumber: report.lab_number },
+    metadata: { patientId: input.patientId, labNumber: input.labNumber },
   });
   await logAudit({
     action: "LAB_CODE_GENERATED",
@@ -128,7 +128,7 @@ export async function createLabReport(input: CreateLabReportInput): Promise<LabR
     entityId: report.id,
     actorId: input.createdBy,
     actorRole: input.actorRole,
-    metadata: { labNumber: report.lab_number },
+    metadata: { labNumber: input.labNumber },
   });
 
   return report;

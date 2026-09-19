@@ -65,6 +65,7 @@ export async function createVisitAction(_prev: ActionState, formData: FormData):
 
   const parsed = createVisitSchema.safeParse({
     patientId: formData.get("patientId"),
+    labNumber: formData.get("labNumber"),
     request: formData.get("request") || "",
     specimen: formData.get("specimen") || "",
     dateCollected: formData.get("dateCollected") || "",
@@ -87,6 +88,7 @@ export async function createVisitAction(_prev: ActionState, formData: FormData):
       patientNameSnapshot: patient.full_name,
       patientSexSnapshot: (patient.sex ?? undefined) as "Male" | "Female" | undefined,
       patientDobSnapshot: patient.date_of_birth ?? undefined,
+      labNumber: parsed.data.labNumber,
       request: parsed.data.request || undefined,
       specimen: parsed.data.specimen || undefined,
       dateCollected: parsed.data.dateCollected || undefined,
