@@ -419,7 +419,6 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]> & {
           patient_id: string;
-          lab_number: string;
           patient_name_snapshot: string;
         };
         Update: Partial<Database["public"]["Tables"]["lab_reports"]["Row"]>;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getReportPreviewData, getLatestFinalDocument } from "@/lib/data/reportDocuments";
+import { getLatestUploadedReportDocument } from "@/lib/data/uploadedReportDocuments";
 import { PreviewToolbar } from "./PreviewToolbar";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +28,13 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
 
   let data;
   let finalDoc;
+  let uploadedDoc;
   try {
     data = await getReportPreviewData(id, staff.role);
-    finalDoc = await getLatestFinalDocument(id, staff.role);
+    [finalDoc, uploadedDoc] = await Promise.all([
+      getLatestFinalDocument(id, staff.role),
+      getLatestUploadedReportDocument(id, staff.role),
+    ]);
   } catch {
     notFound();
   }
@@ -50,10 +55,31 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
           <Link href={`/admin/reports/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:underline">
             <ArrowLeft className="h-4 w-4" /> Back to report
           </Link>
-          <PreviewToolbar labReportId={id} hasFinalPdf={Boolean(finalDoc)} />
+          <PreviewToolbar labReportId={id} hasFinalPdf={Boolean(finalDoc)} hasUploadedPdf={Boolean(uploadedDoc)} />
         </div>
       </div>
 
+      {uploadedDoc ? (
+        <div className="mx-auto w-full max-w-5xl px-4 pb-10 print:hidden">
+          <div className="rounded-2xl border border-border bg-white p-4 shadow-soft sm:p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-purple">Uploaded result</p>
+                <h1 className="mt-1 text-lg font-semibold text-navy-deep">{uploadedDoc.fileName}</h1>
+                <p className="mt-1 text-xs text-muted-foreground">Version v{uploadedDoc.versionNumber} · Uploaded {new Date(uploadedDoc.createdAt).toLocaleString("en-NG")}</p>
+              </div>
+              <div className="rounded-full border border-border bg-secondary px-3 py-1 text-xs font-semibold text-navy">{report.status.replace("_", " ")}</div>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-border bg-secondary">
+              <iframe src={uploadedDoc.signedUrl} title={`Uploaded laboratory result ${uploadedDoc.fileName}`} className="h-[75vh] min-h-[620px] w-full bg-white" />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>Lab number: <strong className="text-navy-deep">{report.labNumber}</strong></span>
+              <span>This is the actual PDF uploaded for this report.</span>
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="relative mx-auto min-h-[297mm] w-[210mm] max-w-[calc(100vw-2rem)] bg-white shadow-soft print:w-[210mm] print:min-h-[297mm] print:max-w-none print:shadow-none">
         {org.letterheadDataUri ? (
           // The uploaded file is a complete A4 stationery sheet. Keep it as a
@@ -200,6 +226,7 @@ export default async function ReportPreviewPage({ params }: { params: Promise<{ 
         ) : null}
         </div>
       </div>
+      )}
       </div>
     </>
   );
