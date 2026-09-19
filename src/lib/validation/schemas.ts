@@ -438,3 +438,30 @@ export const standaloneUploadedResultSchema = z.object({
   dateCollected: z.string().date().optional().or(z.literal("")),
   reportComment: z.string().trim().max(2000).optional().or(z.literal("")),
 });
+
+// ---------------------------------------------------------------------------
+// Department & Function Management
+// ---------------------------------------------------------------------------
+
+export const departmentSchema = z.object({
+  departmentId: z.string().uuid().optional(),
+  name: z.string().trim().min(2, "Department name is required").max(150),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const departmentStatusSchema = z.object({
+  departmentId: z.string().uuid(),
+  active: z.enum(["true", "false"]),
+});
+
+export const departmentFunctionSchema = z.object({
+  functionId: z.string().uuid().optional(),
+  departmentId: z.string().uuid("Choose a department"),
+  name: z.string().trim().min(2, "Function name is required").max(150),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const departmentFunctionStatusSchema = z.object({
+  functionId: z.string().uuid(),
+  active: z.enum(["true", "false"]),
+});

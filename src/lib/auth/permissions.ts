@@ -62,7 +62,15 @@ export type Permission =
   // an oversight — see ROLE_PERMISSIONS.admin), gating a distinct action
   // — attaching a signature to an identity — that shouldn't silently
   // widen if staff.manage is ever extended to another role later.
-  | "documents.manage";
+  | "documents.manage"
+  // Department & Function Management — deliberately its own permission
+  // rather than reusing staff.manage: creating/editing/deactivating a
+  // department or a function is an org-structure change, not staff
+  // account administration, and per the brief both Super Admin and Admin
+  // (not just Super Admin) should hold it. Also covers viewing the
+  // department/function directory, mirroring how every other *.manage
+  // permission in this file doubles as its own view permission.
+  | "departments.manage";
 
 const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
   super_admin: [
@@ -84,6 +92,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "settings.manage",
     "enquiries.manage",
     "documents.manage",
+    "departments.manage",
   ],
   // Advanced 7.1 note: previously excluded `settings.manage` and
   // `documents.manage`, which meant the Admin role could not see or use
@@ -111,6 +120,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "settings.manage",
     "enquiries.manage",
     "documents.manage",
+    "departments.manage",
   ],
   pathologist: ["patients.view", "reports.view", "reports.review", "reports.publish"],
   laboratory_staff: [

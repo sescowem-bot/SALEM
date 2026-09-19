@@ -80,6 +80,9 @@ export function getAdminNavItems(staff: CurrentStaff): AdminNavSection[] {
   if (can(staff, "staff.manage")) {
     administration.push({ href: "/admin/roles", label: "Roles & permissions" });
   }
+  if (can(staff, "departments.manage")) {
+    administration.push({ href: "/admin/departments", label: "Departments & functions" });
+  }
   if (can(staff, "documents.manage")) {
     administration.push({ href: "/admin/signatories", label: "Report signatories" });
   }

@@ -96,7 +96,18 @@ export type AuditAction =
   | "REPORT_TEST_REORDERED"
   | "CUSTOM_TEST_CREATED"
   | "APPOINTMENT_RESCHEDULED"
-  | "HOME_COLLECTION_PAYMENT_UPDATED";
+  | "HOME_COLLECTION_PAYMENT_UPDATED"
+  // Department & Function Management — see
+  // supabase/migrations/20260920090002_department_function_audit_actions.sql
+  | "DEPARTMENT_CREATED"
+  | "DEPARTMENT_UPDATED"
+  | "DEPARTMENT_DEACTIVATED"
+  | "DEPARTMENT_REACTIVATED"
+  | "DEPARTMENT_FUNCTION_CREATED"
+  | "DEPARTMENT_FUNCTION_UPDATED"
+  | "DEPARTMENT_FUNCTION_REASSIGNED"
+  | "DEPARTMENT_FUNCTION_DEACTIVATED"
+  | "DEPARTMENT_FUNCTION_REACTIVATED";
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type HomeCollectionPaymentStatus = "unpaid" | "pending" | "paid" | "waived";
 export type ServiceStatus = "draft" | "published" | "archived";
@@ -706,6 +717,31 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["departments"]["Row"]> & { name: string };
         Update: Partial<Database["public"]["Tables"]["departments"]["Row"]>;
         Relationships: [];
+      };
+      department_functions: {
+        Row: {
+          id: string;
+          department_id: string;
+          name: string;
+          description: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["department_functions"]["Row"]> & {
+          department_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["department_functions"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "department_functions_department_id_fkey";
+            columns: ["department_id"];
+            isOneToOne: false;
+            referencedRelation: "departments";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       staff_role_assignments: {
         Row: { staff_id: string; role: StaffRoleDb; is_primary: boolean; created_at: string };
