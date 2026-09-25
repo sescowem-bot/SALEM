@@ -56,7 +56,7 @@ function UnlockButton() {
   );
 }
 
-export function ResultsPageClient() {
+export function ResultsPageClient({ accessInstructions, helpMessage }: { accessInstructions?: string; helpMessage?: string }) {
   const [state, formAction] = useActionState(verifyResultAction, initialState);
   const [reference, setReference] = useState("");
   const [code, setCode] = useState("");
@@ -72,8 +72,7 @@ export function ResultsPageClient() {
                 </span>
                 <h2 className="mt-4 text-lg font-semibold text-navy-deep">Enter your details</h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Both fields are printed on your sample receipt and sent by SMS or email when your
-                  result is released.
+                  {accessInstructions || "Both fields are printed on your sample receipt and sent by SMS or email when your result is released."}
                 </p>
                 <form action={formAction} className="mt-6 space-y-4">
                   <label className="block text-sm font-medium text-navy-deep">
@@ -104,14 +103,14 @@ export function ResultsPageClient() {
                   <UnlockButton />
                 </form>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Didn&apos;t receive a code? Email{" "}
+                  {helpMessage || <>Didn&apos;t receive a code? Email </>}
                   <a
                     href={`mailto:${siteConfig.email.results}`}
                     className="font-semibold text-purple hover:text-navy"
                   >
                     {siteConfig.email.results}
                   </a>{" "}
-                  or visit the laboratory with a valid ID.
+                  {helpMessage ? null : " or visit the laboratory with a valid ID."}
                 </p>
               </div>
 

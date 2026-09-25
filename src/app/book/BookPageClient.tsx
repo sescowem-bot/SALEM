@@ -61,12 +61,16 @@ export function BookPageClient({
   preselectedTest,
   bookingWindowDays = 14,
   bookingMinNoticeHours = 2,
+  confirmationTitle,
+  confirmationMessage,
 }: {
   tests: Test[];
   preselectedTestName?: string;
   preselectedTest?: Test;
   bookingWindowDays?: number;
   bookingMinNoticeHours?: number;
+  confirmationTitle?: string;
+  confirmationMessage?: string;
 }) {
   const days = nextDays(Math.min(Math.max(bookingWindowDays, 1), 14));
 
@@ -129,9 +133,9 @@ export function BookPageClient({
             <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent text-navy">
               <Check className="h-6 w-6" />
             </span>
-            <h2 className="mt-5 text-xl font-semibold text-navy-deep">Booking received</h2>
+            <h2 className="mt-5 text-xl font-semibold text-navy-deep">{confirmationTitle || "Booking received"}</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Your request has been submitted successfully. Our front desk will contact you to confirm the appointment.
+              {confirmationMessage || "Your request has been submitted successfully. Our front desk will contact you to confirm the appointment."}
             </p>
             <p className="mx-auto mt-4 max-w-md rounded-xl border border-cyan/40 bg-accent p-4 font-mono text-base font-semibold text-navy-deep">
               {state.bookingReference}

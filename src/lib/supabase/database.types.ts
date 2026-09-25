@@ -112,7 +112,7 @@ export type AuditAction =
 export type HomeCollectionStatus = "pending" | "confirmed" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type HomeCollectionPaymentStatus = "unpaid" | "pending" | "paid" | "waived";
 export type ServiceStatus = "draft" | "published" | "archived";
-export type WebsitePageKey = "homepage" | "about" | "contact" | "footer" | "seo";
+export type WebsitePageKey = "homepage" | "about" | "faq" | "packages" | "booking" | "results" | "contact" | "footer" | "seo";
 export type WebsiteContentStatus = "draft" | "published";
 
 /**

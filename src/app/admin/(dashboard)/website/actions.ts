@@ -9,6 +9,10 @@ import { uploadSiteMedia, removeSiteMediaSlot, type SiteMediaSlot } from "@/lib/
 import {
   homepageContentSchema,
   aboutContentSchema,
+  faqContentSchema,
+  packagesContentSchema,
+  bookingContentSchema,
+  resultsContentSchema,
   contactContentSchema,
   footerContentSchema,
   seoContentSchema,
@@ -24,6 +28,10 @@ export interface ActionState {
 const SCHEMAS_BY_PAGE: Record<WebsitePageKey, (typeof homepageContentSchema)> = {
   homepage: homepageContentSchema,
   about: aboutContentSchema as unknown as typeof homepageContentSchema,
+  faq: faqContentSchema as unknown as typeof homepageContentSchema,
+  packages: packagesContentSchema as unknown as typeof homepageContentSchema,
+  booking: bookingContentSchema as unknown as typeof homepageContentSchema,
+  results: resultsContentSchema as unknown as typeof homepageContentSchema,
   contact: contactContentSchema as unknown as typeof homepageContentSchema,
   footer: footerContentSchema as unknown as typeof homepageContentSchema,
   seo: seoContentSchema as unknown as typeof homepageContentSchema,
@@ -32,6 +40,10 @@ const SCHEMAS_BY_PAGE: Record<WebsitePageKey, (typeof homepageContentSchema)> = 
 const PUBLIC_PATH_BY_PAGE: Record<WebsitePageKey, string> = {
   homepage: "/",
   about: "/about",
+  faq: "/faq",
+  packages: "/packages",
+  booking: "/book",
+  results: "/results",
   contact: "/contact",
   footer: "/",
   seo: "/",

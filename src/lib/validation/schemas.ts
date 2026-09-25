@@ -372,14 +372,52 @@ export const homepageContentSchema = z.object({
 export const aboutContentSchema = z.object({
   pageTitle: z.string().trim().max(200).optional().or(z.literal("")),
   introduction: z.string().trim().max(500).optional().or(z.literal("")),
-  whoWeAre: z.string().trim().max(3000).optional().or(z.literal("")),
+  approachEyebrow: z.string().trim().max(100).optional().or(z.literal("")),
+  approachHeading: z.string().trim().max(300).optional().or(z.literal("")),
+  whoWeAre: z.string().trim().max(4000).optional().or(z.literal("")),
+  aboutImagePath: optionalUrlOrPath,
+  aboutImageAlt: z.string().trim().max(200).optional().or(z.literal("")),
+  aboutSecondaryImagePath: optionalUrlOrPath,
+  aboutSecondaryImageAlt: z.string().trim().max(200).optional().or(z.literal("")),
   mission: z.string().trim().max(1000).optional().or(z.literal("")),
   vision: z.string().trim().max(1000).optional().or(z.literal("")),
   values: z.string().trim().max(1000).optional().or(z.literal("")),
   qualityStatement: z.string().trim().max(1500).optional().or(z.literal("")),
   professionalStandards: z.string().trim().max(1500).optional().or(z.literal("")),
+  qualityHeading: z.string().trim().max(100).optional().or(z.literal("")),
+  professionalStandardsHeading: z.string().trim().max(120).optional().or(z.literal("")),
   ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
   ctaHref: optionalUrlOrPath,
+});
+
+export const faqContentSchema = z.object({
+  pageTitle: z.string().trim().max(200).optional().or(z.literal("")),
+  introduction: z.string().trim().max(500).optional().or(z.literal("")),
+  groups: z.array(z.object({ id: z.string().min(1).max(80), heading: z.string().trim().min(1).max(150), items: z.array(z.object({ id: z.string().min(1).max(80), question: z.string().trim().min(1).max(300), answer: z.string().trim().min(1).max(3000) })).max(30) })).max(20),
+  ctaHeading: z.string().trim().max(150).optional().or(z.literal("")),
+  ctaDescription: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const packagesContentSchema = z.object({
+  pageTitle: z.string().trim().max(200).optional().or(z.literal("")),
+  introduction: z.string().trim().max(500).optional().or(z.literal("")),
+  packages: z.array(z.object({ id: z.string().min(1).max(80), name: z.string().trim().min(1).max(150), description: z.string().trim().max(1000), featured: z.boolean().optional(), tests: z.array(z.string().trim().min(1).max(300)).max(30), ctaLabel: z.string().trim().max(100).optional().or(z.literal("")) })).max(50),
+  pricingNote: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const bookingContentSchema = z.object({
+  pageTitle: z.string().trim().max(200).optional().or(z.literal("")),
+  introduction: z.string().trim().max(600).optional().or(z.literal("")),
+  confirmationTitle: z.string().trim().max(150).optional().or(z.literal("")),
+  confirmationMessage: z.string().trim().max(500).optional().or(z.literal("")),
+  bookingNotice: z.string().trim().max(800).optional().or(z.literal("")),
+});
+
+export const resultsContentSchema = z.object({
+  pageTitle: z.string().trim().max(200).optional().or(z.literal("")),
+  introduction: z.string().trim().max(600).optional().or(z.literal("")),
+  accessInstructions: z.string().trim().max(800).optional().or(z.literal("")),
+  helpMessage: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
 export const contactContentSchema = z.object({

@@ -4,6 +4,9 @@ import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { listPublishedServices } from "@/lib/data/testCatalog";
 import { getSiteSettings } from "@/lib/data/siteSettings";
 import { BookPageClient } from "./BookPageClient";
+import { getPublishedPageContent } from "@/lib/data/websitePages";
+import type { BookingContent } from "@/lib/data/websiteContentTypes";
+import { defaultBookingContent } from "@/components/salem/pages";
 
 const description =
   "Book a laboratory test at Salem Medical Laboratories — choose your test, date, walk-in or home collection, and confirm.";
@@ -20,6 +23,7 @@ export default async function BookPage({
   searchParams: Promise<{ testId?: string }>;
 }) {
   const { testId } = await searchParams;
+  const bookingContent = { ...defaultBookingContent, ...(await getPublishedPageContent<BookingContent>("booking")) };
   // Advanced 8 §4 fix: this used to call listActiveTests(), which only
   // checks is_active and ignores content_status — so a brand-new
   // investigation still sitting in "draft" (not yet published) could be
@@ -47,15 +51,18 @@ export default async function BookPage({
     <SiteLayout>
       <PageHeader
         eyebrow="Book a Test"
-        title="Booking a test should take two minutes, not two calls."
-        lead="Pick your test, choose a time, and tell us where to meet you. Our front desk confirms every booking personally."
+        title={bookingContent.pageTitle!}
+        lead={bookingContent.introduction!}
       />
+      <p className="mx-auto max-w-7xl px-5 pt-4 text-center text-xs text-muted-foreground sm:px-6">{bookingContent.bookingNotice}</p>
       <BookPageClient
         tests={tests}
         preselectedTestName={preselectedTest?.name}
         preselectedTest={preselectedTest}
         bookingWindowDays={bookingWindowDays}
         bookingMinNoticeHours={bookingMinNoticeHours}
+        confirmationTitle={bookingContent.confirmationTitle}
+        confirmationMessage={bookingContent.confirmationMessage}
       />
     </SiteLayout>
   );

@@ -18,6 +18,10 @@ export const metadata: Metadata = {
 const PAGE_LABELS: Record<WebsitePageKey, string> = {
   homepage: "Homepage",
   about: "About page",
+  faq: "FAQ page",
+  packages: "Health packages",
+  booking: "Booking page",
+  results: "Results page",
   contact: "Contact page",
   footer: "Footer",
   seo: "SEO",

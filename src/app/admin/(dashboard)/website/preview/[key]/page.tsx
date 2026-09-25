@@ -13,6 +13,10 @@ import { Results } from "@/components/salem/Results";
 import { BookingCta, Contact } from "@/components/salem/BookingContact";
 import { PageHeader } from "@/components/salem/SiteLayout";
 import { ContactPageClient } from "@/app/contact/ContactPageClient";
+import { AboutPageContent, FaqPageContent, PackagesPageContent, defaultBookingContent, defaultResultsContent } from "@/components/salem/pages";
+import { BookPageClient } from "@/app/book/BookPageClient";
+import { ResultsPageClient } from "@/app/results/ResultsPageClient";
+import type { FaqContent, PackagesContent, BookingContent, ResultsContent } from "@/lib/data/websiteContentTypes";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getWebsitePage } from "@/lib/data/websitePages";
 import { getSiteSettings } from "@/lib/data/siteSettings";
@@ -32,7 +36,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const VALID_KEYS: WebsitePageKey[] = ["homepage", "about", "contact", "footer", "seo"];
+const VALID_KEYS: WebsitePageKey[] = ["homepage", "about", "faq", "packages", "booking", "results", "contact", "footer", "seo"];
 
 export default async function WebsiteContentPreviewPage({ params }: { params: Promise<{ key: string }> }) {
   const staff = await requireStaff();
@@ -109,28 +113,26 @@ async function PreviewBody({
   }
 
   if (pageKey === "about") {
-    const content = draft as AboutContent;
-    return (
-      <>
-        <PageHeader
-          eyebrow="About Salem"
-          title={content.pageTitle || "A laboratory built by scientists who take results personally."}
-          lead={content.introduction || "Salem Medical Laboratories exists to close the gap between fast diagnostics and trustworthy diagnostics."}
-        />
-        <section className="bg-background py-16">
-          <div className="mx-auto max-w-3xl space-y-6 px-5 sm:px-6">
-            {content.whoWeAre ? <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{content.whoWeAre}</p> : null}
-            <div className="grid gap-4 sm:grid-cols-3">
-              {content.mission ? <div className="surface-card p-5"><h3 className="text-sm font-semibold text-navy-deep">Mission</h3><p className="mt-1 text-xs text-muted-foreground">{content.mission}</p></div> : null}
-              {content.vision ? <div className="surface-card p-5"><h3 className="text-sm font-semibold text-navy-deep">Vision</h3><p className="mt-1 text-xs text-muted-foreground">{content.vision}</p></div> : null}
-              {content.values ? <div className="surface-card p-5"><h3 className="text-sm font-semibold text-navy-deep">Values</h3><p className="mt-1 text-xs text-muted-foreground">{content.values}</p></div> : null}
-            </div>
-            {content.qualityStatement ? <div className="surface-card p-5"><h3 className="text-sm font-semibold text-navy-deep">Quality assurance</h3><p className="mt-1 text-sm text-muted-foreground">{content.qualityStatement}</p></div> : null}
-            {content.professionalStandards ? <div className="surface-card p-5"><h3 className="text-sm font-semibold text-navy-deep">Certifications &amp; accreditation</h3><p className="mt-1 text-sm text-muted-foreground">{content.professionalStandards}</p></div> : null}
-          </div>
-        </section>
-      </>
-    );
+    return <AboutPageContent content={draft as AboutContent} />;
+  }
+
+  if (pageKey === "faq") {
+    return <FaqPageContent content={draft as FaqContent} />;
+  }
+
+  if (pageKey === "packages") {
+    return <PackagesPageContent content={draft as PackagesContent} />;
+  }
+
+  if (pageKey === "booking") {
+    const content = { ...defaultBookingContent, ...(draft as BookingContent) };
+    const tests = await listPublishedServices();
+    return <><PageHeader eyebrow="Book a Test" title={content.pageTitle!} lead={content.introduction!} /><p className="mx-auto max-w-7xl px-5 pt-4 text-center text-xs text-muted-foreground sm:px-6">{content.bookingNotice}</p><BookPageClient tests={tests} bookingWindowDays={settings.bookingWindowDays} bookingMinNoticeHours={settings.bookingMinNoticeHours} confirmationTitle={content.confirmationTitle} confirmationMessage={content.confirmationMessage} /></>;
+  }
+
+  if (pageKey === "results") {
+    const content = { ...defaultResultsContent, ...(draft as ResultsContent) };
+    return <><PageHeader eyebrow="Secure Result Access" title={content.pageTitle!} lead={content.introduction!} /><ResultsPageClient accessInstructions={content.accessInstructions} helpMessage={content.helpMessage} /></>;
   }
 
   if (pageKey === "contact") {
