@@ -3,8 +3,8 @@ import { publicMetadata } from "@/lib/seo";
 import { SiteLayout, PageHeader } from "@/components/salem/SiteLayout";
 import { ResultsPageClient } from "./ResultsPageClient";
 import { getPublishedPageContent } from "@/lib/data/websitePages";
-import { defaultResultsContent } from "@/lib/data/websitePageDefaults";
 import type { ResultsContent } from "@/lib/data/websiteContentTypes";
+import { defaultResultsContent } from "@/components/salem/pages";
 
 const description =
   "Securely access your Salem laboratory report using your lab reference number and one-time access code.";
@@ -17,8 +17,8 @@ export default async function ResultsPage() {
     <SiteLayout>
       <PageHeader
         eyebrow="Secure Result Access"
-        title={content.pageTitle}
-        lead={content.introduction}
+        title={content.pageTitle!}
+        lead={content.introduction!}
       />
       <ResultsPageClient accessInstructions={content.accessInstructions} helpMessage={content.helpMessage} />
     </SiteLayout>

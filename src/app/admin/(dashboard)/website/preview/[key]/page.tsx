@@ -13,10 +13,9 @@ import { Results } from "@/components/salem/Results";
 import { BookingCta, Contact } from "@/components/salem/BookingContact";
 import { PageHeader } from "@/components/salem/SiteLayout";
 import { ContactPageClient } from "@/app/contact/ContactPageClient";
-import { AboutPageContent, FaqPageContent, PackagesPageContent } from "@/components/salem/ManagedPageContent";
+import { AboutPageContent, FaqPageContent, PackagesPageContent, defaultBookingContent, defaultResultsContent } from "@/components/salem/pages";
 import { BookPageClient } from "@/app/book/BookPageClient";
 import { ResultsPageClient } from "@/app/results/ResultsPageClient";
-import { defaultBookingContent, defaultResultsContent } from "@/lib/data/websitePageDefaults";
 import type { FaqContent, PackagesContent, BookingContent, ResultsContent } from "@/lib/data/websiteContentTypes";
 import { requireStaff, can } from "@/lib/auth/session";
 import { getWebsitePage } from "@/lib/data/websitePages";
@@ -113,21 +112,27 @@ async function PreviewBody({
     );
   }
 
-  if (pageKey === "about") return <AboutPageContent content={draft as AboutContent} />;
+  if (pageKey === "about") {
+    return <AboutPageContent content={draft as AboutContent} />;
+  }
 
-  if (pageKey === "faq") return <FaqPageContent content={draft as FaqContent} />;
+  if (pageKey === "faq") {
+    return <FaqPageContent content={draft as FaqContent} />;
+  }
 
-  if (pageKey === "packages") return <PackagesPageContent content={draft as PackagesContent} />;
+  if (pageKey === "packages") {
+    return <PackagesPageContent content={draft as PackagesContent} />;
+  }
 
   if (pageKey === "booking") {
     const content = { ...defaultBookingContent, ...(draft as BookingContent) };
     const tests = await listPublishedServices();
-    return <><PageHeader eyebrow="Book a Test" title={content.pageTitle} lead={content.introduction}/><p className="mx-auto max-w-7xl px-5 pt-4 text-center text-xs text-muted-foreground sm:px-6">{content.bookingNotice}</p><BookPageClient tests={tests} bookingWindowDays={settings.bookingWindowDays} bookingMinNoticeHours={settings.bookingMinNoticeHours} confirmationTitle={content.confirmationTitle} confirmationMessage={content.confirmationMessage}/></>;
+    return <><PageHeader eyebrow="Book a Test" title={content.pageTitle!} lead={content.introduction!} /><p className="mx-auto max-w-7xl px-5 pt-4 text-center text-xs text-muted-foreground sm:px-6">{content.bookingNotice}</p><BookPageClient tests={tests} bookingWindowDays={settings.bookingWindowDays} bookingMinNoticeHours={settings.bookingMinNoticeHours} confirmationTitle={content.confirmationTitle} confirmationMessage={content.confirmationMessage} /></>;
   }
 
   if (pageKey === "results") {
     const content = { ...defaultResultsContent, ...(draft as ResultsContent) };
-    return <><PageHeader eyebrow="Secure Result Access" title={content.pageTitle} lead={content.introduction}/><ResultsPageClient accessInstructions={content.accessInstructions} helpMessage={content.helpMessage}/></>;
+    return <><PageHeader eyebrow="Secure Result Access" title={content.pageTitle!} lead={content.introduction!} /><ResultsPageClient accessInstructions={content.accessInstructions} helpMessage={content.helpMessage} /></>;
   }
 
   if (pageKey === "contact") {

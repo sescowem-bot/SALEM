@@ -103,13 +103,14 @@ export function ResultsPageClient({ accessInstructions, helpMessage }: { accessI
                   <UnlockButton />
                 </form>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  {helpMessage || "Didn’t receive a code? Email "}
+                  {helpMessage || <>Didn&apos;t receive a code? Email </>}
                   <a
                     href={`mailto:${siteConfig.email.results}`}
                     className="font-semibold text-purple hover:text-navy"
                   >
                     {siteConfig.email.results}
-                  </a>{helpMessage ? null : " or visit the laboratory with a valid ID."}
+                  </a>{" "}
+                  {helpMessage ? null : " or visit the laboratory with a valid ID."}
                 </p>
               </div>
 
