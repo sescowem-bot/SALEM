@@ -69,8 +69,8 @@ export function HomepageEditorForm({ content }: { content: HomepageContent }) {
 
   return (
     <form action={formAction} className="space-y-5">
-      <input type="hidden" name="pageKey" value="homepage" />
-      <input type="hidden" name="content" value={JSON.stringify(form)} />
+      <input type="hidden" value="homepage" />
+      <input type="hidden" value={JSON.stringify(form)} />
 
       <Section number={1} title="Hero" description="The first thing every visitor sees. Leave a field blank to keep the current default copy.">
         <Field label="Eyebrow label" value={form.heroEyebrow ?? ""} onChange={(v) => set("heroEyebrow", v)} placeholder="Medical Diagnostic Laboratory" />
