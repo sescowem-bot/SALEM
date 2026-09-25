@@ -114,14 +114,25 @@ export async function setArticleStatus(id: string, status: Article["status"], ro
   await guard(role);
   const db = getServiceRoleClient() as any;
   const now = new Date().toISOString();
-  const patch = {
+  const patch: Record<string, unknown> = {
     status,
-    published_at: status === "published" ? now : null,
     updated_at: now,
     updated_by: actorId ?? null,
   };
+  // Only stamp/clear published_at when actually publishing or unpublishing back to draft.
+  // Archiving a previously published article should keep its original published_at.
+  if (status === "published") patch.published_at = now;
+  if (status === "draft") patch.published_at = null;
   const { data, error } = await db.from("seo_articles").update(patch).eq("id", id).select("*").single();
   if (error) throw error;
   await logAudit({ action: "WEBSITE_CONTENT_PUBLISHED", entityType: "seo_articles", entityId: id, actorId, actorRole: role, metadata: { status } });
   return data as Article;
+}
+
+export async function deleteArticle(id: string, role: StaffRole, actorId?: string): Promise<void> {
+  await guard(role);
+  const db = getServiceRoleClient() as any;
+  const { error } = await db.from("seo_articles").delete().eq("id", id);
+  if (error) throw error;
+  await logAudit({ action: "WEBSITE_CONTENT_UPDATED", entityType: "seo_articles", entityId: id, actorId, actorRole: role, metadata: { deleted: true } });
 }

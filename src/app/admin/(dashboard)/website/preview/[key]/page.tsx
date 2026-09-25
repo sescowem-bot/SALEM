@@ -117,11 +117,11 @@ async function PreviewBody({
   }
 
   if (pageKey === "faq") {
-    return <FaqPageContent content={draft as FaqContent} />;
+    return <FaqPageContent content={draft as unknown as FaqContent} />;
   }
 
   if (pageKey === "packages") {
-    return <PackagesPageContent content={draft as PackagesContent} />;
+    return <PackagesPageContent content={draft as unknown as PackagesContent} />;
   }
 
   if (pageKey === "booking") {

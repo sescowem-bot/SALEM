@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { ImagePlus, Eye, ExternalLink, Save, Send, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { saveArticleAction, publishArticleAction, uploadArticleFeaturedImageAction } from "./actions";
+import { ImagePlus, Eye, ExternalLink, Save, Send, CheckCircle2, AlertCircle, Loader2, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { saveArticleAction, publishArticleAction, archiveArticleAction, unarchiveArticleAction, deleteArticleAction, uploadArticleFeaturedImageAction } from "./actions";
 
 type Article = {
   id?: string;
@@ -30,6 +30,7 @@ function slugify(value: string) {
 }
 
 export function ArticleEditor({ articles }: { articles: Article[] }) {
+  const [articleList, setArticleList] = useState<Article[]>(articles);
   const [selected, setSelected] = useState<Article | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -38,6 +39,8 @@ export function ArticleEditor({ articles }: { articles: Article[] }) {
   const [uploading, setUploading] = useState(false);
   const [isSaving, startSaving] = useTransition();
   const [isPublishing, startPublishing] = useTransition();
+  const [isArchiving, startArchiving] = useTransition();
+  const [isDeleting, startDeleting] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
   const selectArticle = (article: Article) => {
@@ -46,6 +49,13 @@ export function ArticleEditor({ articles }: { articles: Article[] }) {
     setError("");
     setImageMessage("");
     setImageError("");
+  };
+
+  const upsertInList = (article: Article) => {
+    setArticleList((current) => {
+      const exists = current.some((a) => a.id === article.id);
+      return exists ? current.map((a) => (a.id === article.id ? article : a)) : [article, ...current];
+    });
   };
 
   const handleSave = () => {
@@ -58,6 +68,7 @@ export function ArticleEditor({ articles }: { articles: Article[] }) {
       if (result.ok && result.article) {
         const savedArticle = result.article as Article;
         setSelected(savedArticle);
+        upsertInList(savedArticle);
         const statusInput = form.elements.namedItem("status") as HTMLInputElement | null;
         if (statusInput) statusInput.value = savedArticle.status;
         setMessage(result.message || "Article saved successfully.");
@@ -84,6 +95,7 @@ export function ArticleEditor({ articles }: { articles: Article[] }) {
 
       const article = saved.article as Article;
       setSelected(article);
+      upsertInList(article);
       const statusInput = form.elements.namedItem("status") as HTMLInputElement | null;
       if (statusInput) statusInput.value = article.status;
       const publishData = new FormData();
@@ -92,11 +104,51 @@ export function ArticleEditor({ articles }: { articles: Article[] }) {
       if (result.ok && result.article) {
         const publishedArticle = result.article as Article;
         setSelected(publishedArticle);
-        const statusInput = form.elements.namedItem("status") as HTMLInputElement | null;
-        if (statusInput) statusInput.value = publishedArticle.status;
+        upsertInList(publishedArticle);
+        const statusInput2 = form.elements.namedItem("status") as HTMLInputElement | null;
+        if (statusInput2) statusInput2.value = publishedArticle.status;
         setMessage(result.message || "Article published successfully.");
       } else {
         setError(result.error || "Could not publish the article.");
+      }
+    });
+  };
+
+  const handleArchiveToggle = () => {
+    if (!selected?.id) return;
+    setMessage("");
+    setError("");
+    startArchiving(async () => {
+      const data = new FormData();
+      data.set("id", selected.id || "");
+      const result = selected.status === "archived" ? await unarchiveArticleAction(data) : await archiveArticleAction(data);
+      if (result.ok && result.article) {
+        const updated = result.article as Article;
+        setSelected(updated);
+        upsertInList(updated);
+        const statusInput = formRef.current?.elements.namedItem("status") as HTMLInputElement | null;
+        if (statusInput) statusInput.value = updated.status;
+        setMessage(result.message || "Article updated.");
+      } else {
+        setError(result.error || "Could not update the article's status.");
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    if (!selected?.id) return;
+    startDeleting(async () => {
+      const data = new FormData();
+      data.set("id", selected.id || "");
+      data.set("slug", selected.slug || "");
+      const result = await deleteArticleAction(data);
+      if (result.ok) {
+        setArticleList((current) => current.filter((a) => a.id !== selected.id));
+        setSelected(null);
+        setMessage("");
+        setError("");
+      } else {
+        setError(result.error || "Could not delete the article.");
       }
     });
   };
@@ -134,10 +186,10 @@ export function ArticleEditor({ articles }: { articles: Article[] }) {
           </div>
         </div>
         <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((article) => (
+          {articleList.map((article) => (
             <button key={article.id} type="button" onClick={() => selectArticle(article)} className={`group rounded-2xl border p-4 text-left transition ${selected?.id === article.id ? "border-cyan bg-accent shadow-soft" : "border-border bg-background hover:border-cyan/60 hover:bg-accent/40"}`}>
               <div className="flex items-start justify-between gap-3">
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${article.status === "published" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{article.status}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${article.status === "published" ? "bg-emerald-50 text-emerald-700" : article.status === "archived" ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-700"}`}>{article.status}</span>
                 <span className="text-xs text-muted-foreground">{readingTime(article.content)} min read</span>
               </div>
               <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-navy-deep">{article.title || "Untitled article"}</h3>
@@ -145,7 +197,7 @@ export function ArticleEditor({ articles }: { articles: Article[] }) {
             </button>
           ))}
         </div>
-        {!articles.length ? <div className="px-5 pb-6 text-sm text-muted-foreground">No articles yet. Start with a patient-focused topic.</div> : null}
+        {!articleList.length ? <div className="px-5 pb-6 text-sm text-muted-foreground">No articles yet. Start with a patient-focused topic.</div> : null}
       </section>
 
       {selected ? (
@@ -180,7 +232,10 @@ export function ArticleEditor({ articles }: { articles: Article[] }) {
               </div>
               <div className="rounded-2xl border border-border p-5"><p className="text-sm font-semibold text-navy-deep">Publishing checklist</p><ul className="mt-3 space-y-2 text-xs leading-5 text-muted-foreground"><li>✓ Clear patient-focused title</li><li>✓ Accurate medical information</li><li>✓ Unique excerpt and SEO description</li><li>✓ Relevant featured image</li><li>✓ Internal link opportunity to a Salem service</li></ul></div>
               {(message || error) ? <div className={`rounded-2xl border p-4 ${error ? "border-red-200 bg-red-50" : "border-emerald-200 bg-emerald-50"}`}>{error ? <p className="flex items-start gap-2 text-sm font-medium text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p> : <p className="flex items-start gap-2 text-sm font-medium text-emerald-700"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{message}</p>}</div> : null}
-              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col"><button type="submit" disabled={isSaving || isPublishing} className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{isSaving ? "Saving…" : "Save article"}</button><button type="button" disabled={isSaving || isPublishing} onClick={handlePublish} className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-semibold text-navy-deep hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"><Send className="h-4 w-4" />{isPublishing ? "Publishing…" : "Save & publish"}</button></div>
+              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col"><button type="submit" disabled={isSaving || isPublishing} className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{isSaving ? "Saving…" : "Save article"}</button><button type="button" disabled={isSaving || isPublishing} onClick={handlePublish} className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-semibold text-navy-deep hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"><Send className="h-4 w-4" />{isPublishing ? "Publishing…" : "Save & publish"}</button>
+                {selected.id ? <button type="button" disabled={isArchiving || isSaving || isPublishing} onClick={handleArchiveToggle} className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-semibold text-navy-deep hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60">{selected.status === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}{isArchiving ? "Updating…" : selected.status === "archived" ? "Restore to draft" : "Archive"}</button> : null}
+                {selected.id ? <button type="button" disabled={isDeleting} onClick={() => { if (window.confirm(`Delete "${selected.title || "this article"}" permanently? This cannot be undone.`)) handleDelete(); }} className="inline-flex items-center justify-center gap-2 rounded-full border border-destructive/30 px-5 py-3 text-sm font-semibold text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60">{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}{isDeleting ? "Deleting…" : "Delete permanently"}</button> : null}
+              </div>
             </aside>
           </div>
         </form>

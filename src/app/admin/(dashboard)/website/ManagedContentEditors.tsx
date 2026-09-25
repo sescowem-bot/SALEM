@@ -4,7 +4,7 @@ import { useFormStatus } from "react-dom";
 import { Plus, Trash2 } from "lucide-react";
 import { saveWebsiteDraftAction, type ActionState } from "./actions";
 import type { FaqContent, PackagesContent, BookingContent, ResultsContent } from "@/lib/data/websiteContentTypes";
-import { defaultFaqContent, defaultPackagesContent, defaultBookingContent, defaultResultsContent } from "@/components/salem/pages";
+import { defaultFaqContent, defaultPackagesContent, defaultBookingContent, defaultResultsContent } from "@/lib/data/websiteDefaultContent";
 const input="w-full rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-navy-deep";
 function Save(){const {pending}=useFormStatus();return <button disabled={pending} className="rounded-full bg-navy px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{pending?"Saving…":"Save draft"}</button>}
 function TextField({label,value,onChange,area=false}:{label:string;value?:string;onChange:(v:string)=>void;area?:boolean}){return <label className="block text-sm font-medium text-navy-deep">{label}{area?<textarea rows={4} value={value||""} onChange={e=>onChange(e.target.value)} className={input+" mt-1.5 resize-y"}/>:<input value={value||""} onChange={e=>onChange(e.target.value)} className={input+" mt-1.5"}/>}</label>}

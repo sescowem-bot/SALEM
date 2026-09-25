@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth/session";
-import { upsertArticle, setArticleStatus, uploadArticleFeaturedImage } from "@/lib/data/seoArticles";
+import { upsertArticle, setArticleStatus, uploadArticleFeaturedImage, deleteArticle } from "@/lib/data/seoArticles";
 
 function clean(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
@@ -70,6 +70,57 @@ export async function publishArticleAction(formData: FormData): Promise<ArticleA
     return { ok: true, message: "Article published successfully.", article };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not publish the article." };
+  }
+}
+
+export async function archiveArticleAction(formData: FormData): Promise<ArticleActionState> {
+  try {
+    const staff = await requireStaff();
+    const id = clean(formData.get("id"));
+    if (!id) return { ok: false, error: "Save the article first before archiving." };
+
+    const article = await setArticleStatus(id, "archived", staff.role, staff.userId);
+    revalidatePath("/admin/seo-performance/articles");
+    revalidatePath("/blog");
+    if (article?.slug) revalidatePath(`/blog/${article.slug}`);
+
+    return { ok: true, message: "Article archived. It is no longer visible on the public blog.", article };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not archive the article." };
+  }
+}
+
+export async function unarchiveArticleAction(formData: FormData): Promise<ArticleActionState> {
+  try {
+    const staff = await requireStaff();
+    const id = clean(formData.get("id"));
+    if (!id) return { ok: false, error: "Missing article id." };
+
+    const article = await setArticleStatus(id, "draft", staff.role, staff.userId);
+    revalidatePath("/admin/seo-performance/articles");
+    revalidatePath("/blog");
+
+    return { ok: true, message: "Article moved back to draft.", article };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not restore the article." };
+  }
+}
+
+export async function deleteArticleAction(formData: FormData): Promise<ArticleActionState> {
+  try {
+    const staff = await requireStaff();
+    const id = clean(formData.get("id"));
+    const slug = clean(formData.get("slug"));
+    if (!id) return { ok: false, error: "Missing article id." };
+
+    await deleteArticle(id, staff.role, staff.userId);
+    revalidatePath("/admin/seo-performance/articles");
+    revalidatePath("/blog");
+    if (slug) revalidatePath(`/blog/${slug}`);
+
+    return { ok: true, message: "Article deleted permanently." };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not delete the article." };
   }
 }
 
